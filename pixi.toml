@@ -7,6 +7,10 @@ channels = ["conda-forge", "pip", "bioconda"]
 platforms = ["win-64"]
 
 [tasks]
+install-kernel = "python -m ipykernel install --user --name <kernel name> --display-name <kernel name>"
+
+[pypi-dependencies]
+ipykernel = ">=6.29.3,<6.30"
 
 [dependencies]
 pip = ">=24.0,<25"
