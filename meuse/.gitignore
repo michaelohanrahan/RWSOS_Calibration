@@ -95,11 +95,11 @@ target/
 bin/
 
 # exclude data from source control by default
-data/1-external
-data/2-interim
-data/3-input
-data/4-output
-data/5-visualization
+#data/1-external
+#data/2-interim
+#data/3-input
+#data/4-output
+#data/5-visualization
 
 # exclude figures
 reports/figures
