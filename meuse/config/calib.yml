@@ -1,0 +1,42 @@
+## General
+base_dir: "/p/1000365-002-wflow/tmp/usgs_wflow/models"
+output_dir: "MODELDATA_KING_CALIB"
+source_dir: "MODELDATA_KING_500M"
+result_dir: "result"
+
+# The bluesprint files to work with
+base_config: "blueprint_wflow_sbm.toml"
+base_staticmaps: "staticmaps_v3.nc"
+
+## Graph of gauges
+dependency_graph: "res/king_graph.json"
+subcatch: "staticgeoms/subcatch_obs.geojson"
+
+# Settings the config file
+starttime: "2010-01-01T00:00:00"
+endtime: "2018-12-31T00:00:00"
+timestep: 10800
+source_forcing_data: "inmaps/3hourly/inmaps-era5_*.nc"
+
+# Setting data for calibration
+calib_recipe: "res/calib_recipe.json"
+
+# Running model
+wflow_cfg_name: "wflow_sbm.toml"
+wflow_project_dir: "/u/dalmijn/code/jl_dev/wflow/"
+wflow_threads: 1
+
+# Evaluation and finalizing per level
+observed_data: "/p/1000365-002-wflow/tmp/usgs_wflow/data/GAUGES/discharge_obs_combined.nc"
+eval_starttime: "2012-01-01T00:00:00"
+eval_endtime: "2018-12-31T00:00:00"
+metrics: ["kge", "rld", "pds"]
+weights: [0.5, 0.25, 0.25]
+
+# Overal finalizing
+model_threads: 16
+
+# Post processing
+hydro_period_startdate: ["2012-09-01", "2013-09-01", "2015-09-01"]
+hydro_period_length: [365, 365, 365]
+hydro_period_unit: "D" 
