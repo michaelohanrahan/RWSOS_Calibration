@@ -5,16 +5,17 @@ from pathlib import Path
 from snakemake.utils import Paramspace
 
 from src.calib.create_set_params import create_set
+from src.calib.dependency_graph import create_graph
 from src.calib.dependency_graph import sort_graph
 
 
 ## Some preparatory actions
 # Ensure the model directory is there
 base_dir = Path(config["base_dir"])
-root_dir = Path(base_dir, config["output_dir"])
-source_dir = Path(base_dir, config["source_dir"])
-if not root_dir.exists():
-    root_dir.mkdir()
+basin = config["basin"]
+root_dir = Path(base_dir, basin, config["output_dir"])
+source_dir = Path(base_dir, basin, config["source_dir"])
+os.makedirs(root_dir, exist_ok=True)
 
 # Copy the needed files to be filled in
 cfg_template = Path(root_dir, config["base_config"])

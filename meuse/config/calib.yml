@@ -1,8 +1,9 @@
 ## General
-base_dir: "/p/1000365-002-wflow/tmp/usgs_wflow/models"
-output_dir: "MODELDATA_KING_CALIB"
-source_dir: "MODELDATA_KING_500M"
-result_dir: "result"
+base_dir: "/p/11209265-grade2023/wflow/RWSOS_Calibration"
+basin: "meuse"
+output_dir: "data/4-output"       #confusingly labelled as root_dir in snakefile 
+source_dir: "data/1-external"
+result_dir: "data/5-visualization"
 
 # The bluesprint files to work with
 base_config: "blueprint_wflow_sbm.toml"
