@@ -12,6 +12,8 @@ import os
 '''
 Auth: Joost Buitink
 Refactor: Mike O'Hanrahan
+
+This has been refactored to be more modular, including logging and snakemake workflow compatibility.
 '''
 
 
@@ -23,7 +25,7 @@ def setup_logger():
 
     # Create handlers
     c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler('data/0-log/file.log', mode='w+')
+    f_handler = logging.FileHandler('data/0-log/file.log', mode='w')
     c_handler.setLevel(logging.WARNING)
     f_handler.setLevel(logging.ERROR)
 
@@ -49,7 +51,6 @@ try:
     logger = setup_logger()
 
 except:
-    print("running in test mode")
     os.chdir(Path(r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse"))
     gridfile = Path('data/1-external/staticmaps/base_staticmaps.nc')
     gaugeset = "Sall"
