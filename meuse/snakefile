@@ -1,27 +1,25 @@
 import json
 import shutil
+import os
 from pathlib import Path
 
 from snakemake.utils import Paramspace
 
 from src.graph import create_dependency_graph
-
 from src.calib.create_set_params import create_set
-from src.calib.dependency_graph import create_graph
-from src.calib.dependency_graph import sort_graph
 
 
 ## Some preparatory actions
 # Ensure the model directory is there
-base_dir = Path(config["base_dir"])
-basin = config["basin"]
-root_dir = Path(base_dir, basin, config["output_dir"])
-source_dir = Path(base_dir, basin, config["source_dir"])
-os.makedirs(root_dir, exist_ok=True)
+base_dir = Path(config["base_dir"])                         # RWSOS_Calibration
+basin = config["basin"]                                     # meuse
+source_dir = Path(base_dir, basin, config["source_dir"])    # data/1-external
+inter_dir = Path(base_dir, basin, config["inter_dir"])      # data/2-intermediate
+root_dir = Path(base_dir, basin, config["output_dir"])      # data/4-output
+os.makedirs(root_dir, exist_ok=True) 
 
 # Copy the needed files to be filled in
-#TODO: put in the confg with the basemodel and grid/staticmaps
-cfg_template = Path(root_dir, config["base_config"])
+cfg_template = Path(source_dir, config["base_config"])      #exernal/wflow_sbm_config
 staticmaps = Path(root_dir, "staticmaps.nc")
 
 shutil.copy2(
@@ -43,10 +41,10 @@ if not calib_dir.exists():
 
 ## Actions more focussed on the calibration itself
 # Load the dependency graph and sort into levels
-#TODO: insert the Joost function
-graph = sort_graph(
-    Path(config["dependency_graph"])
-)
+#TODO: put the function as the first rule in the workflow
+gauges = config["gauges"]
+graph = Path(inter_dir, f'{gauges}_levels_graph.json')
+
 # Ensure all the level directories are there
 for _l in graph.keys():
     _p = Path(calib_dir, _l)
