@@ -18,6 +18,7 @@ source_dir = Path(base_dir, basin, config["source_dir"])
 os.makedirs(root_dir, exist_ok=True)
 
 # Copy the needed files to be filled in
+#TODO: put in the confg with the basemodel and grid/staticmaps
 cfg_template = Path(root_dir, config["base_config"])
 staticmaps = Path(root_dir, "staticmaps.nc")
 shutil.copy2(
@@ -38,6 +39,7 @@ if not calib_dir.exists():
 
 ## Actions more focussed on the calibration itself
 # Load the dependency graph and sort into levels
+#TODO: insert the Joost function
 graph = sort_graph(
     Path(config["dependency_graph"])
 )

@@ -6,8 +6,8 @@ source_dir: "data/1-external"
 result_dir: "data/5-visualization"
 
 # The bluesprint files to work with
-base_config: "blueprint_wflow_sbm.toml"
-base_staticmaps: "staticmaps_v3.nc"
+base_config: "wflow_sbm_template.toml"
+base_staticmaps: "staticmaps/base_staticmaps.nc"
 
 ## Graph of gauges
 dependency_graph: "res/king_graph.json"

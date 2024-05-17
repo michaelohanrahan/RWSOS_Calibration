@@ -2,3 +2,11 @@
 .pixi
 *.egg-info
 
+*.netcdf
+*.nc
+*.csv
+
+*.log
+*.txt
+*.geojson
+*.toml
