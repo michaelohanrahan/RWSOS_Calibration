@@ -10,7 +10,7 @@ base_config: "wflow_sbm_template.toml"
 base_staticmaps: "staticmaps/base_staticmaps.nc"
 
 ## Graph of gauges
-dependency_graph: "res/king_graph.json"
+# dependency_graph: "res/king_graph.json"
 subcatch: "staticgeoms/subcatch_obs.geojson"
 
 # Settings the config file

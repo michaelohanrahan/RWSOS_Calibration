@@ -4,6 +4,8 @@ from pathlib import Path
 
 from snakemake.utils import Paramspace
 
+from src.graph import create_dependency_graph
+
 from src.calib.create_set_params import create_set
 from src.calib.dependency_graph import create_graph
 from src.calib.dependency_graph import sort_graph
@@ -21,10 +23,12 @@ os.makedirs(root_dir, exist_ok=True)
 #TODO: put in the confg with the basemodel and grid/staticmaps
 cfg_template = Path(root_dir, config["base_config"])
 staticmaps = Path(root_dir, "staticmaps.nc")
+
 shutil.copy2(
     Path(source_dir, config["base_config"]),
     cfg_template,
 )
+
 if not staticmaps.exists():
     shutil.copy2(
         Path(source_dir, config["base_staticmaps"]),
