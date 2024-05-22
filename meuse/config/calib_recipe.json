@@ -1,0 +1,33 @@
+{
+    "KsatHorFrac": {
+        "short_name": "ksat", 
+        "values": [1, 50, 100, 250, 500, 750, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000],
+        "method": "set"
+    },
+    "SoilThickness": {
+        "short_name": "st",
+        "values": [0.5, 0.75, 1.0, 1.25, 1.5],
+        "method": "mult"
+    },
+    "N_River": {
+        "short_name": "nr",
+        "values": [0.5, 0.75, 1.0, 1.25, 1.5],
+        "method": "mult"
+    }, 
+    "RootingDepth": {
+        "short_name": "rd",
+        "values": [0.8, 1.0, 1.2],
+        "method": "mult"
+    }, 
+    "MaxLeakeage": {
+        "short_name": "ml",
+        "values": [0, 0.2, 0.6],
+        "method": "add"
+    }, 
+    "N_Land": {
+        "short_name": "nl",
+        "values": [0.8, 1.0, 1.2],
+        "method": "mult"
+    }, 
+}
+e
