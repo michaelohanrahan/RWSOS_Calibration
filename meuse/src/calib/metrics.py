@@ -58,7 +58,18 @@ def peakdis(
     obs: xr.Dataset,
     gauges: tuple | list,    
 ):
-    """_summary_"""
+    """
+    Calculate the peak discharge discrepancy between model (md) and observed (obs) datasets for a given set of gauges.
+
+    Parameters:
+    md (xr.Dataset): Model dataset containing discharge values.
+    obs (xr.Dataset): Observed dataset containing discharge values.
+    gauges (tuple | list): Tuple or list of gauge names for which the peak discharge discrepancy needs to be calculated.
+
+    Returns:
+    list: List of peak discharge discrepancies for each gauge.
+
+    """
     res = []
     
     for g in gauges:
@@ -79,7 +90,21 @@ def fix_minmax(
     maxx: tuple | list,
     shape: tuple | list,    
 ):
-    """_summary_"""
+    """
+    Adjusts the minx array to match the size of the maxx array based on the given shape.
+
+    Args:
+        minx (tuple | list): The minx array.
+        maxx (tuple | list): The maxx array.
+        shape (tuple | list): The desired shape of the minx array.
+
+    Returns:
+        tuple | list: The adjusted minx array.
+
+    Raises:
+        None
+
+    """
     while True:
         size_diff = len(minx)-len(maxx)
         temp = maxx - minx[size_diff:]
@@ -103,7 +128,17 @@ def fix_maxmin(
     minx: tuple | list,
     shape: tuple | list,
 ):
-    """_summary_"""
+    """
+    Adjusts the `maxx` array by removing elements based on the `minx` array.
+    
+    Args:
+        maxx (tuple | list): The maximum values array.
+        minx (tuple | list): The minimum values array.
+        shape (tuple | list): The shape of the arrays.
+        
+    Returns:
+        tuple | list: The adjusted `maxx` array.
+    """
     while True:
         temp = maxx[0:len(minx)] - minx
         loc = np.argmax(temp < 0)
@@ -130,7 +165,24 @@ def _rld(
     buildup: bool = False,
     flow_based: bool = False,
 ):
-    """_summary_"""
+
+    """
+    Calculate the Rising Limb Density (RLD) metric.
+
+    Args:
+        data (np.ndarray): The input data array.
+        thres (float, optional): The threshold percentile for filtering smaller events. Defaults to 95.
+        buildup (bool, optional): Whether to group pre-events with larger events. Defaults to False.
+        flow_based (bool, optional): Whether to calculate RLD based on flow. Defaults to False.
+
+    Returns:
+        float: The calculated RLD value.
+
+    Raises:
+        ValueError: If the input data is empty.
+
+    """
+    
     minx = find_peaks(data * -1)[0]
     maxx = find_peaks(data)[0]
 

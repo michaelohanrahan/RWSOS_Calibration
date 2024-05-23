@@ -135,10 +135,20 @@ rule wflow:
     shell: 
         f"""julia --project="{config['wflow_project_dir']}" -t {config['wflow_threads']} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
 
+'''
+Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
+Output:  an unstacked performance.nc file with metrics and weights for each parameter set, and a best_params.csv file with the best parameter set.
+        out csv with the best parameter set for each gauge 
+        
+'''
+#TODO: discuss if we want to have a multiple param selection.. 
+#       - can sample within distance tolerance of weighted euclidian sample
+#TODO: add parameter to fn whether to take best or range
+
 rule evaluate:
     input: expand(Path(calib_dir, "level"+"{item}", "{params}", "run_default", "output_scalar.nc"), item=f"{{item}}", params=paramspace.instance_patterns)
     params: 
-        observed_data = config["observed_data"],
+        observed_data = Path(source_dir, config["observed_data"]),
         level = "{item}",
         graph = graph,
         params = df.to_dict(orient="records"), 

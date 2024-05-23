@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+#TODO: add peak timing to metrics, conforming to data structure
 from metrics import kge, rld, peakdis, weighted_euclidean
 
 
@@ -43,13 +44,30 @@ def main(
     weights: tuple | list,
     out: Path | str,
 ):
-    """_summary_"""
+    """
+    Perform evaluation of model parameters.
+
+    Args:
+        modelled (tuple | list): List of paths to modelled data files.
+        observed (Path | str): Path to the observed data file.
+        gauges (tuple | list): List of gauge names.
+        params (tuple | list): List of parameter values.
+        starttime (str): Start time for data selection.
+        endtime (str): End time for data selection.
+        metrics (tuple | list): List of metrics to calculate.
+        weights (tuple | list): List of weights for weighted metrics.
+        out (Path | str): Path to the output file.
+
+    Returns:
+        None
+    """
+    #original example indexed by 'Q_gauges_obs' and 'time'
+    #our data is indexed by 'wflow_id' 'runs' and 'time'
+    #TODO: optionality to have additional index for alternative dimension 
     # output directory
     out_dir = Path(out).parent
 
-    # Open the observed data and translate to m3/s
     obs = xr.open_dataset(observed)
-    obs.Q.values = obs.Q.values * (0.3048**3)
     obs = obs.sel(time=slice(starttime, endtime)) 
 
     res = []
@@ -86,7 +104,6 @@ def main(
         )
         res.append(r)
 
-    # TODO create overal performance netcdf file
     param_coords = create_coords_from_params(params)
     ds = None
     for metric in metrics:
@@ -139,6 +156,31 @@ def main(
 
 
 if __name__ == "__main__":
+    
+    """
+    This module is used to evaluate parameters for a model. 
+
+    It contains a main function that takes in a variety of inputs including observed data, 
+    graph elements, parameters, start and end times, metrics, weights, and a path to output 
+    the best parameters. 
+
+    The main function is designed to be run either directly or through Snakemake. 
+    If run directly, it will use default paths and parameters defined in the script. 
+    If run through Snakemake, it will use the input, params, and output defined in the 
+    Snakemake rule.
+
+    Functions:
+    ----------
+    main : Function to evaluate parameters and output the best ones.
+
+    Modules:
+    --------
+    create_set_params : Module to create a set of parameters.
+    dependency_graph : Module to sort the graph.
+
+    """
+    
+    
     if "snakemake" in globals():
         mod = globals()["snakemake"]
         
