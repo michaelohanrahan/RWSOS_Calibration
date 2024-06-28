@@ -282,6 +282,47 @@ def rld(
     return res
 
 
+def _mm7q(
+    ds: xr.Dataset,
+    freq: str,
+):
+    """_summary_
+    Monthly minimum 7-day discharge
+    """
+    if freq == "H":
+        window = 7*24
+    else: # daily "D"
+        window = 7
+    
+    _mm7q = ds.rolling(time=window).mean().resample(time='M').min('time')
+    
+    return _mm7q
+    
+    
+
+def mm7q_dry_month(
+    md: xr.Dataset,
+    obs: xr.Dataset,
+    freq: str,
+    gauges: tuple | list,
+):
+    """_summary_"""
+    # compute mm7q for md dataset
+    md_mm7q = _mm7q(md.Q, freq)
+    # select mm7q for dry period (month 6-9)
+    md_months = md_mm7q['time'].dt.month
+    md_mm7q_dry_month = md_mm7q.sel(time=md_mm7q['time'].where((md_months>=6)&(md_months<=9), drop=True))
+    
+    # compute mm7q for obs dataset
+    obs_mm7q = _mm7q(obs.Q, freq)
+    # select mm7q for dry period (month 6-9)
+    obs_months = obs_mm7q['time'].dt.month
+    obs_mm7q_dry_month = obs_mm7q.sel(time=obs_mm7q['time'].where((obs_months>=6)&(obs_months<=9), drop=True))
+    
+    # TO-DO: compute for selected gauges and return results
+
+
+
 def weighted_euclidean(
     coef: tuple | list,
     weights: tuple | list,
@@ -306,9 +347,13 @@ def weighted_euclidean(
 
 if __name__ == "__main__":
     import xarray as xr
-    obs = xr.open_dataset(r"p:\1000365-002-wflow\tmp\usgs_wflow\data\GAUGES\discharge_obs_combined.nc")
-    obs.Q.values = obs.Q.values * (0.3048**3)
-    md = xr.open_dataset(r"p:\1000365-002-wflow\tmp\usgs_wflow\models\MODELDATA_KING_CALIB\calib_data\level1\ksat100_rd0.5_st0.5\run_default\output_scalar.nc")
+    # obs = xr.open_dataset(r"p:\1000365-002-wflow\tmp\usgs_wflow\data\GAUGES\discharge_obs_combined.nc")
+    # obs.Q.values = obs.Q.values * (0.3048**3)
+    md = xr.open_dataset(r"p:\archivedprojects\11208719-interreg\data\rwsinfo\c_final\rwsinfo_hourly.nc")
+    Q_ds = md.Q
+    _mm7q = _mm7q(Q_ds,'H')
+    
+    
     res = kge(
         md.sel(time=slice("2011-01-01", "2011-12-31")),
         obs.sel(time=slice("2011-01-01", "2011-12-31T00:00:00")),
