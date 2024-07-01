@@ -1,3 +1,7 @@
+# Modified by Jing on July 1, 2024
+# TO-DOs: 
+# 1. change md to sim?
+
 import hydromt.stats as stats
 import numpy as np
 import xarray as xr
@@ -282,45 +286,48 @@ def rld(
     return res
 
 
-def _mm7q(
+def mm7q(
     ds: xr.Dataset,
-    freq: str,
+    dry_month: list,
 ):
     """_summary_
-    Monthly minimum 7-day discharge
+    Monthly minimum 7-day discharge for selected dry months
     """
-    if freq == "H":
-        window = 7*24
-    else: # daily "D"
+    # get the rolling mean window based on timescale in dataset
+    if xr.infer_freq(ds.time).lower() == "D":
         window = 7
+    elif xr.infer_freq(ds.time).lower() == "h":
+        window = 7 * 24
+    elif xr.infer_freq(ds.time).lower() == "3h":
+        window = 7 * int(24 / 3)
     
+    # calculate the MM7Q for each month
     _mm7q = ds.rolling(time=window).mean().resample(time='M').min('time')
     
-    return _mm7q
+    # select out the MM7Q for selected dry months
+    dry_month_start = dry_month[0]
+    dry_month_end = dry_month[-1]
+    months = _mm7q['time'].dt.month
+    mm7q_dry_month = _mm7q.sel(time=_mm7q['time'].where((months>=dry_month_start)
+                                                        &(months<=dry_month_end),
+                                                        drop=True))
+    
+    return mm7q_dry_month
     
     
-
-def mm7q_dry_month(
+def nse_mm7q(
     md: xr.Dataset,
     obs: xr.Dataset,
-    freq: str,
     gauges: tuple | list,
 ):
-    """_summary_"""
-    # compute mm7q for md dataset
-    md_mm7q = _mm7q(md.Q, freq)
-    # select mm7q for dry period (month 6-9)
-    md_months = md_mm7q['time'].dt.month
-    md_mm7q_dry_month = md_mm7q.sel(time=md_mm7q['time'].where((md_months>=6)&(md_months<=9), drop=True))
-    
-    # compute mm7q for obs dataset
-    obs_mm7q = _mm7q(obs.Q, freq)
-    # select mm7q for dry period (month 6-9)
-    obs_months = obs_mm7q['time'].dt.month
-    obs_mm7q_dry_month = obs_mm7q.sel(time=obs_mm7q['time'].where((obs_months>=6)&(obs_months<=9), drop=True))
+
     
     # TO-DO: compute for selected gauges and return results
+    
+    
+    # for calibration, organize the results to one metric: eg nse-mm7q_dry_month?
 
+    
 
 
 def weighted_euclidean(
