@@ -1,6 +1,8 @@
+
 import json
 import shutil
 import os
+import platform
 from pathlib import Path
 
 from snakemake.utils import Paramspace
@@ -8,20 +10,29 @@ from snakemake.utils import Paramspace
 from src.graph import create_dependency_graph
 from src.calib.create_set_params import create_set
 
+if platform.system() == "Windows":
+    DRIVE = "p:"
+else:
+    DRIVE = "/p"
 
 ## Some preparatory actions
 # Ensure the model directory is there
-base_dir = Path(config["base_dir"])                         # RWSOS_Calibration
+base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
 basin = config["basin"]                                     # meuse
 source_dir = Path(base_dir, basin, config["source_dir"])    # data/1-external
 inter_dir = Path(base_dir, basin, config["inter_dir"])      # data/2-intermediate
-root_dir = Path(base_dir, basin, config["output_dir"])      # data/4-output
-os.makedirs(root_dir, exist_ok=True) 
+input_dir = Path(base_dir, basin, config["input_dir"])      # data/3-input
+out_dir = Path(base_dir, basin, config["output_dir"])       # data/4-output
+vis_dir = Path(base_dir, basin, config["vis_dir"])          # data/5-visualisation
+
+for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
+    os.makedirs(dir, exist_ok=True)
 
 # Copy the needed files to be filled in
-cfg_template = Path(source_dir, config["base_config"])      #exernal/wflow_sbm_config
-staticmaps = Path(root_dir, "staticmaps.nc")
+cfg_template = Path(input_dir, "wflow_sbm.toml")        # /p:RWSOS_Calibration/meuse/data/2-intermediate/wflow_sbm.toml
+staticmaps = Path(input_dir, "staticmaps.nc")           # /p:RWSOS_Calibration/meuse/data/2-intermediate/staticmaps.nc
 
+#copy the base config file to the output directory
 shutil.copy2(
     Path(source_dir, config["base_config"]),
     cfg_template,
@@ -34,22 +45,23 @@ if not staticmaps.exists():
     )
 
 # Ensure the folder is there for all the calibration data and settings
-calib_dir = Path(root_dir, "calib_data")
-if not calib_dir.exists():
-    calib_dir.mkdir()
-
+calib_dir = Path(inter_dir, "calib_data")
+os.makedirs(calib_dir, exist_ok=True)
 
 ## Actions more focussed on the calibration itself
 # Load the dependency graph and sort into levels
 #TODO: put the function as the first rule in the workflow
 gauges = config["gauges"]
-graph = Path(inter_dir, f'{gauges}_levels_graph.json')
+subcatch = Path(source_dir, "staticgeoms", f"subcatch_{gauges}.geojson")
+graph_path = Path(inter_dir, f'{gauges}_levels_graph.json')
+with open(graph_path, "r") as f:
+    graph = json.load(f)
 
 # Ensure all the level directories are there
 for _l in graph.keys():
     _p = Path(calib_dir, _l)
     if not _p.exists():
-        _p.mkdir()
+        os.makedirs(_p, exist_ok=True)
 
 # Get the last index of the keys
 last_level = list(graph.keys())[-1]
@@ -60,78 +72,106 @@ for _l in graph.values():
     elements += _l["elements"]
 
 # Load parameter recipe as a parameter space
-lnames, methods, ds = create_set(config["calib_recipe"])
-paramspace = Paramspace(ds, filename_params="*", param_sep="", filename_sep="_")
+# ['KsatHorFrac', 'RootingDepth', 'SoilThickness'], ['set', 'mult', 'mult'], df of params
+lnames, methods, df = create_set(config["calib_recipe"])
+paramspace = Paramspace(df, filename_params="*", param_sep="", filename_sep="_")
 
 ############################
 # DOING the snakey!
 ############################
-# Define the 
+# Define the main rule all that expects all the visualization files to have been created for successfull completion
 rule all:
-    input: expand(Path(root_dir, config["result_dir"], "figures", "hydro_{gauge}.png"), gauge=elements)
+    input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+
+'''
+config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
+        It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
+        The output is a set of modified configuration files.
+'''
 
 rule config:
-    input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
+    # input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
     params: 
         cfg_template = cfg_template,
         starttime = config["starttime"],
         endtime = config["endtime"],
         timestep = config["timestep"],
-        forcing_path = Path(source_dir, config["source_forcing_data"])
-    output: expand(Path(calib_dir, "{item}", "{params}", config["wflow_cfg_name"]), item=f"{{item}}", params=paramspace.wildcard_pattern)
+        forcing_path = Path(input_dir, config["source_forcing_data"])
+    output: expand(Path(calib_dir, "level"+"{item}", "{params}", config["wflow_cfg_name"]), item=f"{{item}}", params=paramspace.wildcard_pattern)
     script:
         """src/calib/set_config.py"""
 
+'''
+create_params:  This rule creates parameter sets for the Wflow model. 
+                It takes a configuration file, a dataset of static maps, a parameter space instance, 
+                a list of parameter names, a list of parameter methods, a level, a graph, and a sub-catchment as parameters. 
+                The output is a set of static map files.
+'''
+
 rule create_params:
-    input: Path(calib_dir, "{item}", paramspace.wildcard_pattern, config["wflow_cfg_name"])
+    input: Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, config["wflow_cfg_name"])
     params:
         dataset = staticmaps,
         params = paramspace.instance,
         params_lname = lnames,
         params_method = methods,
-        level = "{item}",
+        level = "level"+"{item}",
         graph = graph,
-        sub_catch = Path(source_dir, config["subcatch"])
+        sub_catch = subcatch
     output: 
-        staticmaps = Path(calib_dir, "{item}", paramspace.wildcard_pattern, "staticmaps.nc")
+        staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc")
     script: 
         """src/calib/set_calib_params.py"""
 
+'''
+wflow: This rule runs the hydrological model. It takes a configuration file and a grid (staticmap) file as input.
+'''
+
 rule wflow:
     input: 
-        cfg = Path(calib_dir, "{item}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
-        staticmaps = Path(calib_dir, "{item}", paramspace.wildcard_pattern, "staticmaps.nc")
-    output: Path(calib_dir, "{item}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc")
+        cfg = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
+        staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc")
+    output: Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc")
     shell: 
         f"""julia --project="{config['wflow_project_dir']}" -t {config['wflow_threads']} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
 
+'''
+Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
+Output:  an unstacked performance.nc file with metrics and weights for each parameter set, and a best_params.csv file with the best parameter set.
+        out csv with the best parameter set for each gauge 
+        
+'''
+#TODO: discuss if we want to have a multiple param selection.. 
+#       - can sample within distance tolerance of weighted euclidian sample
+#TODO: add parameter to fn whether to take best or range
+
 rule evaluate:
-    input: expand(Path(calib_dir, "{item}", "{params}", "run_default", "output_scalar.nc"), item=f"{{item}}", params=paramspace.instance_patterns)
+    input: expand(Path(calib_dir, "level"+"{item}", "{params}", "run_default", "output_scalar.nc"), item=f"{{item}}", params=paramspace.instance_patterns)
     params: 
-        observed_data = config["observed_data"],
+        observed_data = Path(source_dir, config["observed_data"]),
         level = "{item}",
         graph = graph,
-        params = ds.to_dict(orient="records"), 
+        params = df.to_dict(orient="records"), 
         starttime = config["eval_starttime"],
         endtime = config["eval_endtime"],
         metrics = config["metrics"],
         weights = config["weights"]
     output: 
-        best_params = Path(calib_dir, "{item}", "best_params.csv"),
-        performance = Path(calib_dir, "{item}", "performance.nc")
+        best_params = Path(calib_dir, "level"+"{item}", "best_params.csv"),
+        performance = Path(calib_dir, "level"+"{item}", "performance.nc")
     script: 
         """src/calib/evaluate_params.py"""
 
 rule set_params:
     input: 
-        best_params = Path(calib_dir, "{item}", "best_params.csv")
+        best_params = Path(calib_dir, "level"+"{item}", "best_params.csv")
     params:
         staticmaps = staticmaps,
-        sub_catch = Path(source_dir, config["subcatch"]),
+        sub_catch = subcatch,
         params_lname = lnames,
         params_method = methods
     output: 
-        done = Path(calib_dir, "{item}", "done.txt")
+        done = Path(calib_dir, "level"+"{item}", "done.txt")
     script:
         """src/calib/set_eval_params.py"""
 
@@ -144,24 +184,24 @@ rule prep_final_stage:
         cfg_args = [config["starttime"], config["endtime"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
         staticmaps = staticmaps
     output: 
-        cfg = Path(root_dir, config["result_dir"], config["wflow_cfg_name"]),
-        performance = Path(root_dir, config["result_dir"], "performance.nc"),
-        staticmaps = Path(root_dir, config["result_dir"], "staticmaps.nc")
+        cfg = Path(input_dir, config["wflow_cfg_name"]),
+        performance = Path(out_dir, "performance.nc"),
+        staticmaps = Path(input_dir, "staticmaps.nc")
     script:
         """src/calib/prep_final_stage.py"""
 
 rule run_final_model:
     input:
-        cfg = Path(root_dir, config["result_dir"], config["wflow_cfg_name"]),
-        staticmaps = Path(root_dir, config["result_dir"], "staticmaps.nc")
-    output: Path(root_dir, config["result_dir"], "run_default", "output_scalar.nc")
+        cfg = Path(input_dir, config["wflow_cfg_name"]),
+        staticmaps = Path(input_dir, "staticmaps.nc")
+    output: Path(out_dir, "run_default", "output_scalar.nc")
     shell:
         f"""julia --project="{config['wflow_project_dir']}" -t {config['model_threads']} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
 
 rule visualize:
     input: 
-        scalar = Path(root_dir, config["result_dir"], "run_default", "output_scalar.nc"),
-        performance = Path(root_dir, config["result_dir"], "performance.nc")
+        scalar = Path(out_dir, "run_default", "output_scalar.nc"),
+        performance = Path(out_dir, "performance.nc")
     params:
         observed_data = config["observed_data"],
         gauges = elements,
@@ -170,8 +210,8 @@ rule visualize:
         period_startdate = config["hydro_period_startdate"],
         period_length = config["hydro_period_length"],
         period_unit = config["hydro_period_unit"],
-        output_dir = Path(root_dir, config["result_dir"], "figures")
+        output_dir = Path(vis_dir, "figures")
     output:
-        figures = expand(Path(root_dir, config["result_dir"], "figures", "hydro_{gauge}.png"), gauge=elements)
+        figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
     script:
         """src/post/plot_final_model.py"""

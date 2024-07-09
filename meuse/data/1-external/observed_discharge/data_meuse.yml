@@ -67,6 +67,7 @@ spw_qobs_hourly:
   crs: 4326
   rename:
     id: wflow_id
+    Nom: station_name
   meta:
     category: observed data from the SPW
     source_url: 

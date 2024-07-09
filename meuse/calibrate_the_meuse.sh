@@ -10,7 +10,7 @@
 
 # Set variables
 export name=calib
-export config_file=calib_king
+export config_file=calib
 export rule=all
 
 # Go one directory up to set PWD
