@@ -1,0 +1,300 @@
+meta:
+  root: p:/archivedprojects/11208719-interreg/data
+inmaps_meuse_eobs:
+  crs: 4326
+  data_type: RasterDataset
+  driver: netcdf
+  kwargs:
+    chunks:
+      time: 100
+    combine: by_coords
+    parallel: true
+  meta:
+    category: meteo
+    paper_doi: 10.1029/2017JD028200
+    paper_ref: Cornes et al (2018)
+    source_license: https://surfobs.climate.copernicus.eu/dataaccess/access_eobs.php#datafiles
+    source_url: https://surfobs.climate.copernicus.eu/dataaccess/access_eobs.php#datafiles
+    source_version: 24.0e
+  path: p:/11205237-grade/wflow/wflow_meuse_julia/inmaps/eobs_v24.0e_1980_2020.nc
+  rename:
+    precip: precip
+    
+inmaps_meuse_genre:
+  crs: 4326
+  data_type: RasterDataset
+  driver: netcdf
+  kwargs:
+    chunks:
+      time: 100
+    combine: by_coords
+    parallel: true
+  meta:
+    category: meteo
+    paper_doi: 
+    paper_ref: Bouaziz 2021
+    source_license: 
+    source_url: 
+  path: p:/11205237-grade/wflow/wflow_meuse_julia/inmaps_operational2daily/forcing_meuse_remapbil_semisstonn_*.nc
+  rename:
+    pre: precip
+
+meuse-hydro_timeseries:
+  path: p:/11205237-grade/wflow/wflow_meuse_julia/_obs/qobs_xr_gds_nl.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    Q: run 
+  meta:
+    category: observed data
+    source_url: 
+    source_author: Bouaziz
+    source_version: 
+    source_info: Stations data collected during PhD Laurène
+    
+cal_manual:
+  crs: 4326
+  data_type: GeoDataFrame
+  driver: vector
+  path: p:\11208719-interreg\wflow\geoms\subcatch_Sall_params_cal.geojson
+  
+
+spw_qobs_hourly:
+  path: spw/Discharge/c_final/hourly_spw.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    id: wflow_id
+  meta:
+    category: observed data from the SPW
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info: Stations data received from SPW for the interreg project
+  kwargs: 
+    cache: False
+
+spw_qobs_daily:
+  path: spw/Discharge/c_final/hydro_daily_selection_100km2_xy_.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    id: wflow_id
+    Nom: station_name
+  meta:
+    category: observed data from the SPW
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info: Stations data received from SPW for the SPW project 
+  kwargs: 
+    cache: False
+
+spw_qstats_hourly: 
+  path: spw/statistiques/c_final/spw_statistiques.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  meta:
+    category: Official return periods from SPW - hourly
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info: Stations data received from SPW for the SPW project 
+
+
+wl_qobs_hourly:
+  path: waterschap_limburg/c_final/hydro_H_wl.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    name: station_name
+  meta:
+    category: observed data from waterschap limburg 
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+  kwargs: 
+    cache: False
+
+wl_qobs_daily:
+  path: waterschap_limburg/c_final/hydro_D_wl.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    name: station_name
+  meta:
+    category: observed data from waterschap limburg 
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+  kwargs: 
+    cache: False
+
+wl_qstats_obs_hourly: #IS THIS DAILY??????
+  path: waterschap_limburg/c_final/measurement_statistics.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    stations: wflow_id
+  meta:
+    category: Return period data from waterschap limburg 
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+
+
+wl_qstats_mod_hourly: #IS THIS DAILY??????
+  path: waterschap_limburg/c_final/modeled_statistics.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  meta:
+    category: Return period data from waterschap limburg 
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+
+hp_qobs_hourly:
+  path: hydroportail/c_final/hydro_hourly.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  meta:
+    category: observed data from hydroportail france (2 stations - long period)
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+  kwargs: 
+    cache: False
+
+hp_qobs_daily:
+  path: hydroportail/c_final/hydro_daily.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  meta:
+    category: observed data from hydroportail france (2 stations - long period)
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+  kwargs: 
+    cache: False
+
+hp_qstats_hourly:
+  path: hydroportail/c_final/hydro_statistiques_hourly.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  meta:
+    category: Official return periods from hydroportail - hourly
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+
+
+rwsinfo_qobs_hourly:
+  path: rwsinfo/c_final/rwsinfo_hourly.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  meta:
+    category: observed data from rwsinfo portal (St Pieter + Kanne from waterinfo.be)
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+  kwargs: 
+    cache: False
+
+rwsinfo_qobs_daily:
+  path: rwsinfo/c_final/rwsinfo_daily.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    Qobs: Q
+  meta:
+    category: observed data from excel Monsin provided by Mark H. 
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+  kwargs: 
+    cache: False
+
+rwsinfo_qstats_daily:
+  path: rwsinfo/statistics/c_final/rws_statistics.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  meta:
+    category: Statistics for Borgharen from Hegnauer et al. (2014)
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+
+
+france_qobs_hourly:
+  path: france/c_final/france_hourly.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    Libellé: station_name
+  meta:
+    category: observed data from hydroportail france (period 2005-2017 many stations)
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+  kwargs: 
+    cache: False
+    
+france_qobs_daily:
+  path: france/c_final/france_daily.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    Libellé: station_name
+    Qobs: Q
+  meta:
+    category: observed data from hydroportail france 
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+  kwargs: 
+    cache: False
+    
+hygon_qobs_daily:
+  path: hygon/c_final/hygon_daily.nc
+  data_type: GeoDataset
+  driver: netcdf
+  crs: 4326
+  rename:
+    id: wflow_id
+    name: station_name
+  meta:
+    category: observed data from hygon
+    source_url: 
+    source_author: 
+    source_version: 
+    source_info:
+  kwargs: 
+    cache: False

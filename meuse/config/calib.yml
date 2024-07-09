@@ -1,16 +1,18 @@
 ## General
 base_dir: "/p/11209265-grade2023/wflow/RWSOS_Calibration"
 basin: "meuse"
+
 source_dir: "data/1-external"
 output_dir: "data/4-output"       #confusingly labelled as root_dir in snakefile 
+inter_dir: "data/2-interim"
 result_dir: "data/5-visualization"
 
 # The bluesprint files to work with
-base_config: "wflow_sbm_template.toml" #the wflow sbm toml with the relevant grid and gauges etc.
-base_staticmaps: "staticmaps/base_staticmaps.nc" #2023 model with lakes added
+base_config: "wflow_sbm_template.toml"
+base_staticmaps: "staticmaps/base_staticmaps.nc"
 
 ## Graph of gauges
-# dependency_graph: "interim/.json"
+gauges: "Sall"  #"I want to build the graph of subcatch_Sall map in staticmaps"
 subcatch: "staticgeoms/subcatch_obs.geojson"
 
 # Settings the config file

@@ -1,0 +1,204 @@
+import numpy as np
+import os
+
+from utils import make_cyclone_catalog, write_catalog
+
+virtual_options = ["singularity", "docker"]
+CYCLONE_INPUT = config.get("CYCLONE_INPUT")
+CATALOG_FILE = config.get("CATALOG_FILE")
+RESULTS = config.get("RESULTS")
+create_catalog = config.get("create_catalog")
+
+if CATALOG_FILE is None:
+    raise ValueError("No CATALOG_FILE path provided, so I cannot create or read the catalog file")
+
+if create_catalog:
+    if CYCLONE_INPUT is None:
+        raise ValueError("No CYCLONE_INPUT path was given, so nothing to do...")
+
+    if RESULTS is None:
+        raise ValueError("No RESULT path was given, so nothing to I don't know where to write results to")
+
+    catalog = make_cyclone_catalog(
+        CYCLONE_INPUT,
+        RESULTS,
+        max_amount=config.get("max_no_of_events"),
+        batch_size=config.get("batch_size")
+    )
+    write_catalog(CATALOG_FILE,catalog)
+
+# read catalog file
+if not(os.path.isfile(CATALOG_FILE)):
+    raise ValueError(f'CATALOG_FILE path {CATALOG_FILE}, at absolute path {os.path.abspath(CATALOG_FILE)} does not exist, I cannot read the catalog file. Make a catalog by using the option "create_catalog: True"')
+
+# write to catalog file
+
+# print(events)
+
+virtual = config["container"]
+batch_size = config["batch_size"]
+
+if virtual not in virtual_options:
+    raise ValueError(f'config option "container" is "{virtual}" but can only be one of {virtual_options}')
+
+class_bins_str = ["{:04d}_".format(int(np.floor(c))) + "{:.2f}".format(c % 1)[2:] for c in config["class_bins"]]
+
+def get_all_batches(catalog):
+    return ["batch_{:05d}".format(v["batch"]) for k, v in catalog.items()]
+
+def get_gtsm_forcing_file(wildcards):
+    """Return the filename based on provided wildcards"""
+
+    return catalog[wildcards.event]["input"]
+
+def get_gtsm_abs_path(wildcards):
+    # Docker can only mount an absolute path, therefore we make a lookup of the absolute path here
+    return os.path.abspath(config["GTSM_MODEL"]) # + "/events/event_" + wildcards.event)
+
+def get_batch(wildcards):
+    return "{:05d}".format(catalog[wildcards.event]["batch"])
+
+###### RULES START BELOW ###################
+rule all:
+    input:
+        # gtsm_event_input = expand((config["GTSM_MODEL"] + "/events/event_{event}/forcing.spw"), event=events),
+        # gtsm_output = expand((config["GTSM_MODEL"] + "/events/event_{event}/output/japan_0000_his.nc"), event=events),
+        # sfincs_snake_config = expand((config["SFINCS_MODELS"] + "/config/snake_config_event_{event}.yml"), event=events),
+        # TODO sfincs_output must be replaced by concatenated parquet file with hazard footprint
+        # sfincs_output = expand((config["SFINCS_MODELS"] + "/Honshu_12/simulations/event_{event}/sfincs_map.nc"), event=events)
+        footprint_output = expand((RESULTS + "/{batch}/event_{event}.parquet"), zip, batch=get_all_batches(catalog), event=catalog)
+        # footprint = expand((config["results"] + "/{event}_01.parquet"), event=events)
+
+rule update_dflowfm:
+    # perform any input manipulations before parsing to DFLOW-FM model
+    # input is currently still empty, should be filled in with data from the cyclone generator
+    input:
+        forcing = get_gtsm_forcing_file,
+        base_mdu = config["GTSM_MODEL"] + "/events/base/japan.mdu"
+    output:
+        gtsm_event_input = temp(config["GTSM_MODEL"] + "/events/event_{event}/forcing.spw"),
+        gtsm_event_mdu = temp(config["GTSM_MODEL"] + "/events/event_{event}/japan.mdu"),
+        gtsm_event_ext = temp(config["GTSM_MODEL"] + "/events/event_{event}/japan_old.ext"),
+        gtsm_event_path = temp(directory(config["GTSM_MODEL"] + "/events/event_{event}"))
+
+    params:
+        gtsm_base_model = config["GTSM_MODEL"] + "/events/base",
+        gtsm_event_model = temp(config["GTSM_MODEL"] + "/events/event_{event}"),
+        time_interval = "3H",
+        spinup_days= config["gtsm_spinup_days"],
+        resolution = 0.1
+    group: "run_event"
+    script:
+        "src/gtsm/prep_forcing.py"
+
+rule domain_dflowfm:
+    # split the DFLOWFM domain in the amount of specified sub domains (typically 4)
+    input:
+        gtsm_event_input = temp(config["GTSM_MODEL"] + "/events/event_{event}/forcing.spw"),
+        gtsm_event_mdu = config["GTSM_MODEL"] + "/events/event_{event}/japan.mdu",
+        gtsm_event_ext = temp(config["GTSM_MODEL"] + "/events/event_{event}/japan_old.ext"),
+        gtsm_event_path= directory(config["GTSM_MODEL"] + "/events/event_{event}")
+    output:
+        gtsm_event_mdu_0000 = config["GTSM_MODEL"] + "/events/event_{event}/japan_0000.mdu",
+        gtsm_event_net = config["GTSM_MODEL"] + "/events/event_{event}/japan_0000_net.nc"
+    params:
+        gtsm_npartitions = config["gtsm_npartitions"],
+        dfm_container = config["DFM_CONTAINER"],
+        gtsm_event_model = get_gtsm_abs_path,
+        gtsm_event_subfolder = "events/event_{event}"
+    group: "run_event"
+    run:
+        if virtual == "singularity":
+            shell(
+                """
+                export PROCESSSTR="$(seq -s " " 0 $(({params.gtsm_npartitions}-1)))"
+                singularity exec --bind {params.gtsm_event_model}:/data --pwd /data/{params.gtsm_event_subfolder} {params.dfm_container} run_dflowfm.sh --nodisplay --autostartstop --partition:ndomains={params.gtsm_npartitions}:icgsolver=6 japan.mdu
+                # replace the <process> instruction
+                sed -i "s/<process>0/<process>$PROCESSSTR/" {params.gtsm_event_model}/{params.gtsm_event_subfolder}/dimr.xml
+                """
+            )
+        elif virtual == "docker":
+            shell(
+                """
+                docker run -u $(id -u):$(id -g) -v {params.gtsm_event_model}:/data -w /data/{params.gtsm_event_subfolder} -it {params.dfm_container} run_dflowfm.sh --nodisplay --autostartstop --partition:ndomains={params.gtsm_npartitions}:icgsolver=6 japan.mdu
+                export PROCESSSTR="$(seq -s " " 0 $(({params.gtsm_npartitions}-1)))"
+                # replace the <process> instruction
+                sed -i "s/<process>0/<process>$PROCESSSTR/" {params.gtsm_event_model}/{params.gtsm_event_subfolder}/dimr.xml
+                """
+            )
+
+rule run_dflowfm:
+    # run GTSM model for provided forcing
+    input:
+        gtsm_event_input = config["GTSM_MODEL"] + "/events/event_{event}/forcing.spw",
+        gtsm_event_mdu = config["GTSM_MODEL"] + "/events/event_{event}/japan_0000.mdu",
+        gtsm_event_ext = config["GTSM_MODEL"] + "/events/event_{event}/japan_old.ext"
+    params:
+        gtsm_event_model = get_gtsm_abs_path,
+        gtsm_npartitions = config["gtsm_npartitions"],
+        dfm_container = config["DFM_CONTAINER"],
+        # gtsm_event_mdu_filename = "dflowfm.mdu",
+        gtsm_event_subfolder = "events/event_{event}",
+    output:
+        gtsm_event_output = temp(config["GTSM_MODEL"] + "/events/event_{event}/output/japan_0000_his.nc"),
+        # gtsm_event_output_dir = temp(directory(config["GTSM_MODEL"] + "/events/event_{event}"))
+    group: "run_event"
+    run:
+        # DFLOWFM has to be called from within the model folder
+        if virtual == "singularity":
+            shell(
+                """
+                singularity exec --bind {params.gtsm_event_model}:/data --pwd /data/{params.gtsm_event_subfolder} {params.dfm_container} run_dimr.sh -c {params.gtsm_npartitions} -m dimr.xml"
+                # docker run -u $(id -u):$(id -g) -v {params.gtsm_event_model}:/data -w /data/{params.gtsm_event_subfolder} -it {params.dfm_container} run_dimr.sh -c {params.gtsm_npartitions} -m dimr.xml"
+                """
+            )
+        elif virtual == "docker":
+            shell(
+                """
+                docker run -u $(id -u):$(id -g) -v {params.gtsm_event_model}:/data -w /data/{params.gtsm_event_subfolder} -it {params.dfm_container} run_dimr.sh -c {params.gtsm_npartitions} -m dimr.xml"
+                """
+            )
+
+
+# make a small catalogue file that defines which domains to run, using a set of thresholds
+rule sfincs_config:
+    input:
+        gtsm_event_output = config["GTSM_MODEL"] + "/events/event_{event}/output/japan_0000_his.nc",
+        gtsm_HAT_file = config["GTSM_HAT_FILE"]
+    params:
+        event = "{event}",
+        batch = get_batch,
+        gtsm_folder = config["GTSM_MODEL"] + "/events/event_{event}",
+        domains = config["sfincs_domains"],
+        sfincs_root = config["SFINCS_MODELS"],
+        sim_folder = "simulations",
+        config_kwargs = {},
+        sfincs_container = config["SFINCS_CONTAINER"],
+        sfincs_conditions = config["sfincs_conditions"],
+        results_path = config["RESULTS"],
+        container = virtual
+    output:
+        sfincs_snake_config = config["SFINCS_MODELS"] + "/config/snake_config_event_{event}.yml"
+    group: "run_event"
+    script:
+        "src/sfincs/domain_config.py"
+
+# run a separate snakemake workflow that does one event for sfincs
+rule sfincs:
+    input:
+        sfincs_snake_config = config["SFINCS_MODELS"] + "/config/snake_config_event_{event}.yml"
+    params:
+        retain_sfincs = config["sfincs_retain_results"]
+    output:
+        # sfincs_output=config["SFINCS_MODELS"] + "/Honshu_12/simulations/event_{event}/sfincs_map.nc"
+        result = RESULTS + "/{batch}/event_{event}.parquet"
+        # footprint = config["results"] + "/{event}_01.parquet"
+
+    group: "run_event"
+    shell:
+        """
+        snakemake -s sfincs_workflow/Snakefile_cluster --configfile {input.sfincs_snake_config} --unlock
+        snakemake -s sfincs_workflow/Snakefile_cluster --configfile {input.sfincs_snake_config} -c 1 --rerun-incomplete
+        # remove sfincs event folders
+        python src/sfincs/remove_event_folder.py {input.sfincs_snake_config} {params.retain_sfincs} 
+        """
