@@ -29,8 +29,8 @@ for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
     os.makedirs(dir, exist_ok=True)
 
 # Copy the needed files to be filled in
-cfg_template = Path(input_dir, "wflow_sbm.toml")        # /p:RWSOS_Calibration/meuse/data/2-intermediate/wflow_sbm.toml
-staticmaps = Path(input_dir, "staticmaps.nc")           # /p:RWSOS_Calibration/meuse/data/2-intermediate/staticmaps.nc
+cfg_template = Path(input_dir, "wflow_sbm.toml")        # /p:RWSOS_Calibration/meuse/data/2-intermediate/wflow_sbm.toml -> Jing's comment: 3-input?
+staticmaps = Path(input_dir, "staticmaps.nc")           # /p:RWSOS_Calibration/meuse/data/2-intermediate/staticmaps.nc -> Jing's comment: 3-input?
 
 #copy the base config file to the output directory
 shutil.copy2(
@@ -160,7 +160,7 @@ rule evaluate:
         best_params = Path(calib_dir, "level"+"{item}", "best_params.csv"),
         performance = Path(calib_dir, "level"+"{item}", "performance.nc")
     script: 
-        """src/calib/evaluate_params.py"""
+        """src/calib/evaluate_params.py"""         # TODO: modify this script
 
 rule set_params:
     input: 

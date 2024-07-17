@@ -1,8 +1,9 @@
-# Modified by Jing on July 1, 2024
+# Modified by Jing on July 17, 2024
 # TO-DOs: 
 # 1. change md to sim?
-# 2. function nse_mm7q: make sure the gauge variable names (now using 'Q_gauges_obs') 
+# 2. function nselog_mm7q: make sure the gauge variable names (now using 'Q_gauges_obs') 
     # are aligned with the real output nc file 
+# 3. change gauges: variable name to wflow_id?
 
 import hydromt.stats as stats
 from hydromt.stats import kge as kge_ds, skills
@@ -28,8 +29,8 @@ def kge(
 
     for g in gauges:
         da = kge_ds(
-            md.sel(Q_gauges_obs=g).Q,
-            obs.sel(Q_gauges_obs=g).Q,
+            md.sel(wflow_id=g).Q,
+            obs.sel(wflow_id=g).Q,
         )
 
         for var in da.data_vars:
@@ -70,7 +71,7 @@ def peakdis(
     Parameters:
     md (xr.Dataset): Model dataset containing discharge values.
     obs (xr.Dataset): Observed dataset containing discharge values.
-    gauges (tuple | list): Tuple or list of gauge names for which the peak discharge discrepancy needs to be calculated.
+    gauges (tuple | list): Tuple or list of gauge wflow_id for which the peak discharge discrepancy needs to be calculated.
 
     Returns:
     list: List of peak discharge discrepancies for each gauge.
@@ -79,8 +80,8 @@ def peakdis(
     res = []
     
     for g in gauges:
-        md_val = _peakdis(md.sel(Q_gauges_obs=g).Q.values)
-        obs_val = _peakdis(obs.sel(Q_gauges_obs=g).Q.values)
+        md_val = _peakdis(md.sel(wflow_id=g).Q.values)
+        obs_val = _peakdis(obs.sel(wflow_id=g).Q.values)
 
         if np.isnan(md_val) or np.isnan(obs_val):
             r = 1
@@ -274,10 +275,10 @@ def rld(
 
     for g in gauges:
         md_e = _rld(
-            md.sel(Q_gauges_obs=g).Q.values,
+            md.sel(wflow_id=g).Q.values,
         )
         obs_e = _rld(
-            obs.sel(Q_gauges_obs=g).Q.values,
+            obs.sel(wflow_id=g).Q.values,
         )
         if np.isnan(md_e) or np.isnan(obs_e):
             e = 1
@@ -326,33 +327,31 @@ def mm7q(
     return mm7q_dry_month
     
     
-def nse_mm7q(
+def nselog_mm7q(
     md: xr.Dataset,
     obs: xr.Dataset,
     dry_month: list,
     gauges: tuple | list,
 ):
-    """nse of mm7q of modeled discharge compared to observations for selected dry months and gauges
+    """nse-log of mm7q of modeled discharge compared to observations for selected dry months and gauges
 
     Args:
         md (xr.Dataset): Model dataset containing discharge values.
         obs (xr.Dataset): Observed dataset containing discharge values.
         dry_month (list): List of dry months.
-        gauges (tuple | list): Tuple or list of gauge names for which the peak discharge discrepancy needs to be calculated.
+        gauges (tuple | list): Tuple or list of gauges wflow_id for which needs to be calculated.
 
     Returns:
-        List: List of nse_mm7q for each gauge.
+        List: List of nselog_mm7q xr dataarray including gauge (wflow_id) information.
     """
-    # TO-DO: make sure the gauge variable names (now using 'Q_gauges_obs') 
-    # are aligned with the real output nc file
     
     res = []
     
     for g in gauges:
-        md_mm7q = mm7q(md.sel(Q_gauges_obs=g).Q, dry_month)
-        obs_mm7q = mm7q(obs.sel(Q_gauges_obs=g).Q, dry_month)
-        nse_mm7q = skills.nashsutcliffe(md_mm7q, obs_mm7q)
-        res.append(nse_mm7q)
+        md_mm7q = mm7q(md.sel(wflow_id=g).Q, dry_month)
+        obs_mm7q = mm7q(obs.sel(wflow_id=g).Q, dry_month)
+        nselog_mm7q = skills.lognashsutcliffe(md_mm7q, obs_mm7q)
+        res.append(nselog_mm7q)
     
     return res
     
@@ -406,7 +405,7 @@ if __name__ == "__main__":
     # )
     
     # dumb test function mm7q
-    obs = xr.open_dataset(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\1-external\discharge_obs_combined_EXAMPLE.nc')
-    obs_sel = obs.sel(time=slice("2009-01-01", "2020-12-31"))
-    
-    res = nse_mm7q(obs_sel, obs_sel, [6,9], ['12105900'])
+    ds = xr.open_dataset(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\wflow_meuse_20240529_flpN_landN\_output\ds_obs_model_combined.nc')
+    md = ds.sel(runs='scale_10')
+    obs = ds.sel(runs='Obs.')
+    res = nselog_mm7q(md, obs, [6,11], [16, 801])
