@@ -141,7 +141,7 @@ def nselog_mm7q(
     return res
 
 
-def peak_timing_errors(
+def _peaks(
     sim: xr.DataArray,
     obs: xr.DataArray,
     window: int, 
@@ -277,7 +277,7 @@ def peak_errors(
     for g in gauges:
         sim_g = sim.sel(wflow_id=g).Q
         obs_g = obs.sel(wflow_id=g).Q
-        peaks , timing_errors = peak_timing_errors(sim_g, obs_g, window)
+        peaks , timing_errors = _peaks(sim_g, obs_g, window)
         
         # compute mae of timing_erros
         mae_timing = np.mean(np.abs(timing_errors))
