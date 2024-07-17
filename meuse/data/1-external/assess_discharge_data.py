@@ -7,7 +7,11 @@ from argparse import ArgumentParser as AP
 import traceback
 import sys
 import numpy as np
+<<<<<<< HEAD:meuse/data/1-external/assess_discharge_data.py
 import geopandas as gpd
+=======
+import dask
+>>>>>>> 13294849e6b5fc61d23333e82c83108544645b68:meuse/data/1-external/create_discharge_data_v2.py
 from shapely.geometry import Point
 
 def clip_nan(da):
@@ -32,6 +36,7 @@ def clip_nan(da):
     r_da = r_da.set_index(wflow_id='wflow_id', runs='runs', time='time')
     
     return r_da
+<<<<<<< HEAD:meuse/data/1-external/assess_discharge_data.py
     
 '''
 EXAMPLE DATASET COMPATIBLE WITH ORIGINAL WORKFLOW
@@ -55,6 +60,9 @@ Attributes: (0)
 
 KEY DIFFERENCES TO EMPLOY ARE THE TWO PREVIOUS MODEL RUNS... Those will be HBV and FL1D in addition to Q
 '''
+=======
+
+>>>>>>> 13294849e6b5fc61d23333e82c83108544645b68:meuse/data/1-external/create_discharge_data_v2.py
 def health_check(ds: xr.Dataset, health_check_path: str):
     valid_stations = []  # Step 1: Initialize an empty list
 
@@ -111,7 +119,10 @@ def health_check(ds: xr.Dataset, health_check_path: str):
                         n zeros: {zeros}\n {"."*50}\n')
     return valid_stations
     
+<<<<<<< HEAD:meuse/data/1-external/assess_discharge_data.py
   
+=======
+>>>>>>> 13294849e6b5fc61d23333e82c83108544645b68:meuse/data/1-external/create_discharge_data_v2.py
 def get_dc_data(ls:list, model:str, cwd:str, plat:str, freq:str='H'):
     '''
     The main function is passed the argument of a list of wflow ids to combine into a subcatchment set
@@ -145,8 +156,14 @@ def get_dc_data(ls:list, model:str, cwd:str, plat:str, freq:str='H'):
     
     if os.path.exists(health_check_path):
         os.remove(health_check_path)
+<<<<<<< HEAD:meuse/data/1-external/assess_discharge_data.py
         
     all_stations = []
+=======
+    
+    all_stations = []  # Initialize an empty list to store all valid stations
+    
+>>>>>>> 13294849e6b5fc61d23333e82c83108544645b68:meuse/data/1-external/create_discharge_data_v2.py
     for key in sources:
         ds = datacatalog.get_dataset(key)
         src = datacatalog.get_source(key)
@@ -157,6 +174,10 @@ def get_dc_data(ls:list, model:str, cwd:str, plat:str, freq:str='H'):
         print(f'\n {"*"*20} \nWorking on {key}')
         print(f'dataset: {ds}')
         valid_stations = health_check(ds, health_check_path)  # Updated variable name here
+<<<<<<< HEAD:meuse/data/1-external/assess_discharge_data.py
+=======
+        #create geojson 
+>>>>>>> 13294849e6b5fc61d23333e82c83108544645b68:meuse/data/1-external/create_discharge_data_v2.py
         all_stations.extend(valid_stations)
         print(f'Finished {key}\n {"*"*20}')
     # Step 3: Convert the list of dictionaries into a DataFrame
@@ -166,22 +187,29 @@ def get_dc_data(ls:list, model:str, cwd:str, plat:str, freq:str='H'):
     gdf = gpd.GeoDataFrame(df_valid_stations, geometry=[Point(xy) for xy in zip(df_valid_stations['x'], df_valid_stations['y'])])
     gdf.to_file("valid_stations.geojson", driver='GeoJSON')
     
+    # Step 3: Convert the list of dictionaries into a DataFrame
+    df_valid_stations = pd.DataFrame(all_stations)
+    print(df_valid_stations)
+    # Step 4: Convert DataFrame to GeoDataFrame and save as GeoJSON
+    gdf = gpd.GeoDataFrame(df_valid_stations, geometry=[Point(xy) for xy in zip(df_valid_stations['x'], df_valid_stations['y'])])
+    gdf.to_file(f"{flong}_valid_stations.geojson", driver='GeoJSON')
     
-    
-
-
+  
 if __name__ == '__main__':
     parser = AP()
     parser.add_argument('--wflow_ids', type=list, default=[9])
     parser.add_argument('--model', type=str, default='meuse')
     parser.add_argument('--cwd', type=str, default=r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\1-external")
+    parser.add_argument('--freq', type=str, default='H')
     args = parser.parse_args()
+    
     if sys.platform == 'win32':
         plat=''
     else:
         plat='_linux'
     try:
-        main(args.wflow_ids, args.model, args.cwd, plat)
+        print('')
+        get_dc_data(args.wflow_ids, args.model, args.cwd, plat, args.freq)
     except Exception as e:
         print(f'Error: {e}')
         traceback.print_exc()

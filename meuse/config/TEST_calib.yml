@@ -1,0 +1,45 @@
+## General
+base_dir: "/11209265-grade2023/wflow/RWSOS_Calibration"
+basin: "meuse"
+source_dir: "data/1-external"
+inter_dir: "data/2-interim"
+input_dir: "data/3-input"
+output_dir: "data/4-output"       
+vis_dir: "data/5-visualization"
+
+# The bluesprint files to work with
+base_config: "wflow_sbm_template.toml" #the wflow sbm toml with the relevant grid and gauges etc.
+base_staticmaps: "staticmaps/base_staticmaps.nc" #2023 model with lakes added
+
+
+# Which gauges (subcatchments) to calibrate over (needs matching observed data)
+gauges: "Sall"
+
+# Settings the config file
+starttime: "2005-01-01T00:00:00"
+endtime: "2018-02-22T00:00:00"
+timestep: 3600
+source_forcing_data: "forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
+
+# Setting data for calibration
+calib_recipe: "config/calib_recipe.json"
+
+# Running model
+wflow_cfg_name: "wflow_sbm.toml"
+wflow_project_dir: "/u/dalmijn/code/jl_dev/wflow/"
+wflow_threads: 1
+
+# Evaluation and finalizing per level
+observed_data: "discharge_obs_HBV_combined.nc"
+eval_starttime: "2005-08-01T00:00:00"
+eval_endtime: "2018-02-22T00:00:00"
+metrics: ["kge", "rld", "pds"]
+weights: [0.5, 0.25, 0.25]
+
+# Overal finalizing
+model_threads: 16
+
+# Post processing
+hydro_period_startdate: ["2007-08-01", "2011-09-01", "2016-08-01"]
+hydro_period_length: [500, 500, 500]
+hydro_period_unit: "D" 
