@@ -7,6 +7,7 @@ from argparse import ArgumentParser as AP
 import traceback
 import sys
 import numpy as np
+import dask
 
 def clip_nan(da):
     # Convert to pandas Series
@@ -30,31 +31,6 @@ def clip_nan(da):
     r_da = r_da.set_index(wflow_id='wflow_id', runs='runs', time='time')
     
     return r_da
-    
-'''
-EXAMPLE DATASET COMPATIBLE WITH ORIGINAL WORKFLOW
-
-xarray.Dataset
-Dimensions:
-    Q_gauges_obs:   67    
-    time:           105937
-
-Coordinates:
-    Q_gauges_obs    (Q_gauges_obs)  <U8             '12105900' ... '12089500'
-    time            (time)          datetime64[ns]  1986-10-01T06:00:00 ... 2023-01-...
-    
-Data variables:
-    Q               (time, Q_gauges_obs)  float64
-    
-Indexes:
-    Q_gauges_obs    PandasIndex
-    time            PandasIndex
-Attributes: (0)
-
-KEY DIFFERENCES TO EMPLOY ARE THE TWO PREVIOUS MODEL RUNS... Those will be HBV and FL1D in addition to Q
-'''
-
-import dask
 
 def health_check(ds: xr.Dataset, health_check_path: str):
     if not isinstance(ds, xr.Dataset):
@@ -83,12 +59,19 @@ def health_check(ds: xr.Dataset, health_check_path: str):
         with open(health_check_path, 'a') as f:
             f.write(f'WF_id: {id}, Station: {station_name}, NaN: {nans}, first valid date: {min_nonnan_date}, last valid date: {max_nonnan_date}, n zeros: {zeros}\n')
 
-def main(ls:list, model:str, cwd:str, plat:str):
+def get_dc_data(ls:list, model:str, cwd:str, plat:str, freq:str='H'):
     '''
     The main function is passed the argument of a list of wflow ids to combine into a subcatchment set
     args:
         ls: list of wflow ids to combine
+        model: the model name
+        cwd: the current working directory
+        plat: the platform to use
+    creates:
+        a netcdf file with the combined subcatchment data
         
+    returns:
+
     '''
     os.chdir(cwd)
     print(f'Working in {os.getcwd()}')
@@ -96,11 +79,17 @@ def main(ls:list, model:str, cwd:str, plat:str):
     #load the example dataset
     datacatalog = DC(f'observed_discharge/data_{model}{plat}.yml')
     
+    if freq == 'H':
+        flong = 'hourly'
+    elif freq == 'D':
+        flong = 'daily'
+        
     #Find the sources that make hourly obs data
-    hourly = [f for f in datacatalog.keys if 'hourly' in f and 'stats' not in f]
-    print(f'hourly keys: {hourly}')
+    sources = [f for f in datacatalog.keys if flong in f and 'stats' not in f]
+    print(f'{flong} keys: {sources}')
     
-    health_check_path = os.path.join(cwd, 'health_check.txt')
+    health_check_path = os.path.join(cwd, f'{flong}_health_check.txt')
+    
     if os.path.exists(health_check_path):
         os.remove(health_check_path)
     
@@ -111,23 +100,22 @@ def main(ls:list, model:str, cwd:str, plat:str):
         print(f'dataset: {ds}')
         health_check(ds, health_check_path)  # Updated variable name here
         print(f'Finished {key}\n {"*"*20}')
-    
-    
-    
-
-
+  
 if __name__ == '__main__':
     parser = AP()
     parser.add_argument('--wflow_ids', type=list, default=[9])
     parser.add_argument('--model', type=str, default='meuse')
     parser.add_argument('--cwd', type=str, default=r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\1-external")
+    parser.add_argument('--freq', type=str, default='H')
     args = parser.parse_args()
+    
     if sys.platform == 'win32':
         plat=''
     else:
         plat='_linux'
     try:
-        main(args.wflow_ids, args.model, args.cwd, plat)
+        print('')
+        get_hourly_dc(args.wflow_ids, args.model, args.cwd, plat, args.freq)
     except Exception as e:
         print(f'Error: {e}')
         traceback.print_exc()
