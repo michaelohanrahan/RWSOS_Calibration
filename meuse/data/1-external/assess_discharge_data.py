@@ -7,6 +7,8 @@ from argparse import ArgumentParser as AP
 import traceback
 import sys
 import numpy as np
+import geopandas as gpd
+from shapely.geometry import Point
 
 def clip_nan(da):
     # Convert to pandas Series
@@ -53,42 +55,76 @@ Attributes: (0)
 
 KEY DIFFERENCES TO EMPLOY ARE THE TWO PREVIOUS MODEL RUNS... Those will be HBV and FL1D in addition to Q
 '''
-
-import dask
-
 def health_check(ds: xr.Dataset, health_check_path: str):
+    valid_stations = []  # Step 1: Initialize an empty list
+
     if not isinstance(ds, xr.Dataset):
         ds = xr.Dataset(data_vars={'Q': ds})
-        print(f'\n {"="*10} dataset converted to xr.Dataset: {ds}')
-    
+        
     for id in ds.wflow_id.values:
         q_data = ds.sel(wflow_id=id).Q
-        nans = np.isnan(q_data).sum().compute()  # Compute the sum of NaNs
-        non_nan_indices = np.where(~np.isnan(q_data.compute()))[0]  # Compute q_data before finding non-NaN indices
+        nans = int(np.isnan(q_data).sum().compute())
+        non_nan_indices = np.where(~np.isnan(q_data.compute()))[0]
         
         if non_nan_indices.size > 0:
             min_nonnan_date = q_data.time[non_nan_indices[0]].values
             max_nonnan_date = q_data.time[non_nan_indices[-1]].values
+            valid_count = len(non_nan_indices)
+            time_diffs = np.diff(q_data.time[non_nan_indices].values.astype('datetime64[h]'))
+            most_common_diff = pd.Series(time_diffs).mode()[0]
+            frequency = f"{most_common_diff / np.timedelta64(1, 'h')} hours"
         else:
             min_nonnan_date = 'all NaN'
             max_nonnan_date = 'all NaN'
+            valid_count = 0
+            frequency = 'N/A'
         
-        zeros = (q_data == 0).sum().compute()  # Compute the sum of zeros
+        zeros = int((q_data == 0).sum().compute())
         
         try:
-            station_name = ds.sel(wflow_id=id).station_name.data.compute()  # Attempt to compute station_name
+            station_name = ds.sel(wflow_id=id).station_name.data.compute()
         except:
-            station_name = 'name not found'
+            try:
+                station_name = ds.sel(wflow_id=id)['Libellé'].data.compute()
+            except:
+                station_name = 'name not found'
         
-        with open(health_check_path, 'a') as f:
-            f.write(f'WF_id: {id}, Station: {station_name}, NaN: {nans}, first valid date: {min_nonnan_date}, last valid date: {max_nonnan_date}, n zeros: {zeros}\n')
-
-def main(ls:list, model:str, cwd:str, plat:str):
+        nan_proportion = nans / valid_count if valid_count > 0 else 0.
+        
+        if nan_proportion <= 0.25 and non_nan_indices.size > 0:  # Step 2: Check if proportion 
+            valid_stations.append({
+                'id': int(id),
+                'name': str(station_name),
+                'invalid_proportion': float(nan_proportion),
+                'valid_count': int(valid_count),
+                'min_date': str(min_nonnan_date),
+                'max_date': str(max_nonnan_date),
+                'frequency': str(frequency),
+                'zeros': int(zeros),
+                'x': float(ds.sel(wflow_id=id).x.values),
+                'y': float(ds.sel(wflow_id=id).y.values)
+            })
+        
+            with open(health_check_path, 'a') as f:
+                f.write(f'{"."*50}\nWF_id: {id}, len valid: {valid_count}, proportion NaN: {nan_proportion:.3f}, frequency: {frequency}, Station: {station_name}, \n\
+                        first valid date: {min_nonnan_date}, last valid date: {max_nonnan_date}, \n\
+                        n zeros: {zeros}\n {"."*50}\n')
+    return valid_stations
+    
+  
+def get_dc_data(ls:list, model:str, cwd:str, plat:str, freq:str='H'):
     '''
     The main function is passed the argument of a list of wflow ids to combine into a subcatchment set
     args:
         ls: list of wflow ids to combine
+        model: the model name
+        cwd: the current working directory
+        plat: the platform to use
+    creates:
+        a netcdf file with the combined subcatchment data
         
+    returns:
+
     '''
     os.chdir(cwd)
     print(f'Working in {os.getcwd()}')
@@ -96,21 +132,39 @@ def main(ls:list, model:str, cwd:str, plat:str):
     #load the example dataset
     datacatalog = DC(f'observed_discharge/data_{model}{plat}.yml')
     
+    if freq == 'H':
+        flong = 'hourly'
+    elif freq == 'D':
+        flong = 'daily'
+        
     #Find the sources that make hourly obs data
-    hourly = [f for f in datacatalog.keys if 'hourly' in f and 'stats' not in f]
-    print(f'hourly keys: {hourly}')
+    sources = [f for f in datacatalog.keys if flong in f and 'stats' not in f]
+    print(f'{flong} keys: {sources}')
     
-    health_check_path = os.path.join(cwd, 'health_check.txt')
+    health_check_path = os.path.join(cwd, f'{flong}_health_check.txt')
+    
     if os.path.exists(health_check_path):
         os.remove(health_check_path)
-    
-    for key in hourly:
+        
+    all_stations = []
+    for key in sources:
         ds = datacatalog.get_dataset(key)
         src = datacatalog.get_source(key)
+        with open(health_check_path, 'a') as f:
+            f.write(f'\n {"="*100} \nWorking on {key}\n')
+            f.write(f'dataset: {ds}\n')
+            
         print(f'\n {"*"*20} \nWorking on {key}')
         print(f'dataset: {ds}')
-        health_check(ds, health_check_path)  # Updated variable name here
+        valid_stations = health_check(ds, health_check_path)  # Updated variable name here
+        all_stations.extend(valid_stations)
         print(f'Finished {key}\n {"*"*20}')
+    # Step 3: Convert the list of dictionaries into a DataFrame
+    df_valid_stations = pd.DataFrame(all_stations)
+    print(df_valid_stations)
+    # Step 4: Convert DataFrame to GeoDataFrame and save as GeoJSON
+    gdf = gpd.GeoDataFrame(df_valid_stations, geometry=[Point(xy) for xy in zip(df_valid_stations['x'], df_valid_stations['y'])])
+    gdf.to_file("valid_stations.geojson", driver='GeoJSON')
     
     
     

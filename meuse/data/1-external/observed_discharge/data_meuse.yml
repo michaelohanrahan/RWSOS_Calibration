@@ -35,12 +35,12 @@ inmaps_meuse_genre:
     paper_ref: Bouaziz 2021
     source_license: 
     source_url: 
-  path: p:/11205237-grade/wflow/wflow_meuse_julia/inmaps_operational2daily/forcing_meuse_remapbil_semisstonn_*.nc
+  path: p:/archivedprojects/11205237-grade/wflow/wflow_meuse_julia/inmaps_operational2daily/forcing_meuse_remapbil_semisstonn_*.nc
   rename:
     pre: precip
 
 meuse-hydro_timeseries:
-  path: p:/11205237-grade/wflow/wflow_meuse_julia/_obs/qobs_xr_gds_nl.nc
+  path: p:/archivedprojects/11205237-grade/wflow/wflow_meuse_julia/_obs/qobs_xr_gds_nl.nc
   data_type: GeoDataset
   driver: netcdf
   crs: 4326
@@ -57,7 +57,7 @@ cal_manual:
   crs: 4326
   data_type: GeoDataFrame
   driver: vector
-  path: p:\11208719-interreg\wflow\geoms\subcatch_Sall_params_cal.geojson
+  path: p:/archivedprojects/11208719-interreg/wflow/geoms/subcatch_Sall_params_cal.geojson
   
 
 spw_qobs_hourly:
@@ -291,6 +291,8 @@ hygon_qobs_daily:
   rename:
     id: wflow_id
     name: station_name
+    lat: y
+    lon: x
   meta:
     category: observed data from hygon
     source_url: 
