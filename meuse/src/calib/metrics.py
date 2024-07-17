@@ -1,9 +1,6 @@
 # Modified by Jing on July 17, 2024
 # TO-DOs: 
-# 1. change md to sim?
-# 2. function nselog_mm7q: make sure the gauge variable names (now using 'Q_gauges_obs') 
-    # are aligned with the real output nc file 
-# 3. change gauges: variable name to wflow_id?
+
 
 import hydromt.stats as stats
 from hydromt.stats import kge as kge_ds, skills
@@ -15,7 +12,7 @@ from plot_rld import main as rld_fig
 
 
 def kge(
-    md: xr.Dataset,
+    sim: xr.Dataset,
     obs: xr.Dataset,
     gauges: tuple | list,
 ):
@@ -29,7 +26,7 @@ def kge(
 
     for g in gauges:
         da = kge_ds(
-            md.sel(wflow_id=g).Q,
+            sim.sel(wflow_id=g).Q,
             obs.sel(wflow_id=g).Q,
         )
 
@@ -61,15 +58,15 @@ def _peakdis(
 
 
 def peakdis(
-    md: xr.Dataset,
+    sim: xr.Dataset,
     obs: xr.Dataset,
     gauges: tuple | list,    
 ):
     """
-    Calculate the peak discharge discrepancy between model (md) and observed (obs) datasets for a given set of gauges.
+    Calculate the peak discharge discrepancy between model (sim) and observed (obs) datasets for a given set of gauges.
 
     Parameters:
-    md (xr.Dataset): Model dataset containing discharge values.
+    sim (xr.Dataset): Model dataset containing discharge values.
     obs (xr.Dataset): Observed dataset containing discharge values.
     gauges (tuple | list): Tuple or list of gauge wflow_id for which the peak discharge discrepancy needs to be calculated.
 
@@ -80,13 +77,13 @@ def peakdis(
     res = []
     
     for g in gauges:
-        md_val = _peakdis(md.sel(wflow_id=g).Q.values)
+        sim_val = _peakdis(sim.sel(wflow_id=g).Q.values)
         obs_val = _peakdis(obs.sel(wflow_id=g).Q.values)
 
-        if np.isnan(md_val) or np.isnan(obs_val):
+        if np.isnan(sim_val) or np.isnan(obs_val):
             r = 1
         else:
-            r = 1 - abs(1 - (md_val/ obs_val))
+            r = 1 - abs(1 - (sim_val/ obs_val))
         res.append(r)
 
     return res
@@ -266,7 +263,7 @@ def _rld(
 
 
 def rld(
-    md: xr.Dataset,
+    sim: xr.Dataset,
     obs: xr.Dataset,
     gauges: tuple | list,
 ):
@@ -274,16 +271,16 @@ def rld(
     res = []
 
     for g in gauges:
-        md_e = _rld(
-            md.sel(wflow_id=g).Q.values,
+        sim_e = _rld(
+            sim.sel(wflow_id=g).Q.values,
         )
         obs_e = _rld(
             obs.sel(wflow_id=g).Q.values,
         )
-        if np.isnan(md_e) or np.isnan(obs_e):
+        if np.isnan(sim_e) or np.isnan(obs_e):
             e = 1
         else:
-            e = 1 - abs(1 - (md_e / obs_e))
+            e = 1 - abs(1 - (sim_e / obs_e))
         res.append(round(e, 4))
 
     return res
@@ -328,7 +325,7 @@ def mm7q(
     
     
 def nselog_mm7q(
-    md: xr.Dataset,
+    sim: xr.Dataset,
     obs: xr.Dataset,
     dry_month: list,
     gauges: tuple | list,
@@ -336,7 +333,7 @@ def nselog_mm7q(
     """nse-log of mm7q of modeled discharge compared to observations for selected dry months and gauges
 
     Args:
-        md (xr.Dataset): Model dataset containing discharge values.
+        sim (xr.Dataset): Model dataset containing discharge values.
         obs (xr.Dataset): Observed dataset containing discharge values.
         dry_month (list): List of dry months.
         gauges (tuple | list): Tuple or list of gauges wflow_id for which needs to be calculated.
@@ -348,9 +345,9 @@ def nselog_mm7q(
     res = []
     
     for g in gauges:
-        md_mm7q = mm7q(md.sel(wflow_id=g).Q, dry_month)
+        sim_mm7q = mm7q(sim.sel(wflow_id=g).Q, dry_month)
         obs_mm7q = mm7q(obs.sel(wflow_id=g).Q, dry_month)
-        nselog_mm7q = skills.lognashsutcliffe(md_mm7q, obs_mm7q)
+        nselog_mm7q = skills.lognashsutcliffe(sim_mm7q, obs_mm7q)
         res.append(nselog_mm7q)
     
     return res
@@ -380,32 +377,8 @@ def weighted_euclidean(
 
 
 if __name__ == "__main__":
-    # import xarray as xr
-    # obs = xr.open_dataset(r"p:\1000365-002-wflow\tmp\usgs_wflow\data\GAUGES\discharge_obs_combined.nc")
-    # obs.Q.values = obs.Q.values * (0.3048**3)
-     
-    # res = kge(
-    #     md.sel(time=slice("2011-01-01", "2011-12-31")),
-    #     obs.sel(time=slice("2011-01-01", "2011-12-31T00:00:00")),
-    #     gauges=["12119000", "12120000", "12113000"],
-    # )
-    # res2 = rld(
-    #     md.sel(time=slice("2011-01-01", "2011-12-31")),
-    #     obs.sel(time=slice("2011-01-01", "2011-12-31T00:00:00")),
-    #     gauges=["12119000", "12120000", "12113000"],
-    # )
-    # res3 = peakdis(
-    #     md.sel(time=slice("2011-01-01", "2011-12-31")),
-    #     obs.sel(time=slice("2011-01-01", "2011-12-31T00:00:00")),
-    #     gauges=["12119000", "12120000", "12113000"],
-    # )
-    # weighted_euclidean(
-    #     (np.array(res["kge"]), np.array(res2)),
-    #     weights=(0.6, 0.4),
-    # )
     
-    # dumb test function mm7q
     ds = xr.open_dataset(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\wflow_meuse_20240529_flpN_landN\_output\ds_obs_model_combined.nc')
-    md = ds.sel(runs='scale_10')
+    sim = ds.sel(runs='scale_10')
     obs = ds.sel(runs='Obs.')
-    res = nselog_mm7q(md, obs, [6,11], [16, 801])
+    res = nselog_mm7q(sim, obs, [6,11], [16, 801])
