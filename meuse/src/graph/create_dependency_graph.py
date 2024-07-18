@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import json
 import itertools
 import os 
+import argparse as AP
 
 '''
 Auth: Joost Buitink
@@ -17,9 +18,9 @@ This has been refactored to be more modular, including logging and snakemake wor
 '''
 
 
-def setup_logger():
+def setup_logger(name):
     # Create a custom logger
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(name)
     
     os.makedirs('data/0-log', exist_ok=True)
 
@@ -52,13 +53,11 @@ try:
 
 except:
     os.chdir(Path(r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse"))
-    gridfile = Path('data/1-external/staticmaps/base_staticmaps.nc')
-    gaugeset = "Sall"
-    testmode = False
-    
-    #setup logger
-    logger = setup_logger()
-
+    gridfile = Path('data/2-interim/hourlygauges/staticmaps/staticmaps_hourlygauges.nc')
+    gaugeset = "hourly"
+    testmode = True
+    logger = setup_logger('create_dependency_graph.py')
+    print(f'logger: {logger}')
 # Description of how the LDD values translate the indices [x-offset, y-offset]
 # assumes the grid has increasing x and y coordinates
 ldd_direction = {
@@ -167,6 +166,18 @@ def generate_graph_levels(
 
     return DG, levels_dict
 
+def remove_nodes_by_id(graph, node_ids):
+    """
+    Remove nodes from the graph by their IDs.
+
+    Parameters:
+    - graph: The graph object from which nodes will be removed.
+    - node_ids: A list of node IDs to remove from the graph.
+    """
+    # Remove the nodes
+    graph.remove_nodes_from(node_ids)
+
+    return graph
 
 if __name__ == "__main__":
     try:
@@ -182,12 +193,19 @@ if __name__ == "__main__":
             gauge_map=gauge,
             ldd_map=ldd,
         )
+        
+        nodes_to_remove = []
+        
+        graph = remove_nodes_by_id(graph, nodes_to_remove)
+        
+        print(graph)
+        
 
         logger.info(f"Graph for {gaugeset} has {len(graph.nodes)} nodes and {len(graph.edges)} edges")
         logger.info(f"Levels for {gaugeset} are: {levels_dict}")
         
 
-        fig = plt.figure("graph", figsize=(12,8), clear=True, tight_layout=True)
+        fig = plt.figure("graph", figsize=(18,8), clear=True, tight_layout=True)
         ax1 = fig.add_subplot(121)
         ax2 = fig.add_subplot(122)
         nx.draw(graph, with_labels=True, ax=ax1)

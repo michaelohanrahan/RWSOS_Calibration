@@ -3,30 +3,17 @@ base_dir: "/11209265-grade2023/wflow/RWSOS_Calibration"
 basin: "meuse"
 
 source_dir: "data/1-external"
-<<<<<<< HEAD
-output_dir: "data/4-output"       #confusingly labelled as root_dir in snakefile 
-inter_dir: "data/2-interim"
-result_dir: "data/5-visualization"
-=======
 inter_dir: "data/2-interim"
 input_dir: "data/3-input"
 output_dir: "data/4-output"       
 vis_dir: "data/5-visualization"
->>>>>>> 98b8f6a20bb35496c5a9fdac156eb997b2436951
 
 # The bluesprint files to work with
 base_config: "wflow_sbm_template.toml"
 base_staticmaps: "staticmaps/base_staticmaps.nc"
 
-<<<<<<< HEAD
-## Graph of gauges
-gauges: "Sall"  #"I want to build the graph of subcatch_Sall map in staticmaps"
-subcatch: "staticgeoms/subcatch_obs.geojson"
-=======
-
 # Which gauges (subcatchments) to calibrate over (needs matching observed data)
-gauges: "Sall"
->>>>>>> 98b8f6a20bb35496c5a9fdac156eb997b2436951
+gauges: "hourly"
 
 # Settings the config file
 starttime: "2005-01-01T00:00:00"
@@ -37,6 +24,11 @@ source_forcing_data: "forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisston
 # Setting data for calibration
 calib_recipe: "config/calib_recipe.json"
 
+#instate period (needs to run every time there is a new level introduced)
+instate_starttime: "2005-01-01T00:00:00"
+instate_endtime: "2006-12-31T23:00:00"
+
+
 # Running model
 wflow_cfg_name: "wflow_sbm.toml"
 wflow_project_dir: "/u/dalmijn/code/jl_dev/wflow/"
@@ -46,13 +38,14 @@ wflow_threads: 1
 observed_data: "discharge_obs_HBV_combined.nc"
 eval_starttime: "2005-08-01T00:00:00"
 eval_endtime: "2018-02-22T00:00:00"
-metrics: ["kge", "rld", "pds"]
-weights: [0.5, 0.25, 0.25]
+metrics: ["kge", "nselog_mm7q_res", "peak_res"]
+dry_months: [6, 7, 8, 9, 10]
+weights: [0.2, 0.25, 0.55]
 
 # Overal finalizing
 model_threads: 16
 
 # Post processing
-hydro_period_startdate: ["2007-08-01", "2011-09-01", "2016-08-01"]
+hydro_period_startdate: ["2007-08-01", "2011-08-01", "2016-08-01"]
 hydro_period_length: [500, 500, 500]
 hydro_period_unit: "D" 
