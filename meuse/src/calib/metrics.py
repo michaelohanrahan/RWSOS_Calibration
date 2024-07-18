@@ -9,8 +9,9 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from scipy.signal import argrelmax, argrelmin, find_peaks
+from icecream import ic
 
-from plot_rld import main as rld_fig
+# from plot_rld import main as rld_fig
 
 
 def kge(
@@ -285,11 +286,13 @@ def peak_errors(
         # compute mape of peak magnitude
         peaks_index = pd.DatetimeIndex(peaks).dropna()
         obs_peak = obs_g.sel(time=peaks_index).values
-        sim_peak = sim_g.sel(time=peaks_index).values            
-        peak_mape = np.sum(np.abs((sim_peak - obs_peak) / obs_peak)) / peaks.size * 100
+        sim_peak = sim_g.sel(time=peaks_index).values
+        
+        #       
+        peak_mape = (np.sum(np.abs((sim_peak - obs_peak) / obs_peak)) / peaks.size)
                 
-        res['mae_timing'].append(round(float(mae_timing),4))
-        res['mape_peak'].append(round(float(peak_mape),4))
+        res['mae_timing'].append(normalize_leadlag(round(float(mae_timing),4)))
+        res['mape_peak'].append(normalize_mape(round(float(peak_mape),4)))
     
     return res
     
@@ -538,7 +541,25 @@ def fix_maxmin(
 def fix_gap():
     pass
 
+def normalize_leadlag(val:float):
+    """
+    Assuming less than 1 hour lead lag is as good as perfect
+    """
+    
+    if val < 1:
+        norm = 1
+    
+    #best values approach 1
+    else:
+        norm  = 1/val
+    
+    return norm
 
+def normalize_mape(val:float):
+    """__summary__"""
+    norm=1-val
+    return norm
+        
 
 def weighted_euclidean(
     coef: tuple | list,
@@ -563,15 +584,31 @@ def weighted_euclidean(
 
 
 if __name__ == "__main__":
-    
     ds = xr.open_dataset(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\wflow_meuse_20240529_flpN_landN\_output\ds_obs_model_combined.nc')
     sim = ds.sel(runs='scale_10')
+    ic(sim)
+    
     obs = ds.sel(runs='Obs.')
+    ic(obs)
     
+    #best=1
     kge_res = kge(sim, obs, [16, 801])
+    ic(kge_res)
+    
+    #best=1
     nse_res = nse(sim, obs, [16, 801])
+    ic(nse_res)
+    
+    #best=1
     nse_log_res = nse(sim, obs, [16, 801])
+    ic(nse_log_res)
     
+    #best=1
     nselog_mm7q_res = nselog_mm7q(sim, obs, [6,11], [16, 801])
+    ic(nselog_mm7q_res)
     
+    #normalized, returning a dict
     peak_res = peak_errors(sim, obs, 72, [16, 801])
+    ic(peak_res)
+    
+    weighted_euclidian_res = weighted_euclidean([], [0.5, 0.5])
