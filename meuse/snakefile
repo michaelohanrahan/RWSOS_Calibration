@@ -38,6 +38,7 @@ shutil.copy2(
     cfg_template,
 )
 
+#copy the base staticmaps file to the output directory
 if not staticmaps.exists():
     shutil.copy2(
         Path(source_dir, config["base_staticmaps"]),
@@ -48,10 +49,12 @@ if not staticmaps.exists():
 calib_dir = Path(inter_dir, "calib_data")
 os.makedirs(calib_dir, exist_ok=True)
 
-## Actions more focussed on the calibration itself
-# Load the dependency graph and sort into levels
+#=========================================================
+#= vvvvv = Actions more focused on the calibration itself
+# Load the dependency graph and sort into level
 #TODO: put the function as the first rule in the workflow
 gauges = config["gauges"]
+graph = create_dependency_graph(gauges)
 subcatch = Path(source_dir, "staticgeoms", f"subcatch_{gauges}.geojson")
 graph_path = Path(inter_dir, f'{gauges}_levels_graph.json')
 with open(graph_path, "r") as f:
@@ -72,7 +75,7 @@ for _l in graph.values():
     elements += _l["elements"]
 
 # Load parameter recipe as a parameter space
-# ['KsatHorFrac', 'RootingDepth', 'SoilThickness'], ['set', 'mult', 'mult'], df of params
+# ['KsatHorFrac', 'RootingDepth', 'SoilThickness'], ['set', 'add', 'mult'], df of params
 lnames, methods, df = create_set(config["calib_recipe"])
 paramspace = Paramspace(df, filename_params="*", param_sep="", filename_sep="_")
 
@@ -83,12 +86,13 @@ paramspace = Paramspace(df, filename_params="*", param_sep="", filename_sep="_")
 rule all:
     input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
 
+    input: config["gauges"]
+
 '''
 config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
         It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
         The output is a set of modified configuration files.
 '''
-
 rule config:
     # input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
     params: 
@@ -143,7 +147,7 @@ Output:  an unstacked performance.nc file with metrics and weights for each para
 '''
 #TODO: discuss if we want to have a multiple param selection.. 
 #       - can sample within distance tolerance of weighted euclidian sample
-#TODO: add parameter to fn whether to take best or range
+#TODO: add parameter to fn to sample from the 10 closest to minima
 
 rule evaluate:
     input: expand(Path(calib_dir, "level"+"{item}", "{params}", "run_default", "output_scalar.nc"), item=f"{{item}}", params=paramspace.instance_patterns)
@@ -154,8 +158,8 @@ rule evaluate:
         params = df.to_dict(orient="records"), 
         starttime = config["eval_starttime"],
         endtime = config["eval_endtime"],
-        metrics = config["metrics"],
-        weights = config["weights"]
+        metrics = config["metrics"], #["kge", "nselog_mm7q_res", "peak_res"] #TODO: figure out how to split out the dictionary approach of peak res to get the right values
+        weights = config["weights"] #
     output: 
         best_params = Path(calib_dir, "level"+"{item}", "best_params.csv"),
         performance = Path(calib_dir, "level"+"{item}", "performance.nc")
