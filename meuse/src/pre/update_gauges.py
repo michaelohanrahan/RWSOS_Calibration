@@ -28,9 +28,9 @@ def main(root:str,
     if not Path(gauges).is_absolute():
         gauges = Path(Path.cwd(), gauges)
     gauges = gpd.read_file(gauges, crs=crs)
-    ic(ignore_list)
     ic(len(gauges))
-    if len(ignore_list) > 0:
+    
+    if ignore_list:
         gauges = gauges[~gauges[index_col].isin(ignore_list)]
         
     ic(len(gauges))
