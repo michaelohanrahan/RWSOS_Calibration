@@ -43,21 +43,8 @@ def setup_logger(name):
     return logger
 
 
-try:
-    gridfile = snakemake.input.gridfile
-    gaugeset = snakemake.params.gaugeset
-    testmode = False
-    
-    # Set up logger
-    logger = setup_logger()
 
-except:
-    os.chdir(Path(r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse"))
-    gridfile = Path('data/2-interim/hourlygauges/staticmaps/staticmaps_hourlygauges.nc')
-    gaugeset = "hourly"
-    testmode = True
-    logger = setup_logger('create_dependency_graph.py')
-    print(f'logger: {logger}')
+    
 # Description of how the LDD values translate the indices [x-offset, y-offset]
 # assumes the grid has increasing x and y coordinates
 ldd_direction = {
@@ -181,6 +168,31 @@ def remove_nodes_by_id(graph, node_ids):
 
 if __name__ == "__main__":
     try:
+        try:
+            gridfile = snakemake.input.gridfile
+            gaugeset = snakemake.params.gaugeset
+            testmode = False
+
+            # Set up logger
+            logger = setup_logger()
+
+        except:
+            ap = AP.ArgumentParser()
+            ap.add_argument("--gridfile", type=str, required=True)
+            ap.add_argument("--gaugeset", type=str, required=True)
+            ap.add_argument("--testmode", type=bool, default=True)
+            args = ap.parse_args()
+
+            gridfile = args.gridfile
+            gaugeset = args.gaugeset
+            testmode = args.testmode
+
+            print(f'cwd: {os.getcwd()}')
+            logger = setup_logger(os.getcwd(), 'create_dependency_graph.py')
+            print(f'logger: {logger}')
+            print(f'gridfile: {gridfile}')
+            print(f'gaugeset: {gaugeset}')
+            print(f'testmode: {testmode}')
         ds = xr.open_dataset(gridfile)
 
         sub = ds[f"wflow_subcatch_{gaugeset}"]

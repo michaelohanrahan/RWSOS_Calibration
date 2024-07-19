@@ -14,6 +14,6 @@ set config_new=wflow_sbm_addgauges.toml
 cd /d %cwd%
 echo "cwd: %cwd%"
 echo "Running update_gauges.py"
-pixi run python src/pre/update_gauges.py %cwd% %config_root% %gauges% --new_root "%new_root%" --mode "%mode%" --basename "%Hall%" --index_col "%indexcol%" --snap_to_river True --%max_dist%  --derive_subcatch True --crs "%crs%" --config_old "%config_old%" --config_new "%config_new%"
+pixi run python src/pre/update_gauges.py %cwd% %config_root% %gauges% --new_root "%new_root%" --mode "%mode%" --basename "%Hall%" --index_col "%indexcol%" --snap_to_river True --max_dist %max_dist%  --derive_subcatch True --crs "%crs%" --config_old "%config_old%" --config_new "%config_new%"
 echo "Running create_dependency_graph.py"
 pixi run python src/graph/create_dependency_graph.py --gridfile "%new_root%/staticmaps/staticmaps.nc" --gaugeset "%basename%" --testmode True

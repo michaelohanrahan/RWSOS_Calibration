@@ -17,7 +17,8 @@ def main(root:str,
          max_dist:int = 1000,
          derive_subcatch:bool = True,
          crs='epsg:4326',
-         config_fn="wflow_sbm_template.toml",
+         config_old="wflow_sbm_template.toml",
+         config_new="wflow_sbm_add_gauges.toml",
          ignore_list=None,
          **kwargs):
     """
@@ -54,24 +55,21 @@ def main(root:str,
     w = WflowModel(
         root=root,
         mode="r",
-        config_fn = config_fn,
+        config_fn = config_old,
         data_libs = [],
         logger=logger,
         )
     
+    w.read_config()
+    w.read_geoms()
     w.read_grid()
+    ic(w.grid)
     
     w.set_root(
         root=new_root,
         mode=mode
         )
     
-    # w.set_crs(crs)
-    # ic(w.crs)
-    # Updating
-    # Based on gauges geojson
-    
-    # ic(gauges.crs)
     
     w.setup_gauges(
         gauges_fn=gauges,
@@ -86,9 +84,10 @@ def main(root:str,
         **kwargs
     )
     
-    w.config['input']['path_static'] = 'staticmaps/staticmaps_hourlygauges.nc'
+    
+    w.config['input']['path_static'] = f'staticmaps/staticmaps.nc'
     print('writing config')
-    w.write_config()
+    w.write_config(config_name=config_new)
     print('writing grid')
     w.write_grid()
     print('writing geoms')
@@ -108,7 +107,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_dist", help="Maximum distance for snapping", type=int, default=1000)
     parser.add_argument("--derive_subcatch", help="Derive subcatchments", type=bool, default=True)
     parser.add_argument("--crs", help="Coordinate reference system", type=str, default="epsg:4326")
-    parser.add_argument("--config_fn", help="Configuration file", type=str, default="wflow_sbm_template.toml")
+    parser.add_argument("--config_old", help="Configuration file", type=str, default="wflow_sbm_template.toml")
+    parser.add_argument("--config_new", help="Configuration file", type=str, default="wflow_sbm_add_gauges.toml")
     parser.add_argument("--kwargs", help="Additional keyword arguments", type=dict, default={})
 
 
@@ -141,7 +141,8 @@ if __name__ == "__main__":
         max_dist=args.max_dist,
         derive_subcatch=args.derive_subcatch,
         crs=args.crs,
-        config_fn=args.config_fn,
+        config_old=args.config_fn,
+        config_new=args.config_new,
         ignore_list=ignore_list,
         kwargs=args.kwargs
     )
