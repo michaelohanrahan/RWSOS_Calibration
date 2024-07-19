@@ -141,7 +141,7 @@ if __name__ == "__main__":
         max_dist=args.max_dist,
         derive_subcatch=args.derive_subcatch,
         crs=args.crs,
-        config_old=args.config_fn,
+        config_old=args.config_old,
         config_new=args.config_new,
         ignore_list=ignore_list,
         kwargs=args.kwargs

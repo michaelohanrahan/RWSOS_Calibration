@@ -86,7 +86,14 @@ paramspace = Paramspace(df, filename_params="*", param_sep="", filename_sep="_")
 rule all:
     input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
 
-    input: config["gauges"]
+'''
+create the gaugemap from your preferred geojson file of gauges... best to make this with some manual checks to ensure the right gauges are being used
+see: src/pre/assess_discharge_data.py to perform health checks and create a desirable gauge map (in QGIS etc)
+'''
+
+rule gaugemap:
+    params: 
+        gauges = Path(config["gauges"])
 
 '''
 config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
