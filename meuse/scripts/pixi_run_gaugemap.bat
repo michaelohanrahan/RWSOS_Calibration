@@ -1,3 +1,4 @@
 @echo off
-
-pixi run gaugemap_and_graph.bat
+cd ..
+pixi run scripts/gaugemap_and_graph.bat
+pause

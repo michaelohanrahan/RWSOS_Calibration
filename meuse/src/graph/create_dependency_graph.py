@@ -18,10 +18,10 @@ This has been refactored to be more modular, including logging and snakemake wor
 '''
 
 
-def setup_logger(name):
+def setup_logger(cwd, name):
     # Create a custom logger
     logger = logging.getLogger(name)
-    
+    os.chdir(cwd)
     os.makedirs('data/0-log', exist_ok=True)
 
     # Create handlers
@@ -153,18 +153,9 @@ def generate_graph_levels(
 
     return DG, levels_dict
 
-def remove_nodes_by_id(graph, node_ids):
-    """
-    Remove nodes from the graph by their IDs.
+def find_longest_continuous_chain(graph):
+    return nx.algorithms.dag.dag_longest_path(graph)
 
-    Parameters:
-    - graph: The graph object from which nodes will be removed.
-    - node_ids: A list of node IDs to remove from the graph.
-    """
-    # Remove the nodes
-    graph.remove_nodes_from(node_ids)
-
-    return graph
 
 if __name__ == "__main__":
     try:
@@ -178,11 +169,13 @@ if __name__ == "__main__":
 
         except:
             ap = AP.ArgumentParser()
+            ap.add_argument("cwd", type=str)
             ap.add_argument("--gridfile", type=str, required=True)
             ap.add_argument("--gaugeset", type=str, required=True)
             ap.add_argument("--testmode", type=bool, default=True)
             args = ap.parse_args()
 
+            os.chdir(args.cwd)
             gridfile = args.gridfile
             gaugeset = args.gaugeset
             testmode = args.testmode
@@ -206,16 +199,13 @@ if __name__ == "__main__":
             ldd_map=ldd,
         )
         
-        nodes_to_remove = []
         
-        graph = remove_nodes_by_id(graph, nodes_to_remove)
-        
-        print(graph)
-        
-
         logger.info(f"Graph for {gaugeset} has {len(graph.nodes)} nodes and {len(graph.edges)} edges")
         logger.info(f"Levels for {gaugeset} are: {levels_dict}")
         
+        #longest path 
+        longest_path = find_longest_continuous_chain(graph)
+        print(f"Longest path for {gaugeset} is (len: {len(longest_path)}): {longest_path}")
 
         fig = plt.figure("graph", figsize=(18,8), clear=True, tight_layout=True)
         ax1 = fig.add_subplot(121)

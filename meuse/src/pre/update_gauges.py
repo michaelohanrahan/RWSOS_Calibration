@@ -27,8 +27,11 @@ def main(root:str,
     
     if not Path(gauges).is_absolute():
         gauges = Path(Path.cwd(), gauges)
-    gauges = gpd.read_file(gauges, crs=crs)
-    ic(len(gauges))
+        
+    gauges = gpd.read_file(gauges, crs=crs, read_geometry=False, columns=[index_col, 'x', 'y'])
+    ic(gauges)
+    ic(index_col)
+    ic(gauges[index_col])
     
     if ignore_list:
         gauges = gauges[~gauges[index_col].isin(ignore_list)]
@@ -49,8 +52,6 @@ def main(root:str,
         mode = "w+"
 
     logger = setuplog("build", log_level=20)
-
-    
 
     w = WflowModel(
         root=root,
@@ -88,17 +89,18 @@ def main(root:str,
     w.config['input']['path_static'] = f'staticmaps/staticmaps.nc'
     print('writing config')
     w.write_config(config_name=config_new)
-    print('writing grid')
-    w.write_grid()
     print('writing geoms')
     w.write_geoms()
+    print('writing grid')
+    w.write_grid()
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Update wflow gauges configuration.")
     parser.add_argument("cwd", help="Current working directory", type=str)
     parser.add_argument("config_root", help="Root directory for configuration", type=str)
     parser.add_argument("gauges", help="Gauges file", type=str)
-    parser.add_argument("--ignore_list", help="Comma-separated list of gauges to ignore", type=str, default="") 
+    parser.add_argument("--ignore_list", help="string to return separated list of integers", type=str, default="data/2-interim/ignore_list.txt") 
     parser.add_argument("--new_root", help="New root directory (optional)", type=str, default=None)
     parser.add_argument("--mode", help="Mode for opening the model (r, w, w+)", type=str, default="w")
     parser.add_argument("--basename", help="Basename for the gauges", type=str, default="hourly")
@@ -123,12 +125,14 @@ if __name__ == "__main__":
     else:
         raise ValueError("New root directory must be provided.")
     
-    if args.ignore_list:
-        ignore_list = list(args.ignore_list.split(','))
-        ignore_list = [int(i) for i in ignore_list]
+    if args.ignore_list and os.path.exists(args.ignore_list):
+        
+        with open(args.ignore_list, 'r') as file:
+            ignore_list = [int(line.strip()) for line in file if line.strip().isdigit()]
+        ic(ignore_list)
     else:
         ignore_list = None
-    
+        
     root = os.path.join(root, args.config_root)
     ic(ignore_list)
     main(root=root, 
