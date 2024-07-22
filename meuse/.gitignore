@@ -112,3 +112,7 @@ reports/figures
 
 # VSCode
 .vscode
+
+#QGIS
+.qgz
+.qmz
