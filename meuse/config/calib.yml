@@ -13,7 +13,7 @@ base_config: "wflow_sbm_template.toml"
 base_staticmaps: "staticmaps/base_staticmaps.nc"
 
 # Which gauges (subcatchments) to calibrate over (needs matching observed data)
-gauges: "hourly"
+gauges: "Hall"
 
 # Settings the config file
 starttime: "2005-01-01T00:00:00"
