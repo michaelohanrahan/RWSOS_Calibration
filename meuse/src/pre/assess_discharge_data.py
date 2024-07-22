@@ -10,7 +10,10 @@ import numpy as np
 import dask
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
+<<<<<<< HEAD:meuse/src/pre/assess_discharge_data.py
 from icecream import ic
+=======
+>>>>>>> 021cd54a814457c5f747e56e040f6cc693f6c095:meuse/data/1-external/assess_discharge_data.py
 
 def clip_nan(da):
     # Convert to pandas Series
@@ -35,7 +38,11 @@ def clip_nan(da):
     
     return r_da
 
+<<<<<<< HEAD:meuse/src/pre/assess_discharge_data.py
 def health_check(ds: xr.Dataset, health_check_path: str, flong):
+=======
+def health_check(ds: xr.Dataset, health_check_path: str):
+>>>>>>> 021cd54a814457c5f747e56e040f6cc693f6c095:meuse/data/1-external/assess_discharge_data.py
     valid_stations = []  # Step 1: Initialize an empty list
 
     if not isinstance(ds, xr.Dataset):
@@ -77,6 +84,7 @@ def health_check(ds: xr.Dataset, health_check_path: str, flong):
                 station_name = ds.sel(wflow_id=id)['Libellé'].data.compute()
             except:
                 station_name = None
+<<<<<<< HEAD:meuse/src/pre/assess_discharge_data.py
         ic(station_name)
         # Sanitize station_name to remove or replace invalid characters for file names
         sanitized_station_name = str(station_name).replace('/', '_').replace('\\', '_')  # Example of replacing slashes with underscores
@@ -91,6 +99,14 @@ def health_check(ds: xr.Dataset, health_check_path: str, flong):
                 traceback.print_exc()
                 continue
                 
+=======
+        
+        plotted = False
+        if not os.path.exists(f'observed_discharge/visualisation/{station_name}.png') and station_name not in ['None', None] and os.path.exists(r"P:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\2-interim\QGIS\distance_filtered_10pct_keephighzeros_hourly_gauges.geojson"):
+            plot(ds.sel(wflow_id=id).Q, station_name)
+            plotted = True
+        
+>>>>>>> 021cd54a814457c5f747e56e040f6cc693f6c095:meuse/data/1-external/assess_discharge_data.py
         nan_proportion = nans / valid_count if valid_count > 0 else 0.
         
         # if nan_proportion <= 0.25 and non_nan_indices.size > 0:  # Step 2: Check if proportion 
@@ -116,7 +132,11 @@ def health_check(ds: xr.Dataset, health_check_path: str, flong):
                     n zeros: {zeros}\n {"."*50}\n')
     return valid_stations
 
+<<<<<<< HEAD:meuse/src/pre/assess_discharge_data.py
 def plot(series, name, flong):
+=======
+def plot(series, name):
+>>>>>>> 021cd54a814457c5f747e56e040f6cc693f6c095:meuse/data/1-external/assess_discharge_data.py
     fig, axs = plt.subplots(3, 1, figsize=(15, 10))
     plt.suptitle(name)
     series.plot(ax=axs[0])
@@ -125,10 +145,17 @@ def plot(series, name, flong):
     axs[1].set_title('2005')
     series.sel(time=slice('2011-01-01', '2011-12-31')).plot(ax=axs[2])
     axs[2].set_title('2011')
+<<<<<<< HEAD:meuse/src/pre/assess_discharge_data.py
     os.makedirs(f'observed_discharge/visualisation_{flong}', exist_ok=True)
     plt.savefig(f'observed_discharge/visualisation_{flong}/{name}.png', dpi=300)
 
 def get_dc_data(model:str, cwd:str, plat:str, freq:str='H'):
+=======
+    os.makedirs('observed_discharge/visualisation', exist_ok=True)
+    plt.savefig(f'observed_discharge/visualisation/{name}.png', dpi=300)
+
+def get_dc_data(ls:list, model:str, cwd:str, plat:str, freq:str='H'):
+>>>>>>> 021cd54a814457c5f747e56e040f6cc693f6c095:meuse/data/1-external/assess_discharge_data.py
     '''
     The main function is passed the argument of a list of wflow ids to combine into a subcatchment set
     args:
@@ -169,7 +196,11 @@ def get_dc_data(model:str, cwd:str, plat:str, freq:str='H'):
         src = datacatalog.get_source(key)
         print(f'\n {"*"*20} \nWorking on {key}')
         print(f'dataset: {ds}')
+<<<<<<< HEAD:meuse/src/pre/assess_discharge_data.py
         valid_stations = health_check(ds, health_check_path, flong)  # Updated variable name here
+=======
+        valid_stations = health_check(ds, health_check_path)  # Updated variable name here
+>>>>>>> 021cd54a814457c5f747e56e040f6cc693f6c095:meuse/data/1-external/assess_discharge_data.py
         #create geojson 
         all_stations.extend(valid_stations)
         print(f'Finished {key}\n {"*"*20}')
@@ -195,10 +226,14 @@ if __name__ == '__main__':
         plat='_linux'
         
     try:
+<<<<<<< HEAD:meuse/src/pre/assess_discharge_data.py
         get_dc_data(model=args.model, 
                     cwd=args.cwd, 
                     plat=plat, 
                     freq=args.freq)
+=======
+        get_dc_data(args.wflow_ids, args.model, args.cwd, plat, args.freq)
+>>>>>>> 021cd54a814457c5f747e56e040f6cc693f6c095:meuse/data/1-external/assess_discharge_data.py
     except Exception as e:
         print(f'Error: {e}')
         traceback.print_exc()
