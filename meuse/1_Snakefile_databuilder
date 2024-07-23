@@ -5,6 +5,7 @@ import os
 import platform
 from pathlib import Path
 from snakemake.utils import Paramspace
+import geopandas as gpd
 # from src.graph import create_dependency_graph
 from src.calib.create_set_params import create_set
 
@@ -52,6 +53,8 @@ if not staticmaps.exists():
         staticmaps,
     )
 
+gauges = config["gauges"]
+
 # Ensure the folder is there for all the calibration data and settings
 calib_dir = Path(inter_dir, "calib_data")
 os.makedirs(calib_dir, exist_ok=True)
@@ -60,19 +63,10 @@ os.makedirs(calib_dir, exist_ok=True)
 #== Actions more focused on the calibration itself
 # Load the dependency graph and sort into level
 #TODO: build this into the workflow so that the elements wildcard is automatically generated
-gauges = config["gauges"]
+
 # graph = create_dependency_graph(gauges)
 # subcatch = Path(source_dir, "staticgeoms", f"subcatch_{gauges}.geojson")
 # graph_path = Path(inter_dir, f'{gauges}_levels_graph.json')
-
-# with open(graph_path, "r") as f:
-#     graph = json.load(f)
-
-# # Ensure all the level directories are there
-# for _l in graph.keys():
-#     _p = Path(calib_dir, _l)
-#     if not _p.exists():
-#         os.makedirs(_p, exist_ok=True)
 
 # # Get the last index of the keys
 # last_level = list(graph.keys())[-1]
@@ -84,17 +78,9 @@ gauges = config["gauges"]
 
 # Load parameter recipe as a parameter space
 # ['KsatHorFrac', 'RootingDepth', 'SoilThickness'], ['set', 'add', 'mult'], df of params
-if os.path.exists(Path(config["calib_recipe"])):
-    print(f'Loading parameter recipe from {config["calib_recipe"]}')
-    print(Path(Path.cwd(), config["calib_recipe"]))
-    lnames, methods, df = create_set(Path(config["calib_recipe"]))
-else:
-    raise FileNotFoundError(f"Parameter recipe file not found: {config['calib_recipe']}")
-#=========================================================
+
+lnames, methods, df = create_set(Path(config["calib_recipe"]))
 paramspace = Paramspace(df, filename_params="*", param_sep="", filename_sep="_")
-
-
- 
 
 '''
 create the gaugemap from your preferred geojson file of gauges... best to make this with some manual checks to ensure the right gauges are being used
@@ -108,9 +94,10 @@ adding default target to false to encourage snakemake to run these rules before 
 
 rule create_gaugemap:
     input:
-        gauges = Path(inter_dir, "QGIS", "to_wflow", "hourly_gauges_all.geojson")
+        gauges = Path(inter_dir, "QGIS", "to_wflow", f"{config['gauges']}_gauges_all.geojson")
     default_target: False
     output:
+        gridfile = Path(inter_dir, "gaugesadded/staticmaps/staticmaps.nc"),
         gaugemap = Path(inter_dir, f"gaugesadded/staticgeoms/subcatch_{config['gauges']}.geojson")
     params:
         cwd=Path(os.getcwd()).as_posix(),
@@ -127,16 +114,23 @@ rule create_gaugemap:
         """
         echo Running update_gauges.py
         pixi run python src/pre/update_gauges.py {params.cwd} {params.config_root} {input.gauges} \
-            --new_root "{params.new_root}" --mode "{params.mode}" --basename "{params.basename}" \
-            --index_col "{params.index_col}" --snap_to_river True --max_dist {params.max_dist} \
-            --derive_subcatch True --crs "{params.crs}" --config_old "{params.config_old}" --config_new "{params.config_new}"
+            --new_root "{params.new_root}" \
+            --mode "{params.mode}" \
+            --basename "{params.basename}" \
+            --index_col "{params.index_col}" \
+            --snap_to_river True \
+            --max_dist {params.max_dist} \
+            --derive_subcatch True \
+            --crs "{params.crs}" \
+            --config_old "{params.config_old}" \
+            --config_new "{params.config_new}"
         """
 
 """
 create the dependency graph from the gaugesadded gridfile, in this case is based off of the 
 hourly observations in the basin. This graph defines the elements for calculation and their
 subsequent dependencies at each level, saving them in a json file for later use.
-#TODO: establish the elements wildcard for the workflow inside a rule
+#TODO: establish the elements list for the expand function later
 """
 
 rule create_graph:
@@ -149,6 +143,21 @@ rule create_graph:
         gauges = gauges
     script: 
         """src/graph/create_dependency_graph.py"""
+
+rule create_folders:
+    input: 
+        graph = rules.create_graph.output.graph
+    output: 
+        done = Path(inter_dir, "calib_data", "level"+"{item}")
+    run: 
+        with open("{graph}", "r") as f:
+            graph = json.load(f)
+
+        # Ensure all the level directories are there
+        for _l in graph.keys():
+            _p = Path(calib_dir, _l)
+            if not _p.exists():
+                os.makedirs(_p, exist_ok=True)
 
 #requires p drive connection for deltares data catalog
 rule wflow_model_setup:
@@ -174,54 +183,21 @@ rule wflow_model_setup:
         --var {params.var} \
         --config_fn_out {output.config_fn_out}
         """
+elements = list(gpd.read_file(Path(inter_dir, "QGIS", "to_wflow", f"{config['gauges']}_gauges_all.geojson"))["wflow_id"])
 
-# Rule to define the elements from the dependency graph
-rule defining_elements:
-    input: 
-        graph = Path(inter_dir, f'{config["gauges"]}_levels_graph.json')
-    output: 
-        elements_json = Path(inter_dir, f'{config["gauges"]}_elements.json')
-    run:
-        calib_dir = Path(f"{input.graph.parent}/calib_data")
-        with open(input.graph) as f:
-            graph = json.load(f)
-        
-        # Ensure all the level directories are there
-        for _l in graph.keys():
-            _p = Path(calib_dir, _l)
-            if not _p.exists():
-                os.makedirs(_p, exist_ok=True)
-        
-        # Get the last index of the keys
-        last_level = list(graph.keys())[-1]
-        
-        # Get all the elements for the visualization
-        elements = []
-        for _l in graph.values():
-            elements += _l["elements"]
-        
-        with open(output.elements_json, 'w') as f:
-            json.dump(elements, f)
+#load ignorelist
+with open(Path(inter_dir, "ignore_list.txt"), "r") as f:
+    ignorelist = f.read().splitlines()
 
-# Function to load elements from the JSON file
-def load_elements():
-    elements_json = Path(inter_dir, f'{config["gauges"]}_elements.json')
-    with open(elements_json) as f:
-        elements = json.load(f)
-    return elements
-
-# Define the main rule all that expects all the visualization files to have been created for successful completion
-elements = load_elements()
-
-# Define the main rule all that expects all the visualization files to have been created for successful completion
-rule all:
-    input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
 ############################
 # DOING the snakey!
 ############################
 # Define the main rule all that expects all the visualization files to have been created for successfull completion
 # rule all:
-#     input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+# Define the main rule all that expects all the visualization files to have been created for successful completion
+rule all:
+    input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=[x for x in elements if x not in ignorelist])
+    default_target: True
 
 '''
 config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
@@ -255,8 +231,8 @@ rule create_params:
         params_lname = lnames,
         params_method = methods,
         level = "level"+"{item}",
-        graph = graph,
-        sub_catch = subcatch
+        graph = rules.create_graph.output.graph,
+        sub_catch = rules.create_gaugemap.output.gaugemap
     output: 
         staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc")
     script: 
@@ -289,7 +265,7 @@ rule evaluate:
     params: 
         observed_data = Path(source_dir, config["observed_data"]),
         level = "{item}",
-        graph = graph,
+        graph = rules.create_graph.output.graph,
         params = df.to_dict(orient="records"), 
         starttime = config["eval_starttime"],
         endtime = config["eval_endtime"],
@@ -306,7 +282,7 @@ rule set_params:
         best_params = Path(calib_dir, "level"+"{item}", "best_params.csv")
     params:
         staticmaps = staticmaps,
-        sub_catch = subcatch,
+        sub_catch = rules.create_gaugemap.output.gaugemap,
         params_lname = lnames,
         params_method = methods
     output: 
