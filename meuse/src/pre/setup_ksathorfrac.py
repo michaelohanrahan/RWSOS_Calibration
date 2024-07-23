@@ -4,6 +4,8 @@ from hydromt_wflow import WflowModel
 from hydromt.data_catalog import DataCatalog
 from hydromt.log import setuplog
 import hydromt_wflow
+import traceback
+from icecream import ic
 
 def main(DRIVE:str, 
          mod_root:str, 
@@ -16,8 +18,9 @@ def main(DRIVE:str,
     """
     logger = setuplog("wflow", log_level=10)
     logger.info(f'Hydromt version: {hydromt_wflow.__version__}')
-
+    logger.info(f'vars passed: {DRIVE}, {mod_root}, {mod_new_root}, {config_fn_in}, {config_fn_out}, {var}')
     mod = WflowModel(root=mod_root, 
+                     data_libs=['deltares_data'],
                      config_fn=config_fn_in, 
                      mode='r', 
                      logger=logger)
@@ -28,22 +31,15 @@ def main(DRIVE:str,
 
     mod.set_root(mod_new_root, mode='w+')
 
-    dc = DataCatalog()
-    dc = dc.from_yml(urlpath=f'{DRIVE}/wflow_global/hydromt_wflow/catalog.yml')
+    dc = DataCatalog('p:/wflow_global/hydromt_wflow/catalog.yml')
 
-    # Problematic ksatname
-    rename = {f'{DRIVE}/wflow_global/hydromt_wflow/soil/ksathorfrac.zarr_{var}250': f'ksathorfrac_{var}250'}
-
-    mod.setup_ksathorfrac(dc['ksathorfrac'].path, variable=f'{var}250')
-
-    # Rename the grid variable in the dataset
-    old_name = list(rename.keys())[0]
-    new_name = list(rename.values())[0]
-
-    mod.set_grid(mod.grid.rename_vars({old_name: new_name}))
-
+    mod.setup_ksathorfrac(dc.get_rasterdataset('ksathorfrac')[f'{var}250'])
+    ic(mod.grid)
+    key = [key for key in mod.grid.keys() if f'{var}250' in key][0]
+    mod.set_grid(mod.grid.rename({key: f'ksathorfrac_{var}250'}))
+    ic(mod.grid[f'ksathorfrac_{var}250'])
     mod.config['input']['path_static'] = f'staticmaps/staticmaps.nc'
-    mod.config['input']['lateral']['subsurface']['ksathorfrac'] = new_name
+    mod.config['input']['lateral']['subsurface']['ksathorfrac'] = f'ksathorfrac_{var}250'
     mod.write_config(config_name=config_fn_out)
     mod.write_grid()
 
@@ -57,9 +53,13 @@ if __name__ == "__main__":
     parser.add_argument('--var', required=True, help='Variable prefix (e.g., BRT_ or RF_)')
 
     args = parser.parse_args()
-    main(args.DRIVE, 
-         args.mod_root,
-         args.mod_new_root,
-         args.config_fn_in,
-         args.config_fn_out,
-         args.var)
+    try:
+        main(args.DRIVE, 
+            args.mod_root,
+            args.mod_new_root,
+            args.config_fn_in,
+            args.config_fn_out,
+            args.var)
+    except Exception as e:
+        print(f'Error: {e}')
+        traceback.print_exc()

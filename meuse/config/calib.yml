@@ -1,9 +1,9 @@
 ## General
 # Setting data for calibration
 calib_recipe: "config/TEST_calib_recipe.json"
-base_dir: "/11209265-grade2023/wflow/RWSOS_Calibration"
 basin: "meuse"
 
+base_dir: "/11209265-grade2023/wflow/RWSOS_Calibration"
 source_dir: "data/1-external"
 inter_dir: "data/2-interim"
 input_dir: "data/3-input"

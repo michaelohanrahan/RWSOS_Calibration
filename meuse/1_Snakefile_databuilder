@@ -13,17 +13,26 @@ from snakemake.utils import Paramspace
 import geopandas as gpd
 from src.calib.create_set_params import create_set
 
+#=========================================================
+## Directories and paths
 if platform.system() == "Windows":
     DRIVE = "p:"
+    COPY = "copy"
 else:
     DRIVE = "/p"
+    COPY = "cp"
 
-if "TEST" in config["calib_recipe"]:
-    print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
+#working directory
+os.chdir(Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', "meuse"))
 
 ## Some preparatory actions
 # Ensure the model directory is there
 config: 'config/calib.yml'
+if not os.path.exists("config/calib.yml"):
+    raise FileNotFoundError("config/calib.yml not found. Please create it.")
+
+# if "TEST" in config["calib_recipe"]:
+#     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
 
 #default directories
 base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
@@ -34,58 +43,28 @@ input_dir = Path(base_dir, basin, config["input_dir"])      # data/3-input
 out_dir = Path(base_dir, basin, config["output_dir"])       # data/4-output
 vis_dir = Path(base_dir, basin, config["vis_dir"])          # data/5-visualisation
 
-#working directory
-os.chdir(Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', basin))
+
 
 for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
     os.makedirs(dir, exist_ok=True)
 
-# Copy the needed files to be filled in
-cfg_template = Path(input_dir, "wflow_sbm.toml")        # /p:RWSOS_Calibration/meuse/data/2-intermediate/wflow_sbm.toml -> Jing's comment: 3-input?
-staticmaps = Path(input_dir, "staticmaps.nc")           # /p:RWSOS_Calibration/meuse/data/2-intermediate/staticmaps.nc -> Jing's comment: 3-input?
-
-#copy the base config file to the output directory
-shutil.copy2(
-    Path(source_dir, config["base_config"]),
-    cfg_template,
-)
-
-#copy the base staticmaps file to the output directory
-if not staticmaps.exists():
-    shutil.copy2(
-        Path(source_dir, config["base_staticmaps"]),
-        staticmaps,
-    )
-
 gauges = config["gauges"]
-
-# Ensure the folder is there for all the calibration data and settings
-calib_dir = Path(inter_dir, "calib_data")
-os.makedirs(calib_dir, exist_ok=True)
 
 #=========================================================
 #== Actions more focused on the calibration itself
 # Load the dependency graph and sort into level
-#TODO: build this into the workflow so that the elements wildcard is automatically generated
-
-# graph = create_dependency_graph(gauges)
-# subcatch = Path(source_dir, "staticgeoms", f"subcatch_{gauges}.geojson")
-# graph_path = Path(inter_dir, f'{gauges}_levels_graph.json')
-
-# # Get the last index of the keys
-# last_level = list(graph.keys())[-1]
-
-# # Get all the elements for the visualization
-# elements = []
-# for _l in graph.values():
-#     elements += _l["elements"]
-
 # Load parameter recipe as a parameter space
 # ['KsatHorFrac', 'RootingDepth', 'SoilThickness'], ['set', 'add', 'mult'], df of params
-
 rule all:
-    input: Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc"),
-            Path(calib_dir, "level"+"{item}")
+    input:  Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc"),
+            Path(inter_dir, f'{config["gauges"]}_levels_graph.json'),
+            Path(inter_dir, "gaugesadded", f"wflow_sbm_addgauges.toml"),
+            Path(input_dir, "wflow_sbm.toml"),
+            Path(input_dir, "staticmaps", "staticmaps.nc"),
+            directory(Path(inter_dir, "calib_data", "level1")),
+            Path(input_dir, "staticgeoms", f"subcatch_{config['gauges']}.geojson")
+    default_target: True
+
 '''
 create the gaugemap from your preferred geojson file of gauges... best to make this with some manual checks to ensure the right gauges are being used
 1: src/pre/assess_discharge_data.py to perform health checks and gather all gauges to be used (assuming all data is collected in a datacatalog)
@@ -99,10 +78,10 @@ adding default target to false to encourage snakemake to run these rules before 
 rule create_gaugemap:
     input:
         gauges = Path(inter_dir, "QGIS", "to_wflow", f"{config['gauges']}_gauges_all.geojson")
-    default_target: False
     output:
-        gridfile = Path(inter_dir, "gaugesadded/staticmaps/staticmaps.nc"),
-        gaugemap = Path(inter_dir, f"gaugesadded/staticgeoms/subcatch_{config['gauges']}.geojson")
+        gridfile = Path(inter_dir, "gaugesadded", "staticmaps", "staticmaps.nc"),
+        gaugemap = Path(inter_dir, f"gaugesadded/staticgeoms/subcatch_{config['gauges']}.geojson"),
+        toml = Path(inter_dir, "gaugesadded", "wflow_sbm_addgauges.toml")
     params:
         cwd=Path(os.getcwd()).as_posix(),
         config_root=Path(source_dir),
@@ -116,7 +95,6 @@ rule create_gaugemap:
         config_new="wflow_sbm_addgauges.toml"
     shell:
         """
-        echo Running update_gauges.py
         pixi run python src/pre/update_gauges.py {params.cwd} {params.config_root} {input.gauges} \
             --new_root "{params.new_root}" \
             --mode "{params.mode}" \
@@ -139,22 +117,23 @@ subsequent dependencies at each level, saving them in a json file for later use.
 
 rule create_graph:
     input: 
-        gridfile = Path(inter_dir, "gaugesadded")
-    default_target: False
+        gridfile = Path(inter_dir, "gaugesadded", "staticmaps", "staticmaps.nc")
     output: 
         graph = Path(inter_dir, f'{config["gauges"]}_levels_graph.json')
     params: 
-        gauges = gauges
+        gaugeset = gauges
     script: 
         """src/graph/create_dependency_graph.py"""
 
 rule create_folders:
     input: 
-        graph = rules.create_graph.output.graph
+        graph = Path(inter_dir, rules.create_graph.output.graph)
     output:
-        folder_out = glob_wildcards(Path(calib_dir, "level"+"{item}"))
+        folder_out = directory(Path(inter_dir, "calib_data", "level1"))
     run: 
-        with open("{input.graph}", "r") as f:
+        calib_dir = Path(inter_dir, "calib_data")
+        os.makedirs(calib_dir, exist_ok=True)
+        with open(input.graph, "r") as f:
             graph = json.load(f)
 
         # Ensure all the level directories are there
@@ -164,27 +143,66 @@ rule create_folders:
                 os.makedirs(_p, exist_ok=True)
 
 #requires p drive connection for deltares data catalog
-rule wflow_model_setup:
+rule ksat_setup:
     input:
-        config_fn_in="wflow_sbm_addgauges.toml",
-        mod_root=Path(inter_dir, "gaugesadded"),
-        mod_new_root=Path(inter_dir, "addksathorfrac"),
-        drive="{drive}"
-    default_target: False
+        gridfile_in=Path(inter_dir, "gaugesadded", "staticmaps", "staticmaps.nc"),
     output:
-        config_fn_out="wflow_sbm_addksathorfrac.toml"
+        config_fn_out=Path(inter_dir, "addksathorfrac", "wflow_sbm_addksathorfrac.toml"),
         finalout = Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc")
     params:
-        var=config['ksathorfrac_map']
+        drive=DRIVE,
+        mod_new_root=Path(inter_dir, "addksathorfrac"),
+        mod_root=Path(inter_dir, "gaugesadded"),
+        config_fn_in="wflow_sbm_addgauges.toml",
+        var=config['ksathorfrac_map'],
+        config_fn_out="wflow_sbm_addksathorfrac.toml"
     script:
         """
-        echo setup_ksathorfrac.py
         pixi run python src/pre/setup_ksathorfrac.py \
-        --DRIVE {params.drive} \
-        --mod_root {input.mod_root} \
-        --mod_new_root {input.mod_new_root} \
-        --config_fn_in {input.config_fn_in} \
-        --mod_root {input.mod_root} \
-        --var {params.var} \
-        --config_fn_out {output.config_fn_out}
+            --DRIVE {params.drive} \
+            --mod_root {params.mod_root} \
+            --mod_new_root {params.mod_new_root} \
+            --config_fn_in {params.config_fn_in} \
+            --mod_root {params.mod_root} \
+            --var {params.var} \
+            --config_fn_out {params.config_fn_out}
         """
+
+rule new_model_to_input:
+    input:
+        config_fn=rules.ksat_setup.output.config_fn_out,
+        staticmaps=rules.ksat_setup.output.finalout
+    params:
+        new_name_toml = Path(input_dir, "wflow_sbm.toml"),
+        new_name_nc = Path(input_dir, "staticmaps", "staticmaps.nc")
+    output:
+        config_run=Path(input_dir, "wflow_sbm.toml"),
+        staticmaps_run=Path(input_dir,"staticmaps", "staticmaps.nc")
+    run:
+        shutil.copy(input.config_fn, params.new_name_toml)
+        shutil.copy(input.staticmaps, params.new_name_nc)
+
+rule staticgeoms_to_input:
+    input:
+        staticmaps=rules.create_gaugemap.output.gridfile
+    params:
+        sg_folder = Path(source_dir, "staticgeoms"),
+        new_gauges = Path(inter_dir, "gaugesadded", "staticgeoms", f"gauges_{config['gauges']}.geojson"),
+        subcatch = Path(inter_dir, "gaugesadded", "staticgeoms", f"subcatch_{config['gauges']}.geojson")
+    output:
+        sg_sc=Path(input_dir, "staticgeoms", f"subcatch_{config['gauges']}.geojson"),
+        sg_g=Path(input_dir, "staticgeoms", f"basins.geojson")
+    run:
+        # Ensure the destination directory exists
+        os.makedirs(Path(input_dir, "staticgeoms"), exist_ok=True)
+        
+        # Copy all files from the source directory to the destination directory
+        for item in os.listdir(params.sg_folder):
+            s = Path(params.sg_folder, item)
+            d = Path(input_dir, "staticgeoms", item)
+            if s.is_file():
+                shutil.copy2(s, d)
+        
+        # Then copy the new gauges
+        shutil.copy(params.new_gauges, output.sg_g)
+        shutil.copy(params.subcatch, output.sg_sc)
