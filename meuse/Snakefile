@@ -9,7 +9,7 @@ import shutil
 import os
 import platform
 from pathlib import Path
-from snakemake.utils import Paramspace as paramspace
+from snakemake.utils import Paramspace
 import geopandas as gpd
 from src.calib.create_set_params import create_set
 import glob
@@ -35,7 +35,6 @@ basin = config["basin"]                                     # meuse
 os.chdir(Path(base_dir, basin))
 
 print(f"\033[94m{'*'*20}\n{'-'*10} calibrating: {basin}\n{'*'*20}\033[0m")
-
 source_dir = Path(base_dir, basin, config["source_dir"])    # data/1-external
 inter_dir = Path(base_dir, basin, config["inter_dir"])      # data/2-intermediate
 input_dir = Path(base_dir, basin, config["input_dir"])      # data/3-input
@@ -54,24 +53,24 @@ last_level = int(levels[-1].split("level")[-1])
 #define elements from the staticgeoms
 elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
 
+#paramspace
+lnames, methods, df = create_set(config["calib_recipe"])
+paramspace = Paramspace(df)
+
+#staticmaps
+staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
+
+#subcatch
+subcatch = Path(input_dir, "staticgeoms", f'subcatch_{config["gauges"]}.geojson')
+
 #cfg template
 cfg_template = Path(input_dir, "wflow_sbm.toml")
 
 #calib_dir
 calib_dir = Path(inter_dir, "calib_data")
 
-#staticmaps
-staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
-
-#calib recipe 
-lnames, methods, df = create_set(Path(config["calib_recipe"]))
-
-#subcatch
-subcatch = Path(source_dir, "staticgeoms", f"subcatch_{gauges}.geojson")
-
 #graph
-with open(Path(inter_dir, f'{config["gauges"]}_levels_graph.json'), "r") as f:
-    graph = json.load(f)
+graph = json.load(open(Path(inter_dir, f'{config["gauges"]}_levels_graph.json')))
 
 ############################
 # DOING the snakey!
@@ -108,7 +107,7 @@ create_params:  This rule creates parameter sets for the Wflow model.
 '''
 
 rule create_params:
-    input: expand(Path(calib_dir, "level"+"{item}", "{params}", config["wflow_cfg_name"]), params=paramspace.wildcard_pattern, item=f"{{item}}")
+    input: Path(calib_dir, "level"+"{item}", Paramspace.wildcard_pattern, config["wflow_cfg_name"])
     params:
         dataset = staticmaps,
         params = paramspace.instance,
@@ -118,7 +117,7 @@ rule create_params:
         graph = graph,
         sub_catch = subcatch
     output: 
-        staticmaps = expand(Path(calib_dir, "level"+"{item}", "{params}", "staticmaps.nc"), params=paramspace.wildcard_pattern, item=f"{{item}}")
+        staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc")
     script: 
         """src/calib/set_calib_params.py"""
 
