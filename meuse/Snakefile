@@ -107,7 +107,7 @@ create_params:  This rule creates parameter sets for the Wflow model.
 '''
 
 rule create_params:
-    input: Path(calib_dir, "level"+"{item}", Paramspace.wildcard_pattern, config["wflow_cfg_name"])
+    input: Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, config["wflow_cfg_name"])
     params:
         dataset = staticmaps,
         params = paramspace.instance,
@@ -175,7 +175,7 @@ rule set_params:
 
 rule prep_final_stage:
     input: 
-        done = Path(calib_dir, last_level, "done.txt"),
+        done = Path(calib_dir, str(last_level), "done.txt"),
         performance = expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
