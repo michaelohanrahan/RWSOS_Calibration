@@ -4,10 +4,8 @@ import shutil
 import os
 import platform
 from pathlib import Path
-
 from snakemake.utils import Paramspace
-
-from src.graph import create_dependency_graph
+# from src.graph import create_dependency_graph
 from src.calib.create_set_params import create_set
 
 if platform.system() == "Windows":
@@ -15,10 +13,14 @@ if platform.system() == "Windows":
 else:
     DRIVE = "/p"
 
+if "TEST" in config["calib_recipe"]:
+    print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
+
 ## Some preparatory actions
 # Ensure the model directory is there
 config: 'config/calib.yml'
 
+#default directories
 base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
 basin = config["basin"]                                     # meuse
 source_dir = Path(base_dir, basin, config["source_dir"])    # data/1-external
@@ -27,6 +29,7 @@ input_dir = Path(base_dir, basin, config["input_dir"])      # data/3-input
 out_dir = Path(base_dir, basin, config["output_dir"])       # data/4-output
 vis_dir = Path(base_dir, basin, config["vis_dir"])          # data/5-visualisation
 
+#working directory
 os.chdir(Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', basin))
 
 for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
@@ -56,40 +59,42 @@ os.makedirs(calib_dir, exist_ok=True)
 #=========================================================
 #== Actions more focused on the calibration itself
 # Load the dependency graph and sort into level
-#TODO: put the function as the first rule in the workflow
+#TODO: build this into the workflow so that the elements wildcard is automatically generated
 gauges = config["gauges"]
-graph = create_dependency_graph(gauges)
-subcatch = Path(source_dir, "staticgeoms", f"subcatch_{gauges}.geojson")
-graph_path = Path(inter_dir, f'{gauges}_levels_graph.json')
+# graph = create_dependency_graph(gauges)
+# subcatch = Path(source_dir, "staticgeoms", f"subcatch_{gauges}.geojson")
+# graph_path = Path(inter_dir, f'{gauges}_levels_graph.json')
 
-with open(graph_path, "r") as f:
-    graph = json.load(f)
+# with open(graph_path, "r") as f:
+#     graph = json.load(f)
 
-# Ensure all the level directories are there
-for _l in graph.keys():
-    _p = Path(calib_dir, _l)
-    if not _p.exists():
-        os.makedirs(_p, exist_ok=True)
+# # Ensure all the level directories are there
+# for _l in graph.keys():
+#     _p = Path(calib_dir, _l)
+#     if not _p.exists():
+#         os.makedirs(_p, exist_ok=True)
 
-# Get the last index of the keys
-last_level = list(graph.keys())[-1]
+# # Get the last index of the keys
+# last_level = list(graph.keys())[-1]
 
-# Get all the elements for the visualization
-elements = []
-for _l in graph.values():
-    elements += _l["elements"]
+# # Get all the elements for the visualization
+# elements = []
+# for _l in graph.values():
+#     elements += _l["elements"]
 
 # Load parameter recipe as a parameter space
 # ['KsatHorFrac', 'RootingDepth', 'SoilThickness'], ['set', 'add', 'mult'], df of params
-lnames, methods, df = create_set(config["calib_recipe"])
+if os.path.exists(Path(config["calib_recipe"])):
+    print(f'Loading parameter recipe from {config["calib_recipe"]}')
+    print(Path(Path.cwd(), config["calib_recipe"]))
+    lnames, methods, df = create_set(Path(config["calib_recipe"]))
+else:
+    raise FileNotFoundError(f"Parameter recipe file not found: {config['calib_recipe']}")
+#=========================================================
 paramspace = Paramspace(df, filename_params="*", param_sep="", filename_sep="_")
 
-############################
-# DOING the snakey!
-############################
-# Define the main rule all that expects all the visualization files to have been created for successfull completion
-rule all:
-    input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+
+ 
 
 '''
 create the gaugemap from your preferred geojson file of gauges... best to make this with some manual checks to ensure the right gauges are being used
@@ -98,12 +103,13 @@ create the gaugemap from your preferred geojson file of gauges... best to make t
  -- you can recursively modify the ignorelist in the interim folder to remove gauges to simplify the graph
     #TODO: automatically optimise the graph
 3: src/pre/create_discharge_data.py to to create the discharge dataset from the gauges geojson
-
+adding default target to false to encourage snakemake to run these rules before defining the wildcards
 '''
 
 rule create_gaugemap:
     input:
         gauges = Path(inter_dir, "QGIS", "to_wflow", "hourly_gauges_all.geojson")
+    default_target: False
     output:
         gaugemap = Path(inter_dir, f"gaugesadded/staticgeoms/subcatch_{config['gauges']}.geojson")
     params:
@@ -126,9 +132,17 @@ rule create_gaugemap:
             --derive_subcatch True --crs "{params.crs}" --config_old "{params.config_old}" --config_new "{params.config_new}"
         """
 
+"""
+create the dependency graph from the gaugesadded gridfile, in this case is based off of the 
+hourly observations in the basin. This graph defines the elements for calculation and their
+subsequent dependencies at each level, saving them in a json file for later use.
+#TODO: establish the elements wildcard for the workflow inside a rule
+"""
+
 rule create_graph:
     input: 
         gridfile = Path(inter_dir, "gaugesadded")
+    default_target: False
     output: 
         graph = Path(inter_dir, f'{config["gauges"]}_levels_graph.json')
     params: 
@@ -136,7 +150,78 @@ rule create_graph:
     script: 
         """src/graph/create_dependency_graph.py"""
 
-# WOULD BE NICE: add the ksathorfrac to the staticmaps
+#requires p drive connection for deltares data catalog
+rule wflow_model_setup:
+    input:
+        config_fn_in="wflow_sbm_addgauges.toml",
+        mod_root=Path(inter_dir, "gaugesadded"),
+        mod_new_root=Path(inter_dir, "addksathorfrac"),
+        drive="{drive}"
+    default_target: False
+    output:
+        config_fn_out="wflow_sbm_addksathorfrac.toml"
+    params:
+        var=config['ksathorfrac_map']
+    script:
+        """
+        echo setup_ksathorfrac.py
+        pixi run python src/pre/setup_ksathorfrac.py \
+        --DRIVE {params.drive} \
+        --mod_root {input.mod_root} \
+        --mod_new_root {input.mod_new_root} \
+        --config_fn_in {input.config_fn_in} \
+        --mod_root {input.mod_root} \
+        --var {params.var} \
+        --config_fn_out {output.config_fn_out}
+        """
+
+# Rule to define the elements from the dependency graph
+rule defining_elements:
+    input: 
+        graph = Path(inter_dir, f'{config["gauges"]}_levels_graph.json')
+    output: 
+        elements_json = Path(inter_dir, f'{config["gauges"]}_elements.json')
+    run:
+        calib_dir = Path(f"{input.graph.parent}/calib_data")
+        with open(input.graph) as f:
+            graph = json.load(f)
+        
+        # Ensure all the level directories are there
+        for _l in graph.keys():
+            _p = Path(calib_dir, _l)
+            if not _p.exists():
+                os.makedirs(_p, exist_ok=True)
+        
+        # Get the last index of the keys
+        last_level = list(graph.keys())[-1]
+        
+        # Get all the elements for the visualization
+        elements = []
+        for _l in graph.values():
+            elements += _l["elements"]
+        
+        with open(output.elements_json, 'w') as f:
+            json.dump(elements, f)
+
+# Function to load elements from the JSON file
+def load_elements():
+    elements_json = Path(inter_dir, f'{config["gauges"]}_elements.json')
+    with open(elements_json) as f:
+        elements = json.load(f)
+    return elements
+
+# Define the main rule all that expects all the visualization files to have been created for successful completion
+elements = load_elements()
+
+# Define the main rule all that expects all the visualization files to have been created for successful completion
+rule all:
+    input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+############################
+# DOING the snakey!
+############################
+# Define the main rule all that expects all the visualization files to have been created for successfull completion
+# rule all:
+#     input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
 
 '''
 config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 

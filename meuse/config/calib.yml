@@ -1,4 +1,6 @@
 ## General
+# Setting data for calibration
+calib_recipe: "config/TEST_calib_recipe.json"
 base_dir: "/11209265-grade2023/wflow/RWSOS_Calibration"
 basin: "meuse"
 
@@ -15,14 +17,14 @@ base_staticmaps: "staticmaps/base_staticmaps.nc"
 # Which gauges (subcatchments) to calibrate over (needs matching observed data)
 gauges: "Hall"
 
+#ksathorfrac ML map model
+ksathorfrac_map: "BRT_"
+
 # Settings the config file
 starttime: "2005-01-01T00:00:00"
 endtime: "2018-02-22T00:00:00"
 timestep: 3600
 source_forcing_data: "forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
-
-# Setting data for calibration
-calib_recipe: "config/calib_recipe.json"
 
 #instate period (needs to run every time there is a new level introduced)
 instate_starttime: "2005-01-01T00:00:00"

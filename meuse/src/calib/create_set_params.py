@@ -1,7 +1,6 @@
 import json
 from itertools import product
 from pathlib import Path
-
 import pandas as pd
 
 
@@ -42,6 +41,7 @@ def create_set(
     return lnames, methods, ds
 
 
-if __name__ == "__main__":
-    ds = create_set("c:/CODING/NONPRODUCT/puget/res/calib_recipe.json")
-    # ds = create_set(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\config\calib_recipe.json')
+# if __name__ == "__main__":
+# #     ds = create_set("c:/CODING/NONPRODUCT/puget/res/calib_recipe.json")
+#     ds = create_set(r'c:\git\RWSOS_Calibration\meuse\config\calib_recipe.json')
+#     print(ds)
