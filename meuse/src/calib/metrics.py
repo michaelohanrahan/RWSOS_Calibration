@@ -433,6 +433,27 @@ def _peakdis(
     return e
 
 
+def normalize_leadlag(val:float):
+    """
+    Assuming less than 1 hour lead lag is as good as perfect
+    """
+    
+    if val < 1:
+        norm = 1
+    
+    #best values approach 1
+    else:
+        norm  = 1/val
+    
+    return norm
+
+
+def normalize_mape(val:float):
+    """__summary__"""
+    norm=1-val
+    return norm
+        
+
 def peakdis(
     sim: xr.Dataset,
     obs: xr.Dataset,
