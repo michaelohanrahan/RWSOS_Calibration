@@ -5,13 +5,13 @@ import pandas as pd
 import xarray as xr
 
 #TODO: add peak timing to metrics, conforming to data structure
-from metrics import kge, rld, peakdis, weighted_euclidean
+from metrics import kge, nselog_mm7q, peak_errors, weighted_euclidean
 
 
 METRICS = {
     "kge": kge,
-    "rld": rld,
-    "pds": peakdis,
+    "nselog_mm7q": nselog_mm7q,
+    "peak_errors": peak_errors,
 } 
 
 
