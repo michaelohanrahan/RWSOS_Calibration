@@ -4,6 +4,11 @@
         "values": [0.4, 2],
         "method": "set"
     },
+    "f": {
+        "short_name": "f",
+        "values": [0.5, 1.5],
+        "method": "mult"
+    },
     "SoilThickness": {
         "short_name": "st",
         "values": [0.5, 1.5],

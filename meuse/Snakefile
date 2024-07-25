@@ -83,10 +83,28 @@ rule all:
     default_target: True
 
 '''
+This rule isnt waiting for the output of a previous rule, so it is run first and only once. 
+'''
+
+rule initial_instates: #level 0
+    input:
+        toml = cfg_template, #the input template
+        soilthicknesses= LIST
+    output:
+        expand(Path(input_dir, "instate", "instate_level0_ST{thicnkess}"), thicnkess=soilthicknesses)
+    script:
+        """
+        julia modify tomls and run instates for desired thicknesses
+        """
+
+
+'''
 config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
         It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
         The output is a set of modified configuration files.
+#TODO: in each config that accesses a certain level && soilthickness the instate reference should match
 '''
+
 rule config:
     # input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
     params: 
@@ -100,10 +118,12 @@ rule config:
         """src/calib/set_config.py"""
 
 '''
+@JING ...
 create_params:  This rule creates parameter sets for the Wflow model. 
                 It takes a configuration file, a dataset of static maps, a parameter space instance, 
                 a list of parameter names, a list of parameter methods, a level, a graph, and a sub-catchment as parameters. 
                 The output is a set of static map files.
+#TODO: Make sure the co-scaling logic is here.... 
 '''
 
 rule create_params:
@@ -120,9 +140,22 @@ rule create_params:
         staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc")
     script: 
         """src/calib/set_calib_params.py"""
+'''
+NEWRULE - where to place this? 
+#TODO: make sure that the new ST is only applied at the current level?
+'''
+rule auto_instate_per_level:
+    input: Path(calib_dir, "level"+"{item}", "done.txt") 
+    output: Path(instates)
+    script: 
+        """
+        SOme julia 
+        """
 
 '''
 wflow: This rule runs the hydrological model. It takes a configuration file and a grid (staticmap) file as input.
+#TODO: is it the Wflow rule that should have the instates as an expected input??? 
+#TODO: Only using the CAL time split. 
 '''
 
 rule wflow:
@@ -134,14 +167,15 @@ rule wflow:
         f"""julia --project="{config['wflow_project_dir']}" -t {config['wflow_threads']} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
 
 '''
+@JING 25.07
 Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
 Output:  an unstacked performance.nc file with metrics and weights for each parameter set, and a best_params.csv file with the best parameter set.
         out csv with the best parameter set for each gauge 
         
-'''
 #TODO: discuss if we want to have a multiple param selection.. 
-#       - can sample within distance tolerance of weighted euclidian sample
+    - can sample within distance tolerance of weighted euclidian sample
 #TODO: add parameter to fn to sample from the 10 closest to minima
+'''
 
 rule evaluate:
     input: expand(Path(calib_dir, "level"+"{item}", "{params}", "run_default", "output_scalar.nc"), item=f"{{item}}", params=paramspace.instance_patterns)
@@ -160,6 +194,10 @@ rule evaluate:
     script: 
         """src/calib/evaluate_params.py"""         # TODO: modify this script
 
+'''
+SUMMARY
+'''
+
 rule set_params:
     input: 
         best_params = Path(calib_dir, "level"+"{item}", "best_params.csv")
@@ -172,6 +210,10 @@ rule set_params:
         done = Path(calib_dir, "level"+"{item}", "done.txt")
     script:
         """src/calib/set_eval_params.py"""
+
+'''
+Preparing the final stage: This rule prepares the final stage of the calibration process.
+'''
 
 rule prep_final_stage:
     input: 
