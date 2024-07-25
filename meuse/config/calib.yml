@@ -19,6 +19,7 @@ gauges: "Hall"
 
 #ksathorfrac ML map model
 ksathorfrac_map: "BRT_"
+soilthickness_map: "SoilThickness_manual_cal"
 
 # Settings the config file
 starttime: "2005-01-01T00:00:00"

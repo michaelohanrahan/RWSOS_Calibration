@@ -72,6 +72,12 @@ calib_dir = Path(inter_dir, "calib_data")
 #graph
 graph = json.load(open(Path(inter_dir, f'{config["gauges"]}_levels_graph.json')))
 
+#soilthicknesses
+with open(config["calib_recipe"]) as recipe:
+    recipe = json.load(recipe)
+    # print(recipe)
+    ST_values = list(recipe["SoilThickness"]["values"])
+
 ############################
 # DOING the snakey!
 ############################
@@ -83,27 +89,33 @@ rule all:
     default_target: True
 
 '''
-This rule isnt waiting for the output of a previous rule, so it is run first and only once. 
+This rule isnt waiting for the output of a previous rule, so it is run first and only once.
+That is why we hardcode the level
 '''
 
 rule initial_instates: #level 0
     input:
-        toml = cfg_template, #the input template
-        soilthicknesses= LIST
+        config_fn = cfg_template, #the input template
+    params:
+        soilthicknesses = ST_values,
+        root = Path(input_dir),
+        ST_key= config["soilthickness_map"],
+        level = 0,
+        starttime = config["instate_starttime"],
+        endtime = config["instate_endtime"],
     output:
-        expand(Path(input_dir, "instate", "instate_level0_ST{thicnkess}"), thicnkess=soilthicknesses)
+        ST_instates = expand(Path(input_dir, "instates", "instate_level"+f"{0}"+"_ST{thickness}"), thickness=[str(ST).replace('.', '') for ST in ST_values])
     script:
         """
-        julia modify tomls and run instates for desired thicknesses
+        src/calib/create_instates.py
         """
 
-
-'''
+"""
 config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
-        It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
-        The output is a set of modified configuration files.
-#TODO: in each config that accesses a certain level && soilthickness the instate reference should match
-'''
+It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
+The output is a set of modified configuration files.
+#TODO: in each config that accesses a certain level & soilthickness the instate reference should match
+"""
 
 rule config:
     # input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
@@ -140,17 +152,18 @@ rule create_params:
         staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc")
     script: 
         """src/calib/set_calib_params.py"""
+
 '''
 NEWRULE - where to place this? 
 #TODO: make sure that the new ST is only applied at the current level?
 '''
-rule auto_instate_per_level:
-    input: Path(calib_dir, "level"+"{item}", "done.txt") 
-    output: Path(instates)
-    script: 
-        """
-        SOme julia 
-        """
+# rule auto_instate_per_level:
+#     input: Path(calib_dir, "level"+"{item}", "done.txt") 
+#     output: Path(instates)
+#     script: 
+#         """
+#         SOme julia 
+#         """
 
 '''
 wflow: This rule runs the hydrological model. It takes a configuration file and a grid (staticmap) file as input.
