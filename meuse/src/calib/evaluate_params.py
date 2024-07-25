@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-#TODO: add peak timing to metrics, conforming to data structure
-from metrics import kge, rld, peakdis, weighted_euclidean
-
+#TODO: add peak timing to metrics, conforming to data structure (separate peak metrics into two function for timing and magnitude)
+from metrics import kge, nselog_mm7q, peak_errors, weighted_euclidean
 
 METRICS = {
     "kge": kge,
-    "rld": rld,
-    "pds": peakdis,
+    "nselog_mm7q": nselog_mm7q,
+    "mae_timing": mae_timing,
+    "mape_peak": mape_peak,
 } 
 
 
@@ -93,6 +93,11 @@ def main(
             )
             if metric == "kge":
                 e = e["kge"]
+            elif metric == "mae_timing":
+                e = e["mae_timing"]
+            elif metric == "mape_peak":
+                e = e["mape_peak"]
+            
             metric_values[metric].append(e)
             evals.append(e)
 

@@ -270,7 +270,7 @@ def normalize_mape(val:float):
     norm = 1 - val
     return norm
 
-
+# TO-DO: separate mae_timing and mape_peak
 def peak_errors(
     sim: xr.Dataset,
     obs: xr.Dataset,
