@@ -1,6 +1,7 @@
 @echo off
 
 echo Activating the pixi environment
-pixi run snakemake -s "snakefile" --configfile "config/calib.yml" --rulegraph | dot -Tsvg > dag.svg
+cd "p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse"
+pixi run snakemake -s "Snakefile" --configfile "config/calib.yml" --rulegraph | dot -Tsvg > rulegraph.svg
 
 pause

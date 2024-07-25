@@ -33,7 +33,7 @@ instate_endtime: "2006-12-31T23:00:00"
 
 # Running model
 wflow_cfg_name: "wflow_sbm.toml"
-wflow_project_dir: "/u/dalmijn/code/jl_dev/wflow/"
+wflow_project_dir: "../bin/"
 wflow_threads: 1
 
 # Evaluation and finalizing per level
@@ -42,7 +42,7 @@ eval_starttime: "2005-08-01T00:00:00"
 eval_endtime: "2018-02-22T00:00:00"
 metrics: ["kge", "nselog_mm7q_res", "peak_res"]
 dry_months: [6, 7, 8, 9, 10]
-weights: [0.2, 0.25, 0.55]
+weights: [0.2, 0.25, 0.55, ]
 
 # Overal finalizing
 model_threads: 16
