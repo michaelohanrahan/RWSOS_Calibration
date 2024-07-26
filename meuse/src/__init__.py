@@ -2,4 +2,3 @@
 
 from .io import *
 from .util import *
-from .setuplog import *
