@@ -84,13 +84,20 @@ with open(config["calib_recipe"]) as recipe:
 # Define the main rule all that expects all the visualization files to have been created for successfull completion
 # rule all:
 # Define the main rule all that expects all the visualization files to have been created for successful completion
+'''
+:: rule all ::
+Defines the overall default target
+We expect upon successfull completion that all gauges will have been visualized
+'''
+
 rule all:
     input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
     default_target: True
 
 '''
+:: initial instates ::
 This rule isnt waiting for the output of a previous rule, so it is run first and only once.
-That is why we hardcode the level
+That is why we hardcode the level. The subsequent rules will have to wait for an input to run for instates.
 '''
 
 rule initial_instates: #level 0
@@ -103,12 +110,25 @@ rule initial_instates: #level 0
         level = 0,
         starttime = config["instate_starttime"],
         endtime = config["instate_endtime"],
-    output:
-        ST_instates = expand(Path(input_dir, "instates", "instate_level"+f"{0}"+"_ST{thickness}"), thickness=[str(ST).replace('.', '') for ST in ST_values])
+    output: 
+        ST_instates_tomls = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{0}"+"_ST{thickness}"+".toml"), thickness=[str(ST).replace('.', '') for ST in ST_values])
     script:
         """
         src/calib/create_instates.py
         """
+'''
+:: Run instates::
+We wait for the output of the initial state defining tomls and then we run the instates
+'''
+rule run_initial_instates: 
+    input:
+        instates = rules.initial_instates.output.ST_instates_tomls #expand(Path(input_dir, "instates", "instate_level"+f"{0}"+"_ST{thickness}"), thickness=[str(ST).replace('.', '') for ST in ST_values])
+    params:
+        project = Path(base_dir, "bin")
+    output:
+        done = expand(Path(input_dir, "instates", "instate_level"+f"{0}"+"_ST"+"{thickness}"+".nc"), thickness=[str(ST).replace('.', '') for ST in ST_values])
+    shell: 
+        f"""julia --project="{config['wflow_project_dir']}" -t {config['wflow_threads']} -e "using Wflow; Wflow.run()" {{input.instates}}"""
 
 """
 config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
@@ -119,13 +139,15 @@ The output is a set of modified configuration files.
 
 rule config:
     # input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
+    input: rules.run_initial_instates.output.done
     params: 
         cfg_template = cfg_template,
         starttime = config["starttime"],
         endtime = config["endtime"],
         timestep = config["timestep"],
         forcing_path = Path(input_dir, config["source_forcing_data"])
-    output: expand(Path(calib_dir, "level"+"{item}", "{params}", config["wflow_cfg_name"]), item=f"{{item}}", params=paramspace.wildcard_pattern)
+    output: 
+        expand(Path(calib_dir, "level"+"{item}", "{params}", config["wflow_cfg_name"]), item=f"{{item}}", params=paramspace.wildcard_pattern)
     script:
         """src/calib/set_config.py"""
 

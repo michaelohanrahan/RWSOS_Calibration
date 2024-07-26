@@ -30,6 +30,8 @@ def change_config(model,
     model.set_config('input','vertical','soilthickness',{"scale":soilthickness})
     model.set_config('input','vertical','soilminthickness',{"scale":soilthickness})
     
+    model.set_config('input', {'path_forcing':"../forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"})
+    model.set_config('input', {'path_static':"../staticmaps/staticmaps.nc"})
     model.set_config("starttime", start)
     model.set_config("endtime", end)     
     
