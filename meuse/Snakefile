@@ -33,6 +33,9 @@ base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ .
 basin = config["basin"]                                     # meuse
 #working directory
 os.chdir(Path(base_dir, basin))
+#chdir but with pathlib
+cwd = Path.cwd().as_posix()
+
 
 # print(f"\033[94m{'*'*20}\n{'-'*10} calibrating: {basin}\n{'*'*20}\033[0m")
 source_dir = Path(base_dir, basin, config["source_dir"])    # data/1-external
@@ -94,6 +97,10 @@ rule all:
     input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
     default_target: True
 
+rule force_working_dir: 
+    message: f"Changing working directory to {cwd}." 
+    shell: """ ( cd {cwd}) """ 
+
 '''
 :: initial instates ::
 This rule isnt waiting for the output of a previous rule, so it is run first and only once.
@@ -113,9 +120,8 @@ rule initial_instates: #level 0
     output: 
         ST_instates_tomls = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{0}"+"_ST{thickness}"+".toml"), thickness=[str(ST).replace('.', '') for ST in ST_values])
     script:
-        """
-        src/calib/create_instates.py
-        """
+        """src/calib/create_instate_toml.py"""
+
 '''
 :: Run instates::
 We wait for the output of the initial state defining tomls and then we run the instates
@@ -145,7 +151,9 @@ rule config:
         starttime = config["starttime"],
         endtime = config["endtime"],
         timestep = config["timestep"],
-        forcing_path = Path(input_dir, config["source_forcing_data"])
+        forcing_path = Path(input_dir, config["source_forcing_data"]),
+        # level = "{item}",
+        # params = "{params}"
     output: 
         expand(Path(calib_dir, "level"+"{item}", "{params}", config["wflow_cfg_name"]), item=f"{{item}}", params=paramspace.wildcard_pattern)
     script:
