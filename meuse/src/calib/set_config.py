@@ -11,7 +11,7 @@ def main(
     cfg: Path | str,
     starttime: str,
     endtime: str,
-    timestep: str | int,
+    # timestep: str | int,
     forcing_path: Path | str,
     out: tuple | list,
     l
@@ -52,7 +52,7 @@ def main(
         
         out_cfg["starttime"] = starttime
         out_cfg["endtime"] = endtime
-        out_cfg["timestepsecs"] = timestep
+        # out_cfg["timestepsecs"] = timestep
 
         # Set the forcing path to the source dir
         out_cfg["input"]["path_forcing"] = forcing_path.as_posix()
@@ -83,7 +83,7 @@ if __name__ == "__main__":
                 mod.params.cfg_template,
                 mod.params.starttime,
                 mod.params.endtime,
-                mod.params.timestep,
+                # mod.params.timestep,
                 mod.params.forcing_path,
                 mod.output,
                 l
