@@ -3,6 +3,8 @@ from pathlib import Path
 
 import tomli
 import tomli_w
+from setuplog import setup_logging
+import traceback
 
 
 def main(
@@ -12,6 +14,7 @@ def main(
     timestep: str | int,
     forcing_path: Path | str,
     out: tuple | list,
+    l
 ):
     """
     This script modifies a blueprint configuration file for a specific time period and forcing path.
@@ -33,11 +36,13 @@ def main(
     The script ensures that the directory for each output file path exists before writing the file. If the directory does not exist, it is created.
     """
     # Load the blueprint
+    l.info(f"Loading blueprint configuration from {cfg}")
     with open(cfg, "rb") as _r:
         data = tomli.load(_r)
 
     for out_file in out:
-
+        l.info(f"target dir: {out_file}")
+        
         out_cfg = copy.deepcopy(data)
 
         # Ensure the directory
@@ -51,24 +56,42 @@ def main(
 
         # Set the forcing path to the source dir
         out_cfg["input"]["path_forcing"] = forcing_path.as_posix()
+        
+        #ex: p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/2-interim/calib_data/level0/ksat~0.4/f~1.5/st~1.5/nr~0.5/rd~0.8/ml~0.0/nl~0.8/wflow_sbm.toml
+        level = int(out_file.split('/')[-8][-1]) # the integer of the level
+        thickness = str(''.join(out_file.split('/')[-7].split('~')[-1].split('.'))) #the joined float value as a string
+        l.info(f"level: {level}, thickness: {thickness}")
+        #ex: "instate_level{level}_ST{thickness}.nc"
+        st_instate_path = Path(forcing_path).parent / "instates" / f"instate_level{level}_ST{thickness}.nc"
+        #change the instate depending on the soilthickness
+        out_cfg["input"]["path_instate"] = st_instate_path.as_posix()
+        l.info(f"st_instate_path: {st_instate_path.as_posix()}")
+        
 
         # Write the settings file
         with open(out_file, "wb") as _w:
             tomli_w.dump(out_cfg, _w)
+        
+        assert Path(out_file).exists(), f"Failed to write the configuration file to {out_file}"
 
 if __name__ == "__main__":
+    l = setup_logging("data/0-log", "02-set_config.log")
     if "snakemake" in globals():
         mod = globals()["snakemake"]
-
-        main(
-            mod.params.cfg_template,
-            mod.params.starttime,
-            mod.params.endtime,
-            mod.params.timestep,
-            mod.params.forcing_path,
-            mod.output,
-        )
-
+        try:
+            main(
+                mod.params.cfg_template,
+                mod.params.starttime,
+                mod.params.endtime,
+                mod.params.timestep,
+                mod.params.forcing_path,
+                mod.output,
+                l
+            )
+        except Exception as e:
+            l.error(f"An error occurred: {e}")
+            l.error(traceback.format_exc())
+            raise e
     else:
         pass
 

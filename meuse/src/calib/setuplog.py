@@ -5,7 +5,7 @@ from pathlib import Path
 def setup_logging(dir, logname):
     # Set up logging
     log_file_path = Path(Path(os.getcwd()).as_posix(), dir, logname)
-    print('LOGGING TO:', log_file_path)
+    # print('LOGGING TO:', log_file_path)
     os.makedirs(Path(os.path.dirname(log_file_path)).as_posix(), exist_ok=True)
 
     # Create a custom logger

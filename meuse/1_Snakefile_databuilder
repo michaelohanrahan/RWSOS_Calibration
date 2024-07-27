@@ -12,6 +12,7 @@ from pathlib import Path
 from snakemake.utils import Paramspace
 import geopandas as gpd
 from src.calib.create_set_params import create_set
+from glob import glob
 
 #=========================================================
 ## Directories and paths
@@ -23,7 +24,7 @@ else:
     COPY = "cp"
 
 #working directory
-os.chdir(Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', "meuse"))
+os.chdir(Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', "meuse").as_posix())
 
 ## Some preparatory actions
 # Ensure the model directory is there
@@ -43,6 +44,8 @@ input_dir = Path(base_dir, basin, config["input_dir"])      # data/3-input
 out_dir = Path(base_dir, basin, config["output_dir"])       # data/4-output
 vis_dir = Path(base_dir, basin, config["vis_dir"])          # data/5-visualisation
 
+#Expected_levels
+expected_levels = 6
 
 
 for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
@@ -61,7 +64,7 @@ rule all:
             Path(inter_dir, "gaugesadded", f"wflow_sbm_addgauges.toml"),
             Path(input_dir, "wflow_sbm.toml"),
             Path(input_dir, "staticmaps", "staticmaps.nc"),
-            directory(Path(inter_dir, "calib_data", "level1")),
+            directory(expand(Path(inter_dir, "calib_data", "level{level}"), level=range(0, expected_levels))),
             Path(input_dir, "staticgeoms", f"subcatch_{config['gauges']}.geojson")
     default_target: True
 
@@ -127,9 +130,10 @@ rule create_graph:
 
 rule create_folders:
     input: 
-        graph = Path(inter_dir, rules.create_graph.output.graph)
+        graph = rules.create_graph.output.graph
+    # params: 
     output:
-        folder_out = directory(Path(inter_dir, "calib_data", "level1"))
+        folder_out = directory(expand(Path(inter_dir, "calib_data", "level"+"{level}"), level=range(0, expected_levels)))
     run: 
         calib_dir = Path(inter_dir, "calib_data")
         os.makedirs(calib_dir, exist_ok=True)
@@ -137,10 +141,14 @@ rule create_folders:
             graph = json.load(f)
 
         # Ensure all the level directories are there
-        for _l in graph.keys():
-            _p = Path(calib_dir, _l)
+        # for _l in graph.keys():
+        levels= []
+        for level in graph.keys():
+            levels.append(level)
+            _p = Path(calib_dir, level)
             if not _p.exists():
                 os.makedirs(_p, exist_ok=True)
+
 
 #requires p drive connection for deltares data catalog
 rule ksat_setup:
@@ -206,3 +214,12 @@ rule staticgeoms_to_input:
         # Then copy the new gauges
         shutil.copy(params.new_gauges, output.sg_g)
         shutil.copy(params.subcatch, output.sg_sc)
+
+rule lakes_to_input:
+    input:
+        lakes = expand(Path(source_dir, "staticmaps", "lake_hq_"+"{hq}"+".geojson"), hq=[1, 2, 3])
+    output:
+        lakes = expand(Path(input_dir, "staticmaps", "lake_hq_"+"{hq}"+".geojson"), hq=[1, 2, 3])
+    run:
+        os.makedirs(Path(input_dir, "staticmaps"), exist_ok=True)
+        shutil.copy(input.lakes, output.lakes)

@@ -51,6 +51,7 @@ gauges = config["gauges"]
 
 #find last level from the final level directory
 levels = glob.glob(str(Path(inter_dir,'calib_data', "level*")))
+levels_ints = [int(level.split("level")[-1]) for level in levels]
 last_level = int(levels[-1].split("level")[-1])
 
 #define elements from the staticgeoms
@@ -111,7 +112,7 @@ rule initial_instates: #level 0
     input:
         config_fn = cfg_template, #the input template
     params:
-        soilthicknesses = ST_values,
+        ST_values = ST_values,
         root = Path(input_dir),
         ST_key= config["soilthickness_map"],
         level = 0,
@@ -126,38 +127,44 @@ rule initial_instates: #level 0
 :: Run instates::
 We wait for the output of the initial state defining tomls and then we run the instates
 '''
-rule run_initial_instates: 
+rule run_initial_instates:
     input:
-        instates = rules.initial_instates.output.ST_instates_tomls #expand(Path(input_dir, "instates", "instate_level"+f"{0}"+"_ST{thickness}"), thickness=[str(ST).replace('.', '') for ST in ST_values])
+        # cfg = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level{level}_ST{thickness}.toml"), level=[0], thickness=[str(ST).replace('.', '') for ST in ST_values])
+        cfg = Path(input_dir, "instates", "wflow_sbm_getinstate_level0_ST{thickness}.toml")
     params:
-        project = Path(base_dir, "bin")
+        project = Path(base_dir, "bin").as_posix(),
+        threads = config["wflow_threads"]
     output:
-        done = expand(Path(input_dir, "instates", "instate_level"+f"{0}"+"_ST"+"{thickness}"+".nc"), thickness=[str(ST).replace('.', '') for ST in ST_values])
-    shell: 
-        f"""julia --project="{config['wflow_project_dir']}" -t {config['wflow_threads']} -e "using Wflow; Wflow.run()" {{input.instates}}"""
+        done = Path(input_dir, "instates", "instate_level0_ST{thickness}.nc")
+    log:
+        Path("data", "0-log", "instate_L0", "ST{thickness}_wflow_initial_instate.log")
+    shell:
+        f"""julia --project="{{params.project}}" -t {{params.threads}} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
+
+        # f"""julia --project="{config['wflow_project_dir']}" -t {config['wflow_threads']} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
 
 """
 config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
 It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
 The output is a set of modified configuration files.
 #TODO: in each config that accesses a certain level & soilthickness the instate reference should match
+    If I can access the level and soilthickness from the {item} and {params} then we can point to the correct instate for each run
 """
 
 rule config:
     # input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
-    input: rules.run_initial_instates.output.done
+    input: expand(Path(input_dir, "instates", "instate_level0_ST{thickness}.nc"), level=levels_ints, thickness=[str(ST).replace('.', '') for ST in ST_values])
     params: 
-        cfg_template = cfg_template,
+        cfg_template = Path(cfg_template).as_posix(),
         starttime = config["starttime"],
         endtime = config["endtime"],
         timestep = config["timestep"],
         forcing_path = Path(input_dir, config["source_forcing_data"]),
-        # level = "{item}",
-        # params = "{params}"
     output: 
         expand(Path(calib_dir, "level"+"{item}", "{params}", config["wflow_cfg_name"]), item=f"{{item}}", params=paramspace.wildcard_pattern)
     script:
         """src/calib/set_config.py"""
+
 
 '''
 @JING ...
