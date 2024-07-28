@@ -58,6 +58,7 @@ elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["
 
 #paramspace
 lnames, methods, df = create_set(config["calib_recipe"])
+print(f'{lnames}')
 paramspace = Paramspace(df)
 
 #staticmaps
@@ -165,12 +166,11 @@ rule config:
 
 
 '''
-@JING ...
 create_params:  This rule creates parameter sets for the Wflow model. 
                 It takes a configuration file, a dataset of static maps, a parameter space instance, 
                 a list of parameter names, a list of parameter methods, a level, a graph, and a sub-catchment as parameters. 
                 The output is a set of static map files.
-#TODO: Make sure the co-scaling logic is here.... 
+#DONE: Make sure the co-scaling logic is here.... 
 '''
 
 rule create_params:
@@ -203,7 +203,7 @@ NEWRULE - where to place this?
 '''
 wflow: This rule runs the hydrological model. It takes a configuration file and a grid (staticmap) file as input.
 #TODO: is it the Wflow rule that should have the instates as an expected input??? 
-#TODO: Only using the CAL time split. 
+#TODO: Only using the CAL time split...??? Shorter run time worse model...
 '''
 
 rule wflow:

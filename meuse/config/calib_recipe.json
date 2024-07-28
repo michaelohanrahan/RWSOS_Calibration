@@ -1,25 +1,20 @@
-{
-    "KsatHorFrac": {
+{   
+    "ksathorfrac_BRT_250": { 
         "short_name": "ksat", 
-<<<<<<< HEAD
-        "values": [5, 25, 50, 75, 100, 200, 500, 750, 1000],
-        "method": "set"
+        "values": [0.2, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+        "method": "mult"
     },
-    "RootingDepth": {
+    "f_":{
+        "short_name": "f",
+        "values": [0.5, 0.75, 1.0, 1.25, 1.5],
+        "method": "mult"
+    },
+    "RootingDepth_obs_15": {
         "short_name": "rd",
-        "values": [0.1, 0.25, 0.5, 1, 1.5, 2.0, 2.5, 5.0],
+        "values": [0.25, 0.5, 1, 1.5, 2.0, 2.5],
         "method": "mult"
     },
-    "SoilThickness": {
-        "short_name": "st",
-        "values": [0.1, 0.25, 0.5, 1, 1.5, 2.0, 2.5, 5.0],
-        "method": "mult"
-    }
-=======
-        "values": [1, 50, 100, 250, 500, 750, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000],
-        "method": "set"
-    },
-    "SoilThickness": {
+    "SoilThickness_manual_cal": {
         "short_name": "st",
         "values": [0.5, 0.75, 1.0, 1.25, 1.5],
         "method": "mult"
@@ -29,20 +24,14 @@
         "values": [0.5, 0.75, 1.0, 1.25, 1.5],
         "method": "mult"
     }, 
-    "RootingDepth": {
-        "short_name": "rd",
-        "values": [0.8, 1.0, 1.2],
-        "method": "mult"
-    }, 
-    "MaxLeakeage": {
+    "MaxLeakage_manual_cal": {
         "short_name": "ml",
         "values": [0, 0.2, 0.6],
         "method": "add"
     }, 
-    "N_Land": {
+    "N,N_Floodplain": {
         "short_name": "nl",
         "values": [0.8, 1.0, 1.2],
         "method": "mult"
     }, 
->>>>>>> 98b8f6a20bb35496c5a9fdac156eb997b2436951
 }

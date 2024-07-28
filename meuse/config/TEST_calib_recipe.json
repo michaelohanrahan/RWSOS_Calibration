@@ -1,15 +1,15 @@
 {
-    "KsatHorFrac": {
+    "ksathorfrac_BRT_250": {
         "short_name": "ksat", 
         "values": [0.4, 2],
         "method": "set"
     },
-    "f": {
+    "f_": {
         "short_name": "f",
         "values": [0.5, 1.5],
         "method": "mult"
     },
-    "SoilThickness": {
+    "SoilThickness_manual_cal": {
         "short_name": "st",
         "values": [0.5, 1.5],
         "method": "mult"
@@ -19,17 +19,17 @@
         "values": [0.5, 0.5],
         "method": "mult"
     }, 
-    "RootingDepth": {
+    "RootingDepth_obs_15": {
         "short_name": "rd",
         "values": [0.8, 1.2],
         "method": "mult"
     }, 
-    "MaxLeakeage": {
+    "MaxLeakage_manual_cal": {
         "short_name": "ml",
         "values": [0, 0.6],
         "method": "add"
     }, 
-    "N_Land": {
+    "N,N_Floodplain": {
         "short_name": "nl",
         "values": [0.8, 1.2],
         "method": "mult"
