@@ -86,7 +86,7 @@ def change_config(model,
     config["model"]["reinit"] = True
     
     # update the input path_static
-    config["input"]["path_static"] = "../staticmaps/staticmaps.nc"
+    config["input"]["path_static"] = f"staticmaps_L{level}_ST{str(soilthickness).replace('.', '')}.nc"
     
     # update the input path_forcing
     config["input"]["path_forcing"] = "../forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
@@ -95,49 +95,7 @@ def change_config(model,
     # update the state path_output
     config["state"]["path_output"] = f'instate_level{level}_ST{str(soilthickness).replace(".", "")}.nc'
     config["state"]["path_input"] = None
-    
-    # print(config.keys())
-    
-    # Ensure config['input'] is a dictionary
-    if not isinstance(config.get("input"), dict):
-        config["input"] = {}
-        
-    # Ensure config['input']['vertical'] is a dictionary
-    if not isinstance(config["input"].get("vertical"), dict):
-        config["input"]["vertical"] = {}
-        
-    # Ensure config['input']['vertical']['soilthickness'] is a dictionary
-    if not isinstance(config["input"]["vertical"].get("soilthickness"), dict):
-        config["input"]["vertical"]["soilthickness"] = {}
-        
-    # Ensure config['input']['vertical']['soilthickness']['netcdf'] is a dictionary
-    if not isinstance(config["input"]["vertical"]["soilthickness"].get("netcdf"), dict):
-        config["input"]["vertical"]["soilthickness"]["netcdf"] = {}
-        
-    # Ensure config['input']['vertical']['soilthickness']['netcdf']['variable'] is a dictionary
-    if not isinstance(config["input"]["vertical"]["soilthickness"]["netcdf"].get("variable"), dict):
-        config["input"]["vertical"]["soilthickness"]["netcdf"]["variable"] = {}
-        
-    # Update the input vertical soilthickness
-    config["input"]["vertical"]["soilthickness"]["netcdf"]["variable"]["name"] = ST_key
-    config["input"]["vertical"]["soilthickness"]["scale"] = soilthickness
-    
-    # Ensure config['input']['vertical']['soilminthickness'] is a dictionary
-    if not isinstance(config["input"]["vertical"].get("soilminthickness"), dict):
-        config["input"]["vertical"]["soilminthickness"] = {}
-        
-    # Ensure config['input']['vertical']['soilminthickness']['netcdf'] is a dictionary
-    if not isinstance(config["input"]["vertical"]["soilminthickness"].get("netcdf"), dict):
-        config["input"]["vertical"]["soilminthickness"]["netcdf"] = {}
-        
-    # Ensure config['input']['vertical']['soilminthickness']['netcdf']['variable'] is a dictionary
-    if not isinstance(config["input"]["vertical"]["soilminthickness"]["netcdf"].get("variable"), dict):
-        config["input"]["vertical"]["soilminthickness"]["netcdf"]["variable"] = {}
-    
-    # Update the input vertical soilminthickness
-    config["input"]["vertical"]["soilminthickness"]["netcdf"]["variable"]["name"] = ST_key
-    config["input"]["vertical"]["soilminthickness"]["scale"] = soilthickness
-    
+
     # Update the starttime
     config["starttime"] = start
     

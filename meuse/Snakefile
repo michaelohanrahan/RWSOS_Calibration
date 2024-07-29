@@ -106,177 +106,190 @@ rule force_working_dir:
     message: f"Changing working directory to {cwd}." 
     shell: """ ( cd {cwd}) """ 
 
-'''
-:: initial instates ::
-This rule isnt waiting for the output of a previous rule, so it is run first and only once.
-That is why we hardcode the level. The subsequent rules will have to wait for an input to run for instates.
-#Try running this for 0 and then later dynamically make TOMLs for each level that react to the output of the main runs
-'''
 
-rule initial_instates: #level 0
-    input:
-        config_fn = cfg_template, #the input template
-    params:
-        ST_values = ST_values,
-        root = Path(input_dir),
-        ST_key= config["soilthickness_map"],
-        level = 0,
-        starttime = config["instate_starttime"],
-        endtime = config["instate_endtime"],
-    output: 
-        ST_instates_tomls = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{0}"+"_ST{thickness}"+".toml"), thickness=ST_str)
-    script:
-        """src/calib/create_instate_toml.py"""
+#Had to switch to a looping approach to get instates per level
+#Otherwise they would not wait for the previous level to finish
+for _level in range(0, last_level+1):
+    '''
+    :: initial instates ::
+    This rule isnt waiting for the output of a previous rule, so it is run first and only once.
+    That is why we hardcode the level. The subsequent rules will have to wait for an input to run for instates.
+    #Try running this for 0 and then later dynamically make TOMLs for each level that react to the output of the main runs
+    '''
 
-'''
-:: Run instates::
-We wait for the output of the initial state defining tomls and then we run the instates
-This will hopefully pick up on level 0, and then later on the other levels, hardcoding 0 here eliminates recursion
-'''
-rule run_instates:
-    input:
-       cfg = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level{item}_ST{thickness}.toml"), item=f"{{item}}", thickness=ST_str)
-    params:
-        project = Path(base_dir, "bin").as_posix(),
-        threads = config["wflow_threads"]
-    output:
-        done = expand(Path(input_dir, "instates", "instate_level{item}_ST{thickness}.nc"), item=f"{{item}}", thickness=ST_str)
-    shell:
-        f"""julia --project="{{params.project}}" -t {{params.threads}} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
+    rule: #level 0
+        name: f"initial_instates_L{_level}"
+        input:
+            config_fn = cfg_template, #the input template
+        params:
+            ST_values = ST_values,
+            root = Path(input_dir),
+            ST_key= config["soilthickness_map"],
+            level = _level,
+            starttime = config["instate_starttime"],
+            endtime = config["instate_endtime"],
+        output: #TOML expects: f"staticmaps_L{level}_ST{soilthickness}.nc"
+            ST_instates_tomls = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{_level}"+"_ST{_t_str}.toml"), thickness=ST_str)
+        script:
+            """src/calib/create_instate_toml.py"""
+    
+    rule ST_instate_staticmaps:
+        input: 
+            intomls = rules.initial_instates.output.ST_instates_tomls #keep execution waiting
+        params:
+            gauges = 
+        output:
+            ST_grids = 
 
-
-"""
-config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
-It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
-The output is a set of modified configuration files.
-#TODO: in each config that accesses a certain level & soilthickness the instate reference should match
-    If I can access the level and soilthickness from the {item} and {params} then we can point to the correct instate for each run
-"""
-
-rule config:
-    # input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
-    input: expand(Path(input_dir, "instates", "instate_level"+"{item}"+"_ST{thickness}.nc") , item=f"{{item}}", thickness=ST_str) #, level=f"{{item}}", thickness=[str(ST).replace('.', '') for ST in ST_values])
-    params: 
-        cfg_template = Path(cfg_template).as_posix(),
-        starttime = config["starttime"],
-        endtime = config["endtime"],
-        forcing_path = Path(input_dir, config["source_forcing_data"]),
-    output: 
-        expand(Path(calib_dir, "level"+"{item}", "{params}", config["wflow_cfg_name"]), item=f"{{item}}", params=paramspace.wildcard_pattern)
-    script:
-        """src/calib/set_config.py"""
+    '''
+    :: Run instates::
+    We wait for the output of the initial state defining tomls and then we run the instates
+    This will hopefully pick up on level 0, and then later on the other levels, hardcoding 0 here eliminates recursion
+    '''
+    rule run_instates:
+        input:
+            cfg = Path(input_dir, "instates", "wflow_sbm_getinstate_level{item}_ST{thickness}.toml")
+        params:
+            project = Path(base_dir, "bin").as_posix(),
+            threads = config["wflow_threads"]
+        output:
+            done = expand(Path(input_dir, "instates", "instate_level{item}_ST{thickness}.nc"), item=f"{{item}}", thickness=ST_str)
+        shell:
+            f"""julia --project="{{params.project}}" -t {{params.threads}} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
 
 
-'''
-create_params:  This rule creates parameter sets for the Wflow model. 
-                It takes a configuration file, a dataset of static maps, a parameter space instance, 
-                a list of parameter names, a list of parameter methods, a level, a graph, and a sub-catchment as parameters. 
-                The output is a set of static map files.
-#DONE: Make sure the co-scaling logic is here.... 
-#ADDED: lake_hqs to the output since i cannot see how to specify their specific location they are now alognside each grid file
-'''
+    """
+    config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
+    It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
+    The output is a set of modified configuration files.
+    #TODO: in each config that accesses a certain level & soilthickness the instate reference should match
+        If I can access the level and soilthickness from the {item} and {params} then we can point to the correct instate for each run
+    """
 
-rule create_params:
-    input: Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, config["wflow_cfg_name"])
-    params:
-        dataset = staticmaps,
-        params = paramspace.instance,
-        params_lname = lnames,
-        params_method = methods,
-        level = "level"+"{item}",
-        graph = graph,
-        sub_catch = subcatch
-    output: 
-        staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc"),
-        lake_hqs = expand(Path(calib_dir, "level"+"{item}", "{params}", "{lakes}"), item=f"{{item}}", params=paramspace.wildcard_pattern, lakes=[lake.split("/")[-1] for lake in lakes])
-    script: 
-        """src/calib/set_calib_params.py"""
-
-'''
-NEWRULE - where to place this? 
-#TODO: make sure that the new ST is only applied at the current level?
-- borrow the create params rule, applying the ST to the currrent level 
-- running those
-- only allowing those with available instates to run (i.e. level by level) 
-
-'''
+    rule config:
+        # input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
+        input: expand(Path(input_dir, "instates", "instate_level"+"{item}"+"_ST{thickness}.nc") , item=f"{{item}}", thickness=ST_str) #, level=f"{{item}}", thickness=[str(ST).replace('.', '') for ST in ST_values])
+        params: 
+            cfg_template = Path(cfg_template).as_posix(),
+            starttime = config["starttime"],
+            endtime = config["endtime"],
+            forcing_path = Path(input_dir, config["source_forcing_data"]),
+        output: 
+            expand(Path(calib_dir, "level"+"{item}", "{params}", config["wflow_cfg_name"]), item=f"{{item}}", params=paramspace.wildcard_pattern)
+        script:
+            """src/calib/set_config.py"""
 
 
-# rule run_instate_per_level:
-#     input:
-#         cfg = Path(input_dir, "instates", "wflow_sbm_getinstate_level{item}_ST{thickness}.toml")
-#     params:
-#         project = Path(base_dir, "bin").as_posix(),
-#         threads = config["wflow_threads"]
-#     output:
-#         done = Path(input_dir, "instates", "instate_level{item}_ST{thickness}.nc")
-#     log:
-#         Path("data", "0-log", "instate_L{item}", "ST{thickness}_wflow_initial_instate.log")
-#     shell:
-#         f"""julia --project="{{params.project}}" -t {{params.threads}} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
+    '''
+    create_params:  This rule creates parameter sets for the Wflow model. 
+                    It takes a configuration file, a dataset of static maps, a parameter space instance, 
+                    a list of parameter names, a list of parameter methods, a level, a graph, and a sub-catchment as parameters. 
+                    The output is a set of static map files.
+    #DONE: Make sure the co-scaling logic is here.... 
+    #ADDED: lake_hqs to the output since i cannot see how to specify their specific location they are now alognside each grid file
+    '''
+
+    rule create_params:
+        input: Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, config["wflow_cfg_name"])
+        params:
+            dataset = staticmaps,
+            params = paramspace.instance,
+            params_lname = lnames,
+            params_method = methods,
+            level = "level"+"{item}",
+            graph = graph,
+            sub_catch = subcatch
+        output: 
+            staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc"),
+            lake_hqs = expand(Path(calib_dir, "level"+"{item}", "{params}", "{lakes}"), item=f"{{item}}", params=paramspace.wildcard_pattern, lakes=[lake.split("/")[-1] for lake in lakes])
+        script: 
+            """src/calib/set_calib_params.py"""
+
+    '''
+    NEWRULE - where to place this? 
+    #TODO: make sure that the new ST is only applied at the current level?
+    - borrow the create params rule, applying the ST to the currrent level 
+    - running those
+    - only allowing those with available instates to run (i.e. level by level) 
+
+    '''
 
 
-'''
-wflow: This rule runs the hydrological model. It takes a configuration file and a grid (staticmap) file as input.
-#TODO: is it the Wflow rule that should have the instates as an expected input??? 
-#TODO: Only using the CAL time split...??? Shorter run time worse model...
-'''
+    # rule run_instate_per_level:
+    #     input:
+    #         cfg = Path(input_dir, "instates", "wflow_sbm_getinstate_level{item}_ST{thickness}.toml")
+    #     params:
+    #         project = Path(base_dir, "bin").as_posix(),
+    #         threads = config["wflow_threads"]
+    #     output:
+    #         done = Path(input_dir, "instates", "instate_level{item}_ST{thickness}.nc")
+    #     log:
+    #         Path("data", "0-log", "instate_L{item}", "ST{thickness}_wflow_initial_instate.log")
+    #     shell:
+    #         f"""julia --project="{{params.project}}" -t {{params.threads}} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
 
-rule wflow:
-    input: 
-        instates=expand(Path(input_dir, "instates", "instate_level"+"{item}"+"_ST"+"{thickness}"+".nc"), thickness=[str(ST).replace('.', '') for ST in ST_values], item=f"{{item}}"),
-        cfg = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
-        staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc")
-    output: Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc")
-    shell: 
-        f"""julia --project="{config['wflow_project_dir']}" -t {config['wflow_threads']} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
 
-'''
-@JING 25.07
-Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
-Output:  an unstacked performance.nc file with metrics and weights for each parameter set, and a best_params.csv file with the best parameter set.
-        out csv with the best parameter set for each gauge 
-        
-#TODO: discuss if we want to have a multiple param selection.. 
-    - can sample within distance tolerance of weighted euclidian sample
-#TODO: add parameter to fn to sample from the 10 closest to minima
-'''
+    '''
+    wflow: This rule runs the hydrological model. It takes a configuration file and a grid (staticmap) file as input.
+    #TODO: is it the Wflow rule that should have the instates as an expected input??? 
+    #TODO: Only using the CAL time split...??? Shorter run time worse model...
+    '''
 
-rule evaluate:
-    input: expand(Path(calib_dir, "level"+"{item}", "{params}", "run_default", "output_scalar.nc"), item=f"{{item}}", params=paramspace.instance_patterns)
-    params: 
-        observed_data = Path(source_dir, config["observed_data"]),
-        level = "{item}",
-        graph = graph,
-        params = df.to_dict(orient="records"), 
-        starttime = config["eval_starttime"],
-        endtime = config["eval_endtime"],
-        metrics = config["metrics"], #["kge", "nselog_mm7q_res", "peak_res"] #TODO: figure out how to split out the dictionary approach of peak res to get the right values
-        weights = config["weights"] #
-    output: 
-        best_params = Path(calib_dir, "level"+"{item}", "best_params.csv"),
-        performance = Path(calib_dir, "level"+"{item}", "performance.nc")
-    script: 
-        """src/calib/evaluate_params.py"""         # TODO: modify this script
+    rule wflow:
+        input: 
+            instates=expand(Path(input_dir, "instates", "instate_level"+"{item}"+"_ST"+"{thickness}"+".nc"), thickness=[str(ST).replace('.', '') for ST in ST_values], item=f"{{item}}"),
+            cfg = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
+            staticmaps = Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "staticmaps.nc")
+        output: Path(calib_dir, "level"+"{item}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc")
+        shell: 
+            f"""julia --project="{config['wflow_project_dir']}" -t {config['wflow_threads']} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
 
-'''
-This rule overwrites the staticmaps file with the best per level??
-#TODO: create a staticmaps per level? Not necessary if we are waiting for the done.txt
-'''
+    '''
+    @JING 25.07
+    Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
+    Output:  an unstacked performance.nc file with metrics and weights for each parameter set, and a best_params.csv file with the best parameter set.
+            out csv with the best parameter set for each gauge 
+            
+    #TODO: discuss if we want to have a multiple param selection.. 
+        - can sample within distance tolerance of weighted euclidian sample
+    #TODO: add parameter to fn to sample from the 10 closest to minima
+    '''
 
-rule set_params:
-    input: 
-        best_params = Path(calib_dir, "level"+"{item}", "best_params.csv")
-    params:
-        staticmaps = staticmaps,
-        sub_catch = subcatch,
-        params_lname = lnames,
-        params_method = methods
-    output: 
-        done = Path(calib_dir, "level"+"{item}", "done.txt"),
-        done_nc = Path(calib_dir, "level"+"{item}", "staticmaps_L"+"{item}"+".nc")
-    script:
-        """src/calib/set_eval_params.py"""
+    rule evaluate:
+        input: expand(Path(calib_dir, "level"+"{item}", "{params}", "run_default", "output_scalar.nc"), item=f"{{item}}", params=paramspace.instance_patterns)
+        params: 
+            observed_data = Path(source_dir, config["observed_data"]),
+            level = "{item}",
+            graph = graph,
+            params = df.to_dict(orient="records"), 
+            starttime = config["eval_starttime"],
+            endtime = config["eval_endtime"],
+            metrics = config["metrics"], #["kge", "nselog_mm7q_res", "peak_res"] #TODO: figure out how to split out the dictionary approach of peak res to get the right values
+            weights = config["weights"] #
+        output: 
+            best_params = Path(calib_dir, "level"+"{item}", "best_params.csv"),
+            performance = Path(calib_dir, "level"+"{item}", "performance.nc")
+        script: 
+            """src/calib/evaluate_params.py"""         # TODO: modify this script
+
+    '''
+    This rule overwrites the staticmaps file with the best per level??
+    #TODO: create a staticmaps per level? Not necessary if we are waiting for the done.txt
+    '''
+
+    rule set_params:
+        input: 
+            best_params = Path(calib_dir, "level"+"{item}", "best_params.csv")
+        params:
+            staticmaps = staticmaps,
+            sub_catch = subcatch,
+            params_lname = lnames,
+            params_method = methods
+        output: 
+            done = Path(calib_dir, "level"+"{item}", "done.txt"),
+            done_nc = Path(calib_dir, "level"+"{item}", "staticmaps_L"+"{item}"+".nc")
+        script:
+            """src/calib/set_eval_params.py"""
 
 '''
 Preparing the final stage: This rule prepares the final stage of the calibration process.
