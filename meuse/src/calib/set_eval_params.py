@@ -15,7 +15,20 @@ def main(
     params_method: tuple | list,
     out: Path | str,
 ):
-    """_summary_"""
+    """
+    Apply evaluation parameters to the static maps.
+
+    Args:
+        params (Path or str): Path to the best params csv.
+        staticmaps (Path or str): Path to the original staticmaps file.
+        sub_catch (Path or str): Path to the sub catchments file.
+        params_lname (tuple or list): List of parameter names.
+        params_method (tuple or list): List of parameter methods.
+        out (Path or str): Path to the output file.
+
+    Returns:
+        None
+    """
     # Get the staticmaps
     with xr.open_dataset(staticmaps) as _r:
         ds = _r.load()
@@ -50,7 +63,7 @@ def main(
 
     with open(out, "w") as _w:
         _w.write("Done!\n")
-    pass          
+    pass
 
 
 if __name__ == "__main__":

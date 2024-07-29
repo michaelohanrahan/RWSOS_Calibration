@@ -144,6 +144,9 @@ def change_config(model,
     # Update the endtime
     config["endtime"] = end
     
+    #we dont need the output from this period, csv outputs of generic name compete 
+    #stopping them from running in parallel
+    config.pop("csv", None)
     # print(config.keys())
     
     # Write the config to a TOML file
@@ -170,6 +173,7 @@ if __name__ == "__main__":
         os.makedirs("instates", exist_ok=True)
         l.info(f"Params:\n config_fn: {config_fn}\n root: {root}\n ST_values: {ST_values}\n ST_key: {ST_key}\n level: {level}\n start: {start}\n end: {end}")
         l.info(f"Creating instate files for soil thickness values: {ST_values}")
+    
     except NameError:
         os.chdir(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse')
         l.info("Running script in test mode")
