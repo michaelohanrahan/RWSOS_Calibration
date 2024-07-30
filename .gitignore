@@ -7,8 +7,8 @@
 *.log
 *.txt
 *.geojson
-*.toml
 *.pptx
 *.pdf
 *.png
-pixi.lock
+vanHessel/
+vanJoost/
