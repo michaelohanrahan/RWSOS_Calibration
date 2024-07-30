@@ -58,9 +58,6 @@ def main(
     params_ds = pd.read_csv(params, index_col="gauges")
     params_ds.index = params_ds.index.astype(int)
     
-    #params lname potentially has one value that needs to be split
-    # params_lname = ["a,b,c", "d", "e,f"]
-    # params_lname = [subitem for item in params_lname for subitem in (item.split(',') if ',' in item else [item])]
     # Randomly select one of the Top_x columns
     selected_column = random.choice(params_ds.columns)
     selected_params = params_ds[selected_column].apply(eval)  # Convert string representations of dicts to dicts
@@ -69,8 +66,6 @@ def main(
         ds[var] for var in params_lname
     ]
     
-    
-    #TODO: params_method: "add"; co-scaling n_land, n_
     for gauge, param_set in selected_params.items():
         # Select the sub-catchments corresponding to the current gauge
         select_vds = vds[vds.value == gauge]
@@ -80,7 +75,7 @@ def main(
             if params_method[idx] == "mult":
                 par_da[idx].values[mask] *= param_value
             elif params_method[idx] == "set":
-                par_da[idx].values[mask] += param_value
+                par_da[idx].values[mask] = param_value
             elif params_method[idx] == "add":
                 par_da[idx].values[mask] += param_value
     

@@ -29,7 +29,7 @@ base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ .
 basin = config["basin"]                                     # meuse
 
 workdir: base_dir.as_posix() / basin
-configfile: 'config/calib.yml'
+config: 'config/calib.yml'
 
 
 #working directory
@@ -282,15 +282,17 @@ for _level in range(0, last_level+1):
         input: expand(Path(calib_dir, f"level{_level}", "{params}", "run_default", "output_scalar.nc"), params=paramspace.instance_patterns)
         params: 
             observed_data = Path(source_dir, config["observed_data"]),
+            dry_month = config["dry_months"],
+            window = config["window"],
             level = f"{_level}",
             graph = graph,
             params = df.to_dict(orient="records"), 
             starttime = config["eval_starttime"],
             endtime = config["eval_endtime"],
-            metrics = config["metrics"], #["kge", "nselog_mm7q_res", "peak_res"] #TODO: figure out how to split out the dictionary approach of peak res to get the right values
-            weights = config["weights"] #
+            metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"] #TODO: normalize mae
+            weights = config["weights"] # [0.2, 0.25, 0.3, 0.25]
         output: 
-            best_params = Path(calib_dir, f"level{_level}", "best_params.csv"),
+            best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv"),
             performance = Path(calib_dir, f"level{_level}", "performance.nc")
         script: 
             """src/calib/evaluate_params.py"""         # TODO: modify this script
@@ -304,7 +306,7 @@ for _level in range(0, last_level+1):
     rule:
         name: f"set_params_L{_level}"
         input: 
-            best_params = Path(calib_dir, f"level{_level}", "best_params.csv")
+            best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv")
         params:
             staticmaps = staticmaps,
             sub_catch = subcatch,

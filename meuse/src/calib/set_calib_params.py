@@ -55,22 +55,14 @@ def main(
     for idx, (key, value) in enumerate(params.items()):
         #The key is the var id
         vds[key] = value
-        
-        #co-scaling can be acheived by splitting the lnames
-        if ',' in params_lname[idx]:
-            params_lnames = params_lname[idx].split(',')
-        else:
-            params_lnames = [params_lname[idx]]
-        for l_name in params_lnames:
-            da = ds[l_name]
-            if params_method[idx] == "mult":
-                da.values[mask] *= value
-            elif params_method[idx] == "set":
-                da.values[mask] = value
-            elif params_method[idx] == "add":
-                da.values[mask] += value    
-            l.info(f"Updated {l_name} with {value} using {params_method[idx]}")      
-            ds[l_name] = da
+        da = ds[params_lname[idx]]
+        if params_method[idx] == "mult":
+            da.values[mask] *= value
+        elif params_method[idx] == "set":
+            da.values[mask] = value
+        elif params_method[idx] == "add":
+            da.values[mask] += value          
+        ds[params_lname[idx]] = da
 
     ds.to_netcdf(out)
 
