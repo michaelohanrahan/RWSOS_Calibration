@@ -10,6 +10,9 @@ platforms = ["win-64", "linux-64"]
 python= ">=3.8"
 snakemake = {git = "https://github.com/michaelohanrahan/snakemake.git"}
 
+[system-requirements]
+linux = "4.18"
+
 [tasks]
 install-kernel = "python -m ipykernel install --user --name <kernel name> --display-name <kernel name>"
 

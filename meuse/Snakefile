@@ -23,8 +23,8 @@ else:
     DRIVE = "/p"
     PLATFORM = "Linux"
 
-# if "TEST" in config["calib_recipe"]:
-#     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
+if "TEST" in config["calib_recipe"]:
+    print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
 
 configfile: 'config/calib.yml'
 #default directories
