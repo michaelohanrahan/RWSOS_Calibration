@@ -23,14 +23,15 @@ if platform.system() == "Windows":
 elif platform.system() == "Linux":
     DRIVE = "/p"
     PLATFORM = "Linux"
-    print("\033[92m" + "Linux detected!" + "\033[0m")
+    print("\033[92m" + f"Linux detected! (DRIVE: {DRIVE})" + "\033[0m")
 
 if "TEST" in config["calib_recipe"]:
     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
 
 # configfile: 'config/calib.yml'
 #default directories
-base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
+base_dir = Path(f"{DRIVE}{config['base_dir']}") # p: or /p/ ... / RWSOS_Calibration / basin
+print(base_dir)
 print(f"base_dir: {base_dir}")
 print("exists: ", base_dir.exists())
 basin = config["basin"]                                     # meuse
@@ -324,7 +325,7 @@ Preparing the final stage: This rule prepares the final stage of the calibration
 rule prep_final_stage:
     input: 
         done = Path(calib_dir, "level"+f'{last_level}', "done.txt"),
-        performance = expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
+        performance = glob.glob(str(Path(calib_dir, "level*", "performance.nc"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
         cfg_args = [config["starttime"], config["endtime"], config["timestep"], Path(source_dir, config["source_forcing_data"])],

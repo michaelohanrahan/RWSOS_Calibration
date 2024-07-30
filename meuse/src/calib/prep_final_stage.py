@@ -18,7 +18,7 @@ def main(
     """
     .
     Args:
-        in_perf (tuple | list):
+        in_perf (tuple | list): the final performance files
         in_cfg (Path | str):
         in_maps (Path | str):
         cfg_args (tuple | list):
@@ -30,6 +30,7 @@ def main(
     """
     # Copy the staticmaps
     out_dir = Path(out_maps).parent
+    in_perf Path(in_perf).parent
 
     if not out_dir.exists():
         out_dir.mkdir()
