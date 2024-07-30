@@ -1,0 +1,8 @@
+*.json
+*.py
+*.nc
+*.txt
+*.csv
+*.log
+*.jl
+*.yml
