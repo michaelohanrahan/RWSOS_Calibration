@@ -14,8 +14,20 @@ def main(
     out_cfg: Path | str,
     out_maps: Path | str,
     out_perf: Path | str,
-):
-    """_summary_"""
+): 
+    """
+    .
+    Args:
+        in_perf (tuple | list):
+        in_cfg (Path | str):
+        in_maps (Path | str):
+        cfg_args (tuple | list):
+        out_cfg (Path | str):
+        out_maps (Path | str): 
+        out_perf (Path | str): 
+    Returns:
+    
+    """
     # Copy the staticmaps
     out_dir = Path(out_maps).parent
 
