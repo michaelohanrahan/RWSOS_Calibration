@@ -24,13 +24,14 @@ else:
 # if "TEST" in config["calib_recipe"]:
 #     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
 
-## Some preparatory actions
-# Ensure the model directory is there
-config: 'config/calib.yml'
-
 #default directories
 base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
 basin = config["basin"]                                     # meuse
+
+workdir: base_dir.as_posix() / basin
+configfile: 'config/calib.yml'
+
+
 #working directory
 os.chdir(Path(base_dir, basin))
 #chdir but with pathlib
@@ -109,9 +110,9 @@ rule all:
         expand(Path(input_dir, "instates", "instate_level{level}_ST{_t_str}.nc"), level=range(0, last_level+1), _t_str=ST_str),
     default_target: True
 
-rule force_working_dir: 
-    message: f"Changing working directory to {cwd}." 
-    shell: """ ( cd {cwd}) """ 
+# rule force_working_dir: 
+#     message: f"Changing working directory to {cwd}." 
+#     shell: """ ( cd {cwd}) """ 
 
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
 rule init_done:
@@ -217,6 +218,7 @@ for _level in range(0, last_level+1):
             expand(Path(calib_dir, f"level{_level}", "{params}", config["wflow_cfg_name"]), params=paramspace.wildcard_pattern)
         script:
             """src/calib/set_config.py"""
+            
     '''
     create_params:  This rule creates parameter sets for the Wflow model. 
                     It takes a configuration file, a dataset of static maps, a parameter space instance, 
@@ -255,7 +257,8 @@ for _level in range(0, last_level+1):
         input: 
             instates=expand(Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"), _t_str=ST_str),
             cfg = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
-            staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc")
+            staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
+            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
         params:
             project = Path(base_dir, "bin").as_posix(),
             threads = config["wflow_threads"]
