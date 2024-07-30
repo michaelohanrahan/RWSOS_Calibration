@@ -1,5 +1,5 @@
 from pathlib import Path
-
+from setuplog import setup_logging
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ def main(
     sub_catch: Path | str,
     params_lname: tuple | list,
     params_method: tuple | list,
+    level: int,
     out: Path | str,
 ):
     """
@@ -29,6 +30,17 @@ def main(
     Returns:
         None
     """
+    #preseve the precursor gridfiles
+    prev_level = level-1
+    if prev_level < 0:
+        prev_level = 'original'
+    else:
+        f"L{prev_level}"
+    save_old_dir = out.parent / "intermediate"
+    save_old = f"staticmaps_{prev_level}.nc"
+    
+    shutil.copy(staticmaps, Path(save_old_dir) / save_old)
+    
     # Get the staticmaps
     with xr.open_dataset(staticmaps) as _r:
         ds = _r.load()
@@ -43,6 +55,10 @@ def main(
     params_ds = pd.read_csv(params, index_col="gauges")
     params_ds.index = params_ds.index.astype(int)
     
+    #params lname potentially has one value that needs to be split
+    # params_lname = ["a,b,c", "d", "e,f"]
+    params_lname = [subitem for item in params_lname for subitem in (item.split(',') if ',' in item else [item])]
+    
     par_da = [
         ds[var] for var in params_lname
     ]
@@ -55,6 +71,8 @@ def main(
                 par_da[idx].values[mask] *= value
             elif params_method[idx] == "set":
                 par_da[idx].values[mask] = value
+            elif params_method[idx] == "add":
+                par_da[idx].values[mask] += value
 
     for idx, da in enumerate(par_da):
         ds[params_lname[idx]] = da
@@ -69,13 +87,14 @@ def main(
 if __name__ == "__main__":
     if "snakemake" in globals():
         mod = globals()["snakemake"]
-        
+        l = setup_logging('data/0-log', f'08-initial_instate_tomls_L{snakemake.params.level}.log')
         main(
             mod.input.best_params,
             mod.params.staticmaps,
             mod.params.sub_catch,
             mod.params.params_lname,
             mod.params.params_method,
+            mod.params.level,
             mod.output.done,
         )
 

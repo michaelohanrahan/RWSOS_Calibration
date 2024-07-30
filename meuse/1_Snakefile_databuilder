@@ -17,7 +17,7 @@ from glob import glob
 #=========================================================
 ## Directories and paths
 if platform.system() == "Windows":
-    DRIVE = "p:"
+    DRIVE = "p:/"
     COPY = "copy"
 else:
     DRIVE = "/p"

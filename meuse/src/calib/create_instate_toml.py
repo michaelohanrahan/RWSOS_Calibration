@@ -14,57 +14,6 @@ def read_model(config_fn, log):
     # model.read_grid()
     return model
 
-# def change_config(model, 
-#                   root,
-#                   level, 
-#                   ST_key,
-#                   soilthickness,
-#                   start,
-#                   end,
-#                   log):
-    
-#     # Working
-#     model.read_config()
-#     model.set_config("log", f"../../0-log/instates_level{level}_ST{str(soilthickness).replace('.', '')}.log")
-#     model.set_config("reinit", True)
-#     model.set_config('input', {'path_static':"../staticmaps/staticmaps.nc"})
-#     l.info(f"static file: {model.config['input']['path_static']}")
-    
-#     model.set_config('input', 'path_forcing', "../forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc")
-#     l.info(f"forcing file: {model.config['input']['path_forcing']}")
-    
-#     model.set_config("state", {"path_output":f'instate_level{level}_ST{str(soilthickness).replace(".", "")}.nc'})
-#     l.info(f"state file: {model.config['state']['path_output']}")
-    
-#     #notworking
-    
-#     #declare it as a nc variable in the 
-#     model.set_config('input', 'vertical', 'soilthickness', 'netcdf', 'variable', 'name', ST_key)
-#     l.info(f'nc variable name: {model.config["input"]["vertical"]["soilthickness"]["netcdf"]["variable"]["name"]}')
-    
-#     model.set_config('input', 'vertical', 'soilminthickness', 'netcdf', 'variable', {'name': ST_key}) 
-#     l.info(f'nc variable name: {model.config["input"]["vertical"]["soilminthickness"]["netcdf"]["variable"]["name"]}')
-       
-#     model.set_config('input','vertical','soilthickness',{"scale":soilthickness})
-#     l.info(f"soilthickness: {model.config['input']['vertical']['soilthickness']}")
-    
-#     model.set_config('input','vertical','soilminthickness',{"scale":soilthickness})
-#     l.info(f"soilminthickness: {model.config['input']['vertical']['soilminthickness']}")
-    
-#     model.set_config("starttime", start)
-#     l.info(f"start time: {model.config['starttime']}")
-    
-#     model.set_config("endtime", end)     
-#     l.info(f"end time: {model.config['endtime']}")
-    
-    
-    
-#     model.set_root(Path(root, "instates"), mode="w+")
-    
-#     l.info(f"Writing instate file for soil thickness: {soilthickness}")
-#     model.write_config(f"wflow_sbm_getinstate_level{level}_ST{str(soilthickness).replace('.', '')}.toml")
-#     return model
-
 def change_config(model, 
                   root,
                   level, 
@@ -77,7 +26,7 @@ def change_config(model,
     # this is a toml file
     config = model.config
     # update the log 
-    config["log"] = f"../../0-log/instate_L{0}/instates_level{level}_ST{str(soilthickness).replace('.', '')}.txt"
+    config["log"] = f"../../0-log/instate_L{level}/instates_level{level}_ST{str(soilthickness).replace('.', '')}.txt"
     
     # casename
     config["casename"] = f"instates_level{level}_ST{str(soilthickness).replace('.', '')}"
@@ -119,7 +68,7 @@ def change_config(model,
 
 if __name__ == "__main__":
     
-    l = setup_logging('data/0-log', '01-create_instate_tomls.log')
+    l = setup_logging('data/0-log', f'01-initial_instate_tomls_L{snakemake.params.level}.log')
     try:
         config_fn = snakemake.input.config_fn
         root= snakemake.params.root

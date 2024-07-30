@@ -26,50 +26,57 @@ def main(
     #DONE: make sure the calibrecipe lnames match 
     #DONE: create Floodplain_N
     """
-    if not os.path.exists(out):
-        # Load the current main dataset
-        ds = xr.open_dataset(p)
-        l.info(f"Loading dataset from {p}")
-        # Make integers of the gauge_ids
-        gauge_int = [
-            int(item) for item in gauge_ids
-        ]
-        l.info(f"Updating the following gauge_ids: {gauge_int}")
-
-        # Load the geometries
-        vds = gpd.read_file(sub_catch)
-        
-        # Get the relevant sub catchments
-        vds = vds.astype({"value": int})
-        vds = vds[vds.value.isin(gauge_int)]
-        
-        
-        # Create the data mask
-        mask = ds.raster.geometry_mask(vds)
-
-        # Loop through the parameters
-        for idx, (key, value) in enumerate(params.items()):
-            vds[key] = value
-            
-            #co-scaling can be acheived by splitting the lnames
-            if ',' in params_lname[idx]:
-                params_lnames = params_lname[idx].split(',')
-            else:
-                params_lnames = [params_lname[idx]]
-            for l_name in params_lnames:
-                da = ds[l_name]
-                if params_method[idx] == "mult":
-                    da.values[mask] *= value
-                elif params_method[idx] == "set":
-                    da.values[mask] = value
-                elif params_method[idx] == "add":
-                    da.values[mask] += value          
-                ds[l_name] = da
-
-        ds.to_netcdf(out)
+    # if not os.path.exists(out):
+    ST_val = params["st"]
+    l.info(f"parsed soil thickness value: {ST_val}")
     
-        l.info(f"Writing dataset to {out}")
+    # Load the current main dataset
+    ds = xr.open_dataset(p)
+    l.info(f"Loading dataset from {p}")
+    # Make integers of the gauge_ids
+    gauge_int = [
+        int(item) for item in gauge_ids
+    ]
+    l.info(f"Updating the following gauge_ids: {gauge_int}")
 
+    # Load the geometries
+    vds = gpd.read_file(sub_catch)
+    
+    # Get the relevant sub catchments
+    #vds is now a geodataframe
+    vds = vds.astype({"value": int})
+    #vds is now a geodataframe with only the gauges of interest
+    vds = vds[vds.value.isin(gauge_int)]
+    
+    # Create the data mask
+    mask = ds.raster.geometry_mask(vds)
+
+    # Loop through the parameters
+    for idx, (key, value) in enumerate(params.items()):
+        #The key is the var id
+        vds[key] = value
+        
+        #co-scaling can be acheived by splitting the lnames
+        if ',' in params_lname[idx]:
+            params_lnames = params_lname[idx].split(',')
+        else:
+            params_lnames = [params_lname[idx]]
+        for l_name in params_lnames:
+            da = ds[l_name]
+            if params_method[idx] == "mult":
+                da.values[mask] *= value
+            elif params_method[idx] == "set":
+                da.values[mask] = value
+            elif params_method[idx] == "add":
+                da.values[mask] += value    
+            l.info(f"Updated {l_name} with {value} using {params_method[idx]}")      
+            ds[l_name] = da
+
+    ds.to_netcdf(out)
+
+    l.info(f"Writing dataset to {out}")
+
+    #make sure the lakes h-q rating relation is also copied
     if not os.path.exists(lakes_out):
         if len(lakes_in)!=len(lakes_out):
             l.error(f"lakes_in and lakes_out should have the same length")
