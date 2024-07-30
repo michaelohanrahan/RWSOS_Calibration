@@ -1,0 +1,301 @@
+# Extract settings from yml file
+region = config["region"]
+reference_toml_fn = config["reference_toml_fn"]
+forcing_dir = config["forcing_dir"]
+climate_scenario = config["climate_scenario"]
+
+# Julia settings
+julia_project = config["julia_project"]
+julia_threads = config["julia_threads"]
+
+# Update model root according to settings
+config["reference_model_root"] = config["reference_model_root"].format(
+    region=region
+)
+
+# Update output dir according to settings
+config["snake_output_dir"] = config["snake_output_dir"].format(
+    region=region,
+    climate_scenario=climate_scenario
+)
+
+reference_model_root = config["reference_model_root"]
+snake_output_dir = config["snake_output_dir"]
+
+rule all:
+    input:
+        f"{snake_output_dir}/output_scen_2100/wflow_sbm_scen_2100.toml", f"{snake_output_dir}/output_scen_2100_p2/wflow_sbm_scen_2100_p2.toml", f"{snake_output_dir}/output_scen_2100_p3/wflow_sbm_scen_2100_p3.toml", f"{snake_output_dir}/output_scen_2100_p4/wflow_sbm_scen_2100_p4.toml", f"{snake_output_dir}/output_scen_2100_p5/wflow_sbm_scen_2100_p5.toml", f"{snake_output_dir}/output_scen_2100_p6/wflow_sbm_scen_2100_p6.toml", f"{snake_output_dir}/output_scen_2100_p7/wflow_sbm_scen_2100_p7.toml", f"{snake_output_dir}/output_scen_2100_p8/wflow_sbm_scen_2100_p8.toml"
+
+rule toml_historical:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_historical.toml"
+    params:
+        sim_start = "1991-01-01T00:00:00",
+        sim_stop = "2018-12-31T00:00:00",
+        forcing_fn = "hist",
+        reinit = True
+    script:
+        "scripts/update_toml.py"
+
+rule toml_fill_hist_2050_1:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_fill_hist_2050_1.toml"
+    params:
+        sim_start = "2012-01-01T00:00:00",
+        sim_stop = "2018-12-31T00:00:00",
+        forcing_fn = "hist",
+        instates_dir = "historical"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_fill_hist_2050_2:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_fill_hist_2050_2.toml"
+    params:
+        sim_start = "2001-01-01T00:00:00",
+        sim_stop = "2008-12-31T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "fill_hist_2050_1"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_warmup_2100:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_warmup_2100.toml"
+    params:
+        sim_start = "2003-01-01T00:00:00",
+        sim_stop = "2004-12-31T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "fill_hist_2050_2"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_scen_2100:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100.toml"
+    params:
+        sim_start = "2001-01-01T00:00:00",
+        sim_stop = "2030-12-31T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "warmup_2100"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_scen_2100_p2:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p2.toml"
+    params:
+        sim_start = "2031-01-01T00:00:00",
+        sim_stop = "2060-12-30T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "warmup_2100"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_scen_2100_p3:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p3.toml"
+    params:
+        sim_start = "2060-12-31T00:00:00",
+        sim_stop = "2090-12-30T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "warmup_2100"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_scen_2100_p4:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p4.toml"
+    params:
+        sim_start = "2090-12-31T00:00:00",
+        sim_stop = "2120-12-30T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "warmup_2100"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_scen_2100_p5:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p5.toml"
+    params:
+        sim_start = "2120-12-31T00:00:00",
+        sim_stop = "2150-12-30T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "warmup_2100"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_scen_2100_p6:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p6.toml"
+    params:
+        sim_start = "2150-12-31T00:00:00",
+        sim_stop = "2180-12-29T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "warmup_2100"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_scen_2100_p7:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p7.toml"
+    params:
+        sim_start = "2180-12-30T00:00:00",
+        sim_stop = "2210-12-30T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "warmup_2100"
+    script:
+        "scripts/update_toml.py"
+
+rule toml_scen_2100_p8:
+    output:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p8.toml"
+    params:
+        sim_start = "2210-12-31T00:00:00",
+        sim_stop = "2240-12-29T00:00:00",
+        forcing_fn = "2100",
+        instates_dir = "warmup_2100"
+    script:
+        "scripts/update_toml.py"
+
+rule wflow_historical:
+    input:
+        toml_fn = rules.toml_historical.output.toml_fn
+    output:
+        outstates = f"{snake_output_dir}/output_historical/outstates.nc"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} -e "using Wflow; Wflow.run()" "{input.toml_fn}"
+        """
+
+rule wflow_fill_hist_2050_1:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_fill_hist_2050_1.toml",
+        instates = f"{snake_output_dir}/output_historical/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_fill_hist_2050_1/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_fill_hist_2050_1/wflow_sbm_fill_hist_2050_1.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} -e "using Wflow; Wflow.run()" "{input.toml_fn}"
+        """
+
+rule wflow_fill_hist_2050_2:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_fill_hist_2050_2.toml",
+        instates = f"{snake_output_dir}/output_fill_hist_2050_1/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_fill_hist_2050_2/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_fill_hist_2050_2/wflow_sbm_fill_hist_2050_2.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """
+
+rule wflow_warmup_2100:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_warmup_2100.toml",
+        instates = f"{snake_output_dir}/output_fill_hist_2050_2/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_warmup_2100/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_warmup_2100/wflow_sbm_warmup_2100.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """
+
+rule wflow_scen_2100:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100.toml",
+        instates = f"{snake_output_dir}/output_warmup_2100/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_scen_2100/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_scen_2100/wflow_sbm_scen_2100.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """
+
+rule wflow_scen_2100_p2:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p2.toml",
+        instates = f"{snake_output_dir}/output_warmup_2100/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_scen_2100_p2/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_scen_2100_p2/wflow_sbm_scen_2100_p2.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """
+
+rule wflow_scen_2100_p3:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p3.toml",
+        instates = f"{snake_output_dir}/output_warmup_2100/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_scen_2100_p3/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_scen_2100_p3/wflow_sbm_scen_2100_p3.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """
+
+rule wflow_scen_2100_p4:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p4.toml",
+        instates = f"{snake_output_dir}/output_warmup_2100/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_scen_2100_p4/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_scen_2100_p4/wflow_sbm_scen_2100_p4.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """
+
+rule wflow_scen_2100_p5:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p5.toml",
+        instates = f"{snake_output_dir}/output_warmup_2100/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_scen_2100_p5/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_scen_2100_p5/wflow_sbm_scen_2100_p5.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """
+
+rule wflow_scen_2100_p6:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p6.toml",
+        instates = f"{snake_output_dir}/output_warmup_2100/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_scen_2100_p6/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_scen_2100_p6/wflow_sbm_scen_2100_p6.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """
+
+rule wflow_scen_2100_p7:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p7.toml",
+        instates = f"{snake_output_dir}/output_warmup_2100/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_scen_2100_p7/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_scen_2100_p7/wflow_sbm_scen_2100_p7.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """
+
+rule wflow_scen_2100_p8:
+    input:
+        toml_fn = f"{snake_output_dir}/wflow_sbm_scen_2100_p8.toml",
+        instates = f"{snake_output_dir}/output_warmup_2100/outstates.nc"
+    output:
+        outstates = f"{snake_output_dir}/output_scen_2100_p8/outstates.nc",
+        out_toml = f"{snake_output_dir}/output_scen_2100_p8/wflow_sbm_scen_2100_p8.toml"
+    shell:
+        """
+        julia --project="{julia_project}" -t {julia_threads} scripts/run_wflow_idxmap_071.jl "{input.toml_fn}"
+        """

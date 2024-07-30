@@ -99,12 +99,12 @@ with open(config["calib_recipe"]) as recipe:
 # Define the main rule all that expects all the visualization files to have been created for successfull completion
 # rule all:
 # Define the main rule all that expects all the visualization files to have been created for successful completion
+#TODO: Figure out dynamic resources from the slurm availability
 '''
 :: rule all ::
 Defines the overall default target
 We expect upon successfull completion that all gauges will have been visualized
 '''
-
 rule all:
     input: 
         expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements),
@@ -192,8 +192,6 @@ for _level in range(0, last_level+1):
             Path(log_dir, f"instate_{_level}", f"instates_level{_level}_ST"+"{_t_str}.txt")
         shell:
             f"""julia --project="{{params.project}}" -t {{params.threads}} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
-
-
     """
     config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
     It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
