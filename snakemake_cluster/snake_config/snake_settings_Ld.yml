@@ -1,0 +1,20 @@
+# Model region to run (Rhine or Meuse)
+region: "Rhine"
+# Name of the climate scenario to run, excluding the year
+# Choose from ["Md", "Mn", "Hn", "Hd", "Ln", "Ld", "L"]
+# IMPORTANT: make sure to use the correct snakefile for each scenario (L, M, H, P)
+climate_scenario: "Ld"
+
+# Path of the reference model
+reference_model_root: "/p/11209265-grade2023/climate_scenarios/scenarios_23/3_Wflow/{region}_forCouplingWithRibasim/models/wflow_202407"
+reference_toml_fn: "wflow_sbm_daily_linux.toml"
+
+# Location of all forcing files (climate scenarios)
+forcing_dir: "/p/11209265-knmi23-scenario-data/climate_scenarios/scenarios_23/1_input_240/fromKNMI_wflow/RACMO23_coarse_voorWflow/conversionDone/merged"
+
+# Path of the results
+snake_output_dir: "/p/11209265-grade2023/climate_scenarios/scenarios_23/3_Wflow/{region}_forCouplingWithRibasim/results/{climate_scenario}"
+
+# Path to julia project
+julia_project: "/p/11209265-grade2023/climate_scenarios/scenarios_23/3_Wflow/Rhine_forCouplingWithRibasim/envs/wflow_v073"
+julia_threads: 4

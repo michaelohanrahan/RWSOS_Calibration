@@ -18,24 +18,31 @@ import glob
 ## Directories and paths
 if platform.system() == "Windows":
     DRIVE = "p:/"
+    PLATFORM = "Windows"
 else:
     DRIVE = "/p"
+    PLATFORM = "Linux"
 
 # if "TEST" in config["calib_recipe"]:
 #     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
 
+configfile: 'config/calib.yml'
 #default directories
 base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
 basin = config["basin"]                                     # meuse
+<<<<<<< HEAD
 
 workdir: base_dir.as_posix() / basin
 config: 'config/calib.yml'
+=======
+workdir: Path(base_dir, basin).as_posix()
+>>>>>>> 3afe362ab5e7a0ffe745e4aab2b887996e101adc
 
 
 #working directory
-os.chdir(Path(base_dir, basin))
-#chdir but with pathlib
-cwd = Path.cwd().as_posix()
+# os.chdir(Path(base_dir, basin))
+# #chdir but with pathlib
+# cwd = Path.cwd().as_posix()
 
 # print(f"\033[94m{'*'*20}\n{'-'*10} calibrating: {basin}\n{'*'*20}\033[0m")
 log_dir = Path(base_dir, basin, config["log_dir"])            # data/0-log
@@ -60,7 +67,7 @@ elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["
 
 #paramspace
 lnames, methods, df = create_set(config["calib_recipe"])
-print(f'{lnames}')
+# print(f'{lnames}')
 paramspace = Paramspace(df)
 
 #staticmaps
@@ -70,7 +77,7 @@ staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
 lakes = glob.glob(str(Path(input_dir, "staticmaps", "lake*.csv")))
 lakes = [Path(lake).as_posix() for lake in lakes]
 lakefiles = [lake.split("/")[-1] for lake in lakes]
-print(f'{lakefiles}')
+# print(f'{lakefiles}')
 
 #subcatch
 subcatch = Path(input_dir, "staticgeoms", f'subcatch_{config["gauges"]}.geojson')
@@ -98,16 +105,17 @@ with open(config["calib_recipe"]) as recipe:
 # Define the main rule all that expects all the visualization files to have been created for successfull completion
 # rule all:
 # Define the main rule all that expects all the visualization files to have been created for successful completion
+#TODO: Figure out dynamic resources from the slurm availability
 '''
 :: rule all ::
 Defines the overall default target
 We expect upon successfull completion that all gauges will have been visualized
 '''
-
 rule all:
     input: 
         expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements),
         expand(Path(input_dir, "instates", "instate_level{level}_ST{_t_str}.nc"), level=range(0, last_level+1), _t_str=ST_str),
+        expand(Path(calib_dir, "level{nlevel}", "done.txt"), nlevel=range(-1, last_level+1)),
     default_target: True
 
 # rule force_working_dir: 
@@ -117,15 +125,13 @@ rule all:
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
 rule init_done:
     params:
-        d = Path(calib_dir, f"level-1")
+        d = Path(calib_dir, "level-1")
     output: 
-        p = Path(calib_dir, f"level-1", "done.txt")
+        p = Path(calib_dir, "level-1", "done.txt")
     run:
         os.makedirs(params.d, exist_ok=True)
         with open(output.p, "w") as f:
             f.write("done")
-
-
 
 #Had to switch to a looping approach to get instates per level
 #Otherwise they would not wait for the previous level to finish
@@ -136,7 +142,6 @@ for _level in range(0, last_level+1):
     That is why we hardcode the level. The subsequent rules will have to wait for an input to run for instates.
     #Try running this for 0 and then later dynamically make TOMLs for each level that react to the output of the main runs
     '''
-
     rule: 
         name: f"initial_instate_tomls_L{_level}"
         input:
@@ -154,12 +159,10 @@ for _level in range(0, last_level+1):
             ST_instates_tomls = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{_level}"+"_ST{_t_str}.toml"), _t_str=ST_str)
         script:
             """src/calib/create_instate_toml.py"""
-    
     '''
     Now in the looping structure we can wait for the best parameters upstream before we run the instates
     the downside curently is the staticmaps in the input is consistently overwritten per level... 
     '''
-
     rule:
         name: f"ST_instate_staticmaps_L{_level}"
         input: 
@@ -176,7 +179,6 @@ for _level in range(0, last_level+1):
             ST_grids = Path(input_dir, "instates", "staticmaps_L"+f"{_level}"+"_ST{_t_str}.nc")
         script:
             """src/calib/set_instate_ST.py"""
-
     '''
     :: Run instates::
     We wait for the output of the initial state defining tomls and then we run the instates
@@ -196,8 +198,6 @@ for _level in range(0, last_level+1):
             Path(log_dir, f"instate_{_level}", f"instates_level{_level}_ST"+"{_t_str}.txt")
         shell:
             f"""julia --project="{{params.project}}" -t {{params.threads}} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
-
-
     """
     config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
     It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
@@ -218,7 +218,7 @@ for _level in range(0, last_level+1):
             expand(Path(calib_dir, f"level{_level}", "{params}", config["wflow_cfg_name"]), params=paramspace.wildcard_pattern)
         script:
             """src/calib/set_config.py"""
-            
+
     '''
     create_params:  This rule creates parameter sets for the Wflow model. 
                     It takes a configuration file, a dataset of static maps, a parameter space instance, 

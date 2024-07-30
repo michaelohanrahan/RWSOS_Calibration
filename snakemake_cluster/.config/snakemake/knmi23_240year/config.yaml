@@ -1,0 +1,45 @@
+#------
+latency-wait: 60
+keep-going: True
+rerun-incomplete: False
+printshellcmds: True
+scheduler: greedy
+restart-times: 2
+# use-conda: True
+#-------
+jobs: 50
+default-resources:
+  - account=hyd
+  - qos=sbatch
+  - time=2880
+  - partition="4pcpu"
+  - threads=4
+cluster:
+  sbatch
+    --qos={resources.qos}
+    --account={resources.account}
+    --time={resources.time}
+    --ntasks={resources.threads}
+    --partition={resources.partition}
+    --output=logs/slurm_%x_%j.out
+    --error=logs/slurm_%x_%j.err
+    # --mem={resources.mem_mb}
+# set-resources:
+#   - unzip:partition="1vcpu"
+#   - cdo_regrid:partition="4vcpu"
+#   - ds_convert_merge:partition="4vcpu"
+#   - figure_forcing:partition="4vcpu"
+#   - update_toml_wflow:partition="1vcpu"
+#   - run_wflow:partition="4vcpu"
+#   - unzip:threads=1
+#   - cdo_regrid:threads=4
+#   - ds_convert_merge:threads=4
+#   - figure_forcing:threads=4
+#   - update_toml_wflow:threads=1
+#   - run_wflow:threads=4
+#   - unzip:time=10
+#   - cdo_regrid:time=15
+#   - ds_convert_merge:time=30
+#   - figure_forcing:time=15
+#   - update_toml_wflow:time=10
+#   - run_wflow:time=720
