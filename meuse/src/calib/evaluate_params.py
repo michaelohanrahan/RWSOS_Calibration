@@ -4,14 +4,15 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-#TODO: add peak timing to metrics, conforming to data structure (separate peak metrics into two function for timing and magnitude)
-from metrics import kge, nselog_mm7q, peak_errors, weighted_euclidean
+#TODO: add peak timing to metrics, conforming to data structure
+from metrics import kge, nselog_mm7q, mae_peak_timing, mape_peak_magnitude, weighted_euclidean
 
+# define a dictionary to specify the metrics to use
 METRICS = {
     "kge": kge,
     "nselog_mm7q": nselog_mm7q,
-    "mae_timing": mae_timing,
-    "mape_peak": mape_peak,
+    "mae_peak_timing": mae_peak_timing,
+    "mape_peak_magnitude": mape_peak_magnitude,
 } 
 
 
@@ -36,6 +37,8 @@ def create_coords_from_params(
 def main(
     modelled: tuple | list,
     observed: Path | str,
+    dry_month: list,
+    window: int,
     gauges: tuple | list,
     params: tuple | list,
     starttime: str,
@@ -86,17 +89,21 @@ def main(
 
         # Calculate the metric values
         for metric in metrics:
-            e = METRICS[metric](
-                md,
-                obs,
-                gauges
-            )
+            metric_func = METRICS.get(metric)
+            if not metric_func:
+                raise ValueError(f"Metric '{metric}' is not defined in METRICS.")
+            
+            # Check if additional parameters are needed based on the metric type
+            if metric == "nselog_mm7q":
+                e = metric_func(md, obs, dry_month, gauges)
+            elif metric in {"mae_peak_timing", "mape_peak_magnitude"}:
+                e = metric_func(md, obs, window, gauges)
+            else:
+                e = metric_func(md, obs, gauges)
+            
+            # Special case for the 'kge' metric to extract specific component    
             if metric == "kge":
                 e = e["kge"]
-            elif metric == "mae_timing":
-                e = e["mae_timing"]
-            elif metric == "mape_peak":
-                e = e["mape_peak"]
             
             metric_values[metric].append(e)
             evals.append(e)
@@ -141,17 +148,19 @@ def main(
         Path(out_dir, "performance.nc")
     )
 
-    # Best parameters sets by indexing minimum euc. dist.
-    best_params = np.argmin(res, axis=0)
+#TODO: test this best 10 params part
+    # Best 10 parameters sets by indexing minimum euc. dist.
+    best_10params = np.argsort(res, axis=0)[:10]
 
     _out = []
-    for idx, best in enumerate(best_params):
-        _out.append(params[best])
+    for idx, best in enumerate(best_10params.T):
+        _out.append([params[i] for i in best])
     
     # Create a pandas dataframe for the best parameters
     out_ds = pd.DataFrame(
         _out,
         index=gauges,
+        columns=[f"Top_{i+1}" for i in range(10)]
     )
 
     # Set the index name of the csv

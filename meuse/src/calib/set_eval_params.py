@@ -5,7 +5,9 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from hydromt.raster import RasterDataset
+import random
 
+#TODO: to be tested
 
 def main(
     params: Path | str,
@@ -15,20 +17,7 @@ def main(
     params_method: tuple | list,
     out: Path | str,
 ):
-    """
-    Apply evaluation parameters to the static maps.
-
-    Args:
-        params (Path or str): Path to the best params csv.
-        staticmaps (Path or str): Path to the original staticmaps file.
-        sub_catch (Path or str): Path to the sub catchments file.
-        params_lname (tuple or list): List of parameter names.
-        params_method (tuple or list): List of parameter methods.
-        out (Path or str): Path to the output file.
-
-    Returns:
-        None
-    """
+    """_summary_"""
     # Get the staticmaps
     with xr.open_dataset(staticmaps) as _r:
         ds = _r.load()
@@ -43,18 +32,27 @@ def main(
     params_ds = pd.read_csv(params, index_col="gauges")
     params_ds.index = params_ds.index.astype(int)
     
+    # Randomly select one of the Top_x columns
+    selected_column = random.choice(params_ds.columns)
+    selected_params = params_ds[selected_column].apply(eval)  # Convert string representations of dicts to dicts
+    
     par_da = [
         ds[var] for var in params_lname
     ]
-
-    for gauge in params_ds.index:
-        select_vds = vds[vds.value.isin([gauge])]
+    
+    
+    #TODO: params_method: "add"; co-scaling n_land, n_
+    for gauge, param_set in selected_params.items():
+        # Select the sub-catchments corresponding to the current gauge
+        select_vds = vds[vds.value == gauge]
         mask = ds.raster.geometry_mask(select_vds)
-        for idx, value in enumerate(params_ds.loc[gauge,:].values):
+
+        for idx, param_value in enumerate(param_set.values()):
             if params_method[idx] == "mult":
-                par_da[idx].values[mask] *= value
+                par_da[idx].values[mask] *= param_value
             elif params_method[idx] == "set":
-                par_da[idx].values[mask] = value
+                par_da[idx].values[mask] = param_value
+    
 
     for idx, da in enumerate(par_da):
         ds[params_lname[idx]] = da
@@ -63,7 +61,7 @@ def main(
 
     with open(out, "w") as _w:
         _w.write("Done!\n")
-    pass
+    pass          
 
 
 if __name__ == "__main__":

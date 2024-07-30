@@ -250,9 +250,14 @@ def _peaks(
 
     return np.array(valid_peaks), timing_errors
 
-
-def normalize_leadlag(val:float):
+#TODO: mae has very different value ranges compared to KGE, NSE, MAPE. How to integrate to a weighted euclidean?
+# 1-log(mae+1)? or 1-mae/window?
+def normalize_mae(
+    val:float,
+    window: int,
+    ):
     """
+    window: Size of window to consider on each side of the observed peak for finding the simulated peak.
     Assuming less than 1 hour lead lag is as good as perfect
     """
     
@@ -261,7 +266,7 @@ def normalize_leadlag(val:float):
     
     #best values approach 1
     else:
-        norm  = 1 - val
+        norm  = 1 - val / window
     
     return norm
 
@@ -270,14 +275,13 @@ def normalize_mape(val:float):
     norm = 1 - val
     return norm
 
-# TO-DO: separate mae_timing and mape_peak
-def peak_errors(
+def mae_peak_timing(
     sim: xr.Dataset,
     obs: xr.Dataset,
     window: int,
     gauges: tuple | list,
 ):
-    """peak error dictionary: mae of timing errors, and mape of peaks for gauges
+    """mae of peak timing errors
 
     Args:
         sim (xr.Dataset): Model dataset containing discharge values.
@@ -287,37 +291,59 @@ def peak_errors(
         gauges (tuple | list): Tuple or list of gauges wflow_id for which needs to be calculated.
 
     Returns:
-        Dict: Dictionary of mae_timing and mape_peak for each gauge (wflow_id).
+        List: List of mae_peak_timing for each gauge (wflow_id).
     """
     
-    res = {
-        "mae_timing": [],
-        "mape_peak": [],
-    }
+    res = []
     
     for g in gauges:
         sim_g = sim.sel(wflow_id=g).Q
         obs_g = obs.sel(wflow_id=g).Q
-        peaks , timing_errors = _peaks(sim_g, obs_g, window)
-        
+        _, timing_errors = _peaks(sim_g, obs_g, window)
         # compute mae of timing_erros
-        mae_timing = np.mean(np.abs(timing_errors))
-        
+        mae_peak_timing = np.mean(np.abs(timing_errors))
+        # normalize mae and store results
+        res.append(normalize_mae(round(float(mae_peak_timing),4), window))
+    
+    return res
+
+
+def mape_peak_magnitude(
+    sim: xr.Dataset,
+    obs: xr.Dataset,
+    window: int,
+    gauges: tuple | list,
+):
+    """mape of peak magnitude for gauges
+
+    Args:
+        sim (xr.Dataset): Model dataset containing discharge values.
+        obs (xr.Dataset): Observed dataset containing discharge values.
+        window (int): Size of window to consider on each side of the observed peak for 
+                      finding the simulated peak.
+        gauges (tuple | list): Tuple or list of gauges wflow_id for which needs to be calculated.
+
+    Returns:
+        List: List of mape_peak_magnitude for each gauge (wflow_id).
+    """
+    
+    res = []
+    
+    for g in gauges:
+        sim_g = sim.sel(wflow_id=g).Q
+        obs_g = obs.sel(wflow_id=g).Q
+        peaks, _ = _peaks(sim_g, obs_g, window)
         # compute mape of peak magnitude
         peaks_index = pd.DatetimeIndex(peaks).dropna()
         obs_peak = obs_g.sel(time=peaks_index).values
         sim_peak = sim_g.sel(time=peaks_index).values
-        
-        #       
-        peak_mape = (np.sum(np.abs((sim_peak - obs_peak) / obs_peak)) / peaks.size)
-                
-        res['mae_timing'].append(normalize_leadlag(round(float(mae_timing),4)))
-        res['mape_peak'].append(normalize_mape(round(float(peak_mape),4)))
+        mape_peak_magnitude = np.sum(np.abs((sim_peak - obs_peak) / obs_peak)) / peaks.size
+        # normalize mape and store results
+        res.append(normalize_mape(round(float(mape_peak_magnitude),4)))
     
     return res
     
     
-
 def _rld(
     data: np.ndarray,
     thres: float = 95,
