@@ -19,30 +19,28 @@ import glob
 if platform.system() == "Windows":
     DRIVE = "p:/"
     PLATFORM = "Windows"
-else:
+    print("\033[91m" + "WARNING: Windows detected!" + "\033[0m")
+elif platform.system() == "Linux":
     DRIVE = "/p"
     PLATFORM = "Linux"
+    print("\033[92m" + "Linux detected!" + "\033[0m")
 
 if "TEST" in config["calib_recipe"]:
     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
 
-configfile: 'config/calib.yml'
+# configfile: 'config/calib.yml'
 #default directories
 base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
+print(f"base_dir: {base_dir}")
+print("exists: ", base_dir.exists())
 basin = config["basin"]                                     # meuse
-<<<<<<< HEAD
-
-workdir: base_dir.as_posix() / basin
-config: 'config/calib.yml'
-=======
-workdir: Path(base_dir, basin).as_posix()
->>>>>>> 3afe362ab5e7a0ffe745e4aab2b887996e101adc
+# workdir: Path(base_dir, basin).as_posix()
 
 
 #working directory
-# os.chdir(Path(base_dir, basin))
-# #chdir but with pathlib
-# cwd = Path.cwd().as_posix()
+os.chdir(Path(base_dir, basin))
+#chdir but with pathlib
+cwd = Path.cwd().as_posix()
 
 # print(f"\033[94m{'*'*20}\n{'-'*10} calibrating: {basin}\n{'*'*20}\033[0m")
 log_dir = Path(base_dir, basin, config["log_dir"])            # data/0-log
@@ -118,9 +116,9 @@ rule all:
         expand(Path(calib_dir, "level{nlevel}", "done.txt"), nlevel=range(-1, last_level+1)),
     default_target: True
 
-# rule force_working_dir: 
-#     message: f"Changing working directory to {cwd}." 
-#     shell: """ ( cd {cwd}) """ 
+rule force_working_dir: 
+    message: f"Changing working directory to {cwd}." 
+    shell: """ ( cd {cwd}) """ 
 
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
 rule init_done:
