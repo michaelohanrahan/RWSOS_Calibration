@@ -27,21 +27,38 @@ def create_set(
         product(*[item["values"] for item in data.values()]),
     )
     
-    ds = pd.DataFrame(
-        params,
-        columns=[
-            item["short_name"] for item in data.values()
-        ]
-    )
-
+    # Extract column names, 'nl, nf' is separated
+    columns = []
+    for item in data.values():
+        if ',' in item["short_name"]:
+            columns.extend(item["short_name"].split(','))
+        else:
+            columns.append(item["short_name"])
+    
+    ds = pd.DataFrame(params, columns=columns[:-1])
+    ds[columns[-1]] = ds['nl']  # add 'nf' column with cell value the same as 'nl' column
+    
     lnames = list(data.keys())
-    methods = [
+    last_element = lnames[-1]  # Separate the last element into two parts
+    split_elements = last_element.split(',')
+    lnames = lnames[:-1] + split_elements # Replace the last element with the new components
+    
+    _methods = [
         item["method"] for item in data.values()
     ]
+    methods = _methods[:] + [_methods[-1]]  # add methods for N_Floodplein the same as N_Land
+    
+    # check if lnames, methods and ds.columns have the same length
+    if len(lnames) == len(methods) == len(ds.columns.values):
+        print("Perfect!")
+    else:
+        print("Error: lnames, methods and ds.columns do not have the same length!")
+    
     return lnames, methods, ds
 
 
-# if __name__ == "__main__":
-# #     ds = create_set("c:/CODING/NONPRODUCT/puget/res/calib_recipe.json")
-#     ds = create_set(r'c:\git\RWSOS_Calibration\meuse\config\calib_recipe.json')
-#     print(ds)
+if __name__ == "__main__":
+#     ds = create_set("c:/CODING/NONPRODUCT/puget/res/calib_recipe.json")
+    fn = R"c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\config\calib_recipe.json"
+    lnames, methods, ds = create_set(fn)
+    print(ds)

@@ -1,0 +1,9 @@
+*.json
+calibdata/
+1_addhourly
+addhourly/
+addksathorfrac/
+calib_data/
+gaugesadded/
+QGIS/
+*.txt

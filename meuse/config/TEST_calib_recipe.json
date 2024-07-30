@@ -29,8 +29,8 @@
         "values": [0, 0.6],
         "method": "add"
     }, 
-    "N,N_Floodplain": {
-        "short_name": "nl",
+    "N_Land,N_Floodplain": {
+        "short_name": "nl,nf",
         "values": [0.8, 1.2],
         "method": "mult"
     }
