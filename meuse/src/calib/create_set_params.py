@@ -49,10 +49,10 @@ def create_set(
     methods = _methods[:] + [_methods[-1]]  # add methods for N_Floodplein the same as N_Land
     
     # check if lnames, methods and ds.columns have the same length
-    if len(lnames) == len(methods) == len(ds.columns.values):
-        print("Perfect!")
-    else:
-        print("Error: lnames, methods and ds.columns do not have the same length!")
+    # if len(lnames) == len(methods) == len(ds.columns.values):
+    #     print("Perfect!")
+    # else:
+    #     print("Error: lnames, methods and ds.columns do not have the same length!")
     
     return lnames, methods, ds
 
