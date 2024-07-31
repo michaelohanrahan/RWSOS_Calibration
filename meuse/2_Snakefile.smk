@@ -189,7 +189,11 @@ for _level in range(0, last_level+1):
         log:
             Path(log_dir, f"instate_{_level}", f"instates_level{_level}_ST"+"{_t_str}.txt")
         shell:
-            f"""julia --project="{{params.project}}" -t {{params.threads}} -e "using Wflow; Wflow.run()" {{input.cfg}}"""
+            f"""julia --project="{{params.project}}" -t {{params.threads}} -e \
+            "using Pkg;\
+            Pkg.instantiate();\
+            using Wflow;\
+             Wflow.run()" {{input.cfg}}"""
     """
     config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
     It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
