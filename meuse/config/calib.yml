@@ -13,7 +13,7 @@ vis_dir: "data/5-visualization"
 
 # The bluesprint files to work with
 base_config: "wflow_sbm_template.toml"
-base_staticmaps: "staticmaps/base_staticmaps.nc"
+base_staticmaps: "staticmaps/staticmaps.nc"
 
 # Which gauges (subcatchments) to calibrate over (needs matching observed data)
 gauges: "Hall"
