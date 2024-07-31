@@ -13,6 +13,7 @@ elif platform.system() == "Linux":
 basin = config["basin"]        # meuse
 base_dir = config["base_dir"]  # RWSOS_Calibration
 base_dir = Path(DRIVE, base_dir).as_posix() # p: or /p/ ... / RWSOS_Calibration / basin
+os.chdir(DRIVE+'/')
 workdir: str(Path(base_dir, basin).as_posix())
 
 
