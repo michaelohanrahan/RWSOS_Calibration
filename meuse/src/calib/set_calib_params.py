@@ -6,7 +6,7 @@ from hydromt.raster import RasterDataset
 from setuplog import setup_logging
 import shutil
 import traceback
-
+import os
 
 def main(
     l,
@@ -69,17 +69,10 @@ def main(
     l.info(f"Writing dataset to {out}")
 
     #make sure the lakes h-q rating relation is also copied
-    if not os.path.exists(lakes_out):
-        if len(lakes_in)!=len(lakes_out):
-            l.error(f"lakes_in and lakes_out should have the same length")
-            raise ValueError("lakes_in and lakes_out should have the same length")
-        for src, dst in zip(lakes_in, lakes_out):
-            shutil.copy(src, dst)
-            l.info(f"Copying {src} to {dst}")
-        
-        
-    
-
+    for lin, lout in zip(lakes_in, lakes_out):
+        if not os.path.exists(lout):
+            shutil.copy(lin, lout)
+            l.info(f"Copying {lin} to {lout}")
 
 if __name__ == "__main__":
     l=setup_logging('data/0-log', '03-set_calib_params.log')
@@ -95,8 +88,8 @@ if __name__ == "__main__":
                 mod.params.params_method,
                 mod.params.graph[mod.params.level]["elements"],
                 mod.params.sub_catch,
-                mod.params.lakes_in,
-                mod.output.lakes_hqs, 
+                mod.params.lake_in,
+                mod.output.lake_hqs, 
                 mod.output.staticmaps,
             )
 

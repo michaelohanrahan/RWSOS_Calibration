@@ -204,6 +204,7 @@ for _level in range(0, last_level+1):
             starttime = config["starttime"],
             endtime = config["endtime"],
             forcing_path = Path(input_dir, config["source_forcing_data"]),
+            gaugemap=f"gauges_{config['gauges']}",
         output: 
             expand(Path(calib_dir, f"level{_level}", "{params}", config["wflow_cfg_name"]), params=paramspace.wildcard_pattern)
         script:
@@ -228,7 +229,8 @@ for _level in range(0, last_level+1):
             params_method = methods,
             level = f"level{_level}",
             graph = graph,
-            sub_catch = subcatch
+            sub_catch = subcatch,
+            lake_in = lakes
         output: 
             staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
             lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)

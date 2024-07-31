@@ -14,6 +14,7 @@ def main(
     # timestep: str | int,
     forcing_path: Path | str,
     out: tuple | list,
+    gaugemap: str,
     l
 ):
     """
@@ -66,9 +67,34 @@ def main(
         st_instate_path = Path(forcing_path).parent / "instates" / f"instate_level{level}_ST{thickness}.nc"
         
         #change the instate depending on the soilthickness
-        out_cfg["input"]["path_instate"] = st_instate_path.as_posix()
+        #if instate is not an existing key, add it
+        if "path_input" not in out_cfg["state"]:
+            out_cfg["state"]["path_input"] = {}
+            
+        out_cfg["state"]["path_input"] = st_instate_path.as_posix()
         out_cfg["input"]["path_static"] = "staticmaps.nc"
+        
+        out_cfg.pop('csv')
+        
+        if "netcdf" not in out_cfg:
+            out_cfg["netcdf"] = {}
+        
+        out_cfg["netcdf"]["path"] = "output_scalar.nc"
+        out_cfg["netcdf"]["variable"] = [
+            {
+                "name":"Q",
+                "map":gaugemap,
+                "parameter":"lateral.river.q_av"
+            },
+            {
+                "name":"Q_hbv",
+                "map":"gauges_hbv",
+                "parameter":"lateral.river.q_av"
+            }
+        ]
+        
         l.info(f"st_instate_path: {st_instate_path.as_posix()}")
+        l.info(f"writing to {out_file}")
         
 
         # Write the settings file
@@ -89,6 +115,7 @@ if __name__ == "__main__":
                 # mod.params.timestep,
                 mod.params.forcing_path,
                 mod.output,
+                mod.params.gaugemap,
                 l
             )
         except Exception as e:
