@@ -1,20 +1,6 @@
-# Workflow for the calibration of the wflow model
-# This workflow is used to calibrate the wflow model using the data built in the databuilder subworkflow
-
-#@michaelohanrahan
-#@jingdeng
-
-import json
-import shutil
-import os
 import platform
 from pathlib import Path
-from snakemake.utils import Paramspace
-import geopandas as gpd
-from src.calib.create_set_params import create_set
-import glob
 
-#=========================================================
 ## Directories and paths
 if platform.system() == "Windows":
     DRIVE = "p:/"
@@ -24,32 +10,37 @@ elif platform.system() == "Linux":
     DRIVE = "/p"
     PLATFORM = "Linux"
     # print("\033[92m" + f"Linux detected! (DRIVE: {DRIVE})" + "\033[0m")
-
-# if "TEST" in config["calib_recipe"]:
-#     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
-
-# configfile: 'config/calib.yml'
-#default directories
-base_dir = Path(f"{DRIVE}{config['base_dir']}") # p: or /p/ ... / RWSOS_Calibration / basin
-# print(base_dir)
-# print(f"base_dir: {base_dir}")
-# print("exists: ", base_dir.exists())
-basin = config["basin"]                                     # meuse
-# workdir: Path(base_dir, basin).as_posix()
+basin = config["basin"]        # meuse
+base_dir = config["base_dir"]  # RWSOS_Calibration
+base_dir = Path(DRIVE, base_dir).as_posix() # p: or /p/ ... / RWSOS_Calibration / basin
+workdir: str(Path(base_dir, basin).as_posix())
 
 
+# Workflow for the calibration of the wflow model
+# This workflow is used to calibrate the wflow model using the data built in the databuilder subworkflow
+#@michaelohanrahan
+#@jingdeng
+
+import json
+import shutil
+import os
+from snakemake.utils import Paramspace
+import geopandas as gpd
+from src.calib.create_set_params import create_set
+import glob
+
+#=========================================================
 #working directory
-os.chdir(Path(base_dir, basin))
+# os.chdir(Path(base_dir, basin))
 #chdir but with pathlib
-cwd = Path.cwd().as_posix()
+# cwd = Path.cwd().as_posix()
 
-# print(f"\033[94m{'*'*20}\n{'-'*10} calibrating: {basin}\n{'*'*20}\033[0m")
-log_dir = Path(base_dir, basin, config["log_dir"])            # data/0-log
-source_dir = Path(base_dir, basin, config["source_dir"])    # data/1-external
-inter_dir = Path(base_dir, basin, config["inter_dir"])      # data/2-intermediate
-input_dir = Path(base_dir, basin, config["input_dir"])      # data/3-input
-out_dir = Path(base_dir, basin, config["output_dir"])       # data/4-output
-vis_dir = Path(base_dir, basin, config["vis_dir"])          # data/5-visualisation
+log_dir = Path(base_dir, basin, config["log_dir"]).as_posix()          # data/0-log
+source_dir = Path(base_dir, basin, config["source_dir"]).as_posix()    # data/1-external
+inter_dir = Path(base_dir, basin, config["inter_dir"]).as_posix()      # data/2-intermediate
+input_dir = Path(base_dir, basin, config["input_dir"]).as_posix()      # data/3-input
+out_dir = Path(base_dir, basin, config["output_dir"]).as_posix()       # data/4-output
+vis_dir = Path(base_dir, basin, config["vis_dir"]).as_posix()          # data/5-visualisation
 
 for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
     os.makedirs(dir, exist_ok=True)
@@ -117,9 +108,9 @@ rule all:
         expand(Path(calib_dir, "level{nlevel}", "done.txt"), nlevel=range(-1, last_level+1)),
     default_target: True
 
-rule force_working_dir: 
-    message: f"Changing working directory to {cwd}." 
-    shell: """ ( cd {cwd}) """ 
+# rule force_working_dir: 
+#     message: f"Changing working directory to {cwd}." 
+#     shell: """ ( cd {cwd}) """ 
 
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
 rule init_done:

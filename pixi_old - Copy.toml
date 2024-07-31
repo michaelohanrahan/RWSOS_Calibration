@@ -9,36 +9,38 @@ platforms = ["win-64", "linux-64"]
 [target.linux-64.dependencies]
 python= ">=3.8"
 
+
 [system-requirements]
 linux = "4.18"
 
 [tasks]
-install-kernel = "python -m ipykernel install --user --name rnel name> --display-name rnel name>"
+install-kernel = "python -m ipykernel install --user --name <kernel name> --display-name <kernel name>"
 
 [pypi-dependencies]
 ipykernel = ">=6.29.3,<6.30"
 
+
 [dependencies]
+python = ">=3.8"
 pip = "*"
-matplotlib = "*"
 hydromt_wflow = ">=0.5.0,<0.6"
 hydromt = ">=0.9.4,<0.10"
 graphviz = "*"
 jupyter = "*"
 pulp = "*"
 dvc = "*"
-numpy = "<2.0"
 cookiecutter = "*"
 jinja2-time = "*"
-snakemake = {git = "https://github.com/michaelohanrahan/snakemake.git"}
+numpy = "*"
+pandas = "*"
+matplotlib = "*"
+snakemake = {git = "https://github.com/michaelohanrahan/snakemake.git"}#, rev="4373a3d0468e49814462295e871e48e6e76cc1ff"}
 
 [target.win-64.dependencies]
 datrie = "*"
 graphviz = "*"
-hydromt = "*"
-jupyter = "*"
-matplotlib = "*"
 numba = "*"
-pandas = "*"
-pip = "*"
-python = ">=3.8"
+
+[target.win-64.host-dependencies]
+posix="*"
+
