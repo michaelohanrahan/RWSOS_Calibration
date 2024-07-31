@@ -19,21 +19,21 @@ import glob
 if platform.system() == "Windows":
     DRIVE = "p:/"
     PLATFORM = "Windows"
-    print("\033[91m" + "WARNING: Windows detected!" + "\033[0m")
+    # print("\033[91m" + "WARNING: Windows detected!" + "\033[0m")
 elif platform.system() == "Linux":
     DRIVE = "/p"
     PLATFORM = "Linux"
-    print("\033[92m" + f"Linux detected! (DRIVE: {DRIVE})" + "\033[0m")
+    # print("\033[92m" + f"Linux detected! (DRIVE: {DRIVE})" + "\033[0m")
 
-if "TEST" in config["calib_recipe"]:
-    print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
+# if "TEST" in config["calib_recipe"]:
+#     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
 
 # configfile: 'config/calib.yml'
 #default directories
 base_dir = Path(f"{DRIVE}{config['base_dir']}") # p: or /p/ ... / RWSOS_Calibration / basin
-print(base_dir)
-print(f"base_dir: {base_dir}")
-print("exists: ", base_dir.exists())
+# print(base_dir)
+# print(f"base_dir: {base_dir}")
+# print("exists: ", base_dir.exists())
 basin = config["basin"]                                     # meuse
 # workdir: Path(base_dir, basin).as_posix()
 
