@@ -1,1 +1,0 @@
-snakemake -s "2_Snakefile.smk" --configfile "config/calib.yml" -c 4 --nolock 

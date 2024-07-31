@@ -200,6 +200,7 @@ for _level in range(0, last_level+1):
         # input: lambda wildcards: expand(Path(calib_dir, "{dep}", "done.txt").as_posix(), dep=graph[wildcards.item]["deps"]) if graph[wildcards.item]["deps"] else []
         input: expand(Path(input_dir, "instates", f"instate_level{_level}"+"_ST{_t_str}.nc"), _t_str=ST_str) #, level=f"{{item}}", thickness=[str(ST).replace('.', '') for ST in ST_values])
         params: 
+            level = _level,
             cfg_template = Path(cfg_template).as_posix(),
             starttime = config["starttime"],
             endtime = config["endtime"],
