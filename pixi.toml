@@ -17,7 +17,7 @@ install-kernel = "python -m ipykernel install --user --name rnel name> --display
 
 [pypi-dependencies]
 ipykernel = ">=6.29.3,<6.30"
-snakemake = { git = "https://github.com/michaelohanrahan/snakemake" }
+snakemake = { git = "https://github.com/michaelohanrahan/snakemake"}
 
 [dependencies]
 pip = "*"
@@ -31,6 +31,7 @@ dvc = "*"
 numpy = "<2.0"
 cookiecutter = "*"
 jinja2-time = "*"
+snakemake-executor-plugin-slurm = ">=0.8.0,<0.9"
 
 [target.win-64.dependencies]
 datrie = "*"

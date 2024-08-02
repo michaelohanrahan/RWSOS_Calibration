@@ -2,6 +2,6 @@
 
 echo Activating the pixi environment
 cd ..
-pixi run snakemake -s "2_Snakefile.smk" --unlock --configfile "config/calib.yml" 
+@REM pixi run snakemake -s "2_Snakefile.smk" --unlock --configfile "config/calib.yml" 
 pixi run snakemake -s "2_Snakefile.smk" --configfile "config/calib.yml" --nolock --rulegraph | dot -Tsvg > dag/rulegraph.svg
 pause

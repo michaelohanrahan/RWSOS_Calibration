@@ -73,6 +73,14 @@ def main(
             out_cfg["state"]["path_input"] = {}
             
         out_cfg["state"]["path_input"] = st_instate_path.as_posix()
+        
+        # Ensure only path_input exists in out_cfg["state"]
+        #TODO: This is a quick and dirty solution where there was a Wflow issue 
+        #      where the Wflow model initialization creates the outstate in read-only mode
+        #      and the model crashes when trying to write to it. We dont need the outstate here
+        if "path_output" in out_cfg["state"]:
+            del out_cfg["state"]["path_output"]
+        
         out_cfg["input"]["path_static"] = "staticmaps.nc"
         
         out_cfg.pop('csv')

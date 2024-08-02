@@ -1,4 +1,4 @@
-# localrules: init_done,initial_instate_tomls_L0
+localrules: init_done,initial_instate_tomls_L0
 import os 
 import platform
 from pathlib import Path
@@ -10,7 +10,7 @@ import yaml
 #     config = yaml.safe_load(f)
 
 # print(f"config: {config}")
-# print(config)
+print(config)
 if platform.system() == "Windows":
     DRIVE = "p:/"
     PLATFORM = "Windows"
@@ -116,7 +116,6 @@ rule init_done:
         d = Path(calib_dir, "level-1")
     output: 
         p = Path(calib_dir, "level-1", "done.txt")
-    localrule: True
     run:
         os.makedirs(params.d, exist_ok=True)
         with open(output.p, "w") as f:
@@ -146,7 +145,6 @@ for _level in range(0, last_level+1):
         output: #TOML expects: f"staticmaps_L{level}_ST{soilthickness}.nc"
             ST_instates_tomls = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{_level}"+"_ST{_t_str}.toml"), _t_str=ST_str)
         localrule: True
-        threads: 4
         script:
             """src/calib/create_instate_toml.py"""
     '''
@@ -165,8 +163,6 @@ for _level in range(0, last_level+1):
             graph = graph,
             sub_catch = subcatch,
             lakes_in = lakes
-        localrule: True
-        threads: 4
         output:
             ST_grids = Path(input_dir, "instates", "staticmaps_L"+f"{_level}"+"_ST{_t_str}.nc")
         script:
@@ -186,6 +182,7 @@ for _level in range(0, last_level+1):
             threads = config["wflow_threads"]
         output:
             done = Path(input_dir, "instates", f"instate_level{_level}_ST"+"{_t_str}.nc")
+        threads: 1
         log:
             Path(log_dir, f"instate_{_level}", f"instates_level{_level}_ST"+"{_t_str}.txt")
         shell:
@@ -212,7 +209,6 @@ for _level in range(0, last_level+1):
             endtime = config["endtime"],
             forcing_path = Path(input_dir, config["source_forcing_data"]),
             gaugemap=f"gauges_{config['gauges']}",
-        localrule: True
         output: 
             expand(Path(calib_dir, f"level{_level}", "{params}", config["wflow_cfg_name"]), params=paramspace.wildcard_pattern)
         script:
