@@ -24,8 +24,8 @@ soilthickness_map: "SoilThickness_manual_cal"
 
 # Settings the config file
 starttime: "2005-01-01T00:00:00" 
-endtime: "2018-02-22T00:00:00"
-eval_starttime: "2005-09-01T00:00:00"
+endtime: "2014-12-31T23:00:00"
+eval_starttime: "2015-01-01T00:00:00"
 eval_endtime: "2018-02-22T00:00:00"
 timestep: 3600
 source_forcing_data: "forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"

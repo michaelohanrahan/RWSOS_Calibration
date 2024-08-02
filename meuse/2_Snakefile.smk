@@ -1,4 +1,4 @@
-# localrules: init_done,initial_instate_tomls_L0
+
 import os 
 import platform
 from pathlib import Path
@@ -146,7 +146,6 @@ for _level in range(0, last_level+1):
         output: #TOML expects: f"staticmaps_L{level}_ST{soilthickness}.nc"
             ST_instates_tomls = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{_level}"+"_ST{_t_str}.toml"), _t_str=ST_str)
         localrule: True
-        threads: 4
         script:
             """src/calib/create_instate_toml.py"""
     '''
@@ -166,11 +165,11 @@ for _level in range(0, last_level+1):
             sub_catch = subcatch,
             lakes_in = lakes
         localrule: True
-        threads: 4
         output:
             ST_grids = Path(input_dir, "instates", "staticmaps_L"+f"{_level}"+"_ST{_t_str}.nc")
         script:
             """src/calib/set_instate_ST.py"""
+    
     '''
     :: Run instates::
     We wait for the output of the initial state defining tomls and then we run the instates
@@ -186,14 +185,18 @@ for _level in range(0, last_level+1):
             threads = config["wflow_threads"]
         output:
             done = Path(input_dir, "instates", f"instate_level{_level}_ST"+"{_t_str}.nc")
+        group: "group_instate"
         log:
             Path(log_dir, f"instate_{_level}", f"instates_level{_level}_ST"+"{_t_str}.txt")
+        localrule: False
+        threads: 4
         shell:
             f"""julia --project="{{params.project}}" -t {{threads}} -e \
             "using Pkg;\
             Pkg.instantiate();\
             using Wflow;\
              Wflow.run()" {{input.cfg}}"""
+    
     """
     config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
     It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
@@ -239,6 +242,7 @@ for _level in range(0, last_level+1):
             graph = graph,
             sub_catch = subcatch,
             lake_in = lakes
+        localrule: True
         output: 
             staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
             lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
@@ -252,18 +256,39 @@ for _level in range(0, last_level+1):
     #TODO: modify the templace output to do output_scalar.nc
     '''
 
+    # rule:
+    #     name: f"wflow_L{_level}"
+    #     input: 
+    #         instates=expand(Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"), _t_str=ST_str),
+    #         cfg = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
+    #         staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
+    #         lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
+    #     params:
+    #         project = Path(base_dir, "bin").as_posix(),
+    #         # threads = config["wflow_threads"]
+    #     output: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc")
+    #     threads: 1
+    #     localrule: False
+    #     group: "group_wflow"
+    #     shell: 
+    #         f"""julia --project="{{params.project}}" -t {{threads}} -e \
+    #         "using Pkg;\
+    #         Pkg.instantiate();\
+    #         using Wflow;\
+    #          Wflow.run()" {{input.cfg}}"""
+    
     rule:
         name: f"wflow_L{_level}"
         input: 
-            instates=expand(Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"), _t_str=ST_str),
+            instates=Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"),
             cfg = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
             staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
-            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
         params:
             project = Path(base_dir, "bin").as_posix(),
-            # threads = config["wflow_threads"]
-        output: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc")
-        threads: 1
+        output: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc"),
+        localrule: False
+        group: "group_wflow"
+        threads: 4
         shell: 
             f"""julia --project="{{params.project}}" -t {{threads}} -e \
             "using Pkg;\
@@ -296,6 +321,7 @@ for _level in range(0, last_level+1):
             endtime = config["eval_endtime"],
             metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"] #TODO: normalize mae
             weights = config["weights"] # [0.2, 0.25, 0.3, 0.25]
+        localrule: False
         output: 
             best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv"),
             performance = Path(calib_dir, f"level{_level}", "performance.nc")
@@ -318,6 +344,7 @@ for _level in range(0, last_level+1):
             params_lname = lnames,
             params_method = methods,
             level=_level
+        localrule: True
         output: 
             done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
             done = Path(calib_dir, f"level{_level}", "done.txt")
@@ -340,6 +367,7 @@ rule prep_final_stage:
         cfg = Path(input_dir, config["wflow_cfg_name"]),
         performance = Path(out_dir, "performance.nc"),
         staticmaps = Path(input_dir, "staticmaps.nc")
+    localrule: True
     script:
         """src/calib/prep_final_stage.py"""
 
@@ -349,8 +377,8 @@ rule run_final_model:
         staticmaps = Path(input_dir, "staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
-    threads: 4
     output: Path(out_dir, "run_default", "output_scalar.nc")
+    localrule: False
     shell:
         f"""julia --project="{{params.project}}" -t {{threads}} -e \
         "using Pkg;\
@@ -371,6 +399,7 @@ rule visualize:
         period_length = config["hydro_period_length"],
         period_unit = config["hydro_period_unit"],
         output_dir = Path(vis_dir, "figures")
+    localrule: True
     output:
         figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
     script:
