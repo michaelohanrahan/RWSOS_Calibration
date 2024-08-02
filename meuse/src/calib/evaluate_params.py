@@ -148,7 +148,7 @@ def main(
         Path(out_dir, "performance.nc")
     )
 
-#TODO: test this best 10 params part
+    #TODO: 
     # Best 10 parameters sets by indexing minimum euc. dist.
     best_10params = np.argsort(res, axis=0)[:10]
 
@@ -166,7 +166,8 @@ def main(
     # Set the index name of the csv
     out_ds.index.name = "gauges"
     # Write to file
-    out_ds.to_csv(out)
+    print(out)
+    # out_ds.to_csv(out)
 
 
 if __name__ == "__main__":
@@ -214,12 +215,12 @@ if __name__ == "__main__":
         from create_set_params import create_set
         from dependency_graph import sort_graph
         graph = sort_graph(
-            Path("c:/CODING/NONPRODUCT/puget/res/king_graph.json")
+            Path(r"c:\git\puget\res\king_graph.json")
         )
-        lnames, methods, ds = create_set("c:/CODING/NONPRODUCT/puget/res/calib_recipe.json")
+        lnames, methods, ds = create_set(r"c:\git\puget\res\calib_recipe.json")
 
         main(
-            [
+            modelled=[
                 Path(
                     "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2", 
                     "ksat{}_rd{}_st{}".format(*item.values()), 
@@ -229,12 +230,14 @@ if __name__ == "__main__":
                 for item in 
                 ds.to_dict(orient="records")
             ],
-            "p:/1000365-002-wflow/tmp/usgs_wflow/data/GAUGES/discharge_obs_combined.nc",
-            graph["level2"]["elements"],
-            ds.to_dict(orient="records"),
-            "2011-01-01T00:00:00",
-            "2011-12-31T00:00:00",
-            ["kge", "rld"],
-            [0.6, 0.4],
-            "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2/best_params.csv",
+            observed="p:/1000365-002-wflow/tmp/usgs_wflow/data/GAUGES/discharge_obs_combined.nc",
+            dry_month=None,
+            window=None,
+            gauges=graph["level2"]["elements"],
+            params=ds.to_dict(orient="records"),
+            starttime="2011-01-01T00:00:00",
+            endtime="2011-12-31T00:00:00",
+            metrics=["kge", "rld"],
+            weights=[0.6, 0.4],
+            out="p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2/best_params.csv",
         )

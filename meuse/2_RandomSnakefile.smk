@@ -122,81 +122,7 @@ rule init_done:
         with open(output.p, "w") as f:
             f.write("done")
 
-#Had to switch to a looping approach to get instates per level
-#Otherwise they would not wait for the previous level to finish
 for _level in range(0, last_level+1):
-    '''
-    :: initial instates ::
-    This rule isnt waiting for the output of a previous rule, so it is run first and only once.
-    That is why we hardcode the level. The subsequent rules will have to wait for an input to run for instates.
-    #Try running this for 0 and then later dynamically make TOMLs for each level that react to the output of the main runs
-    '''
-    rule: 
-        name: f"initial_instate_tomls_L{_level}"
-        input:
-            config_fn = cfg_template, #the input template
-            prev = Path(calib_dir, f"level{_level-1}", "done.txt") #the output of the previous level
-        params:
-            ST_values = ST_values,
-            root = Path(input_dir).as_posix(),
-            ST_key= config["soilthickness_map"],
-            level = _level,
-            starttime = config["instate_starttime"],
-            endtime = config["instate_endtime"],
-        output: #TOML expects: f"staticmaps_L{level}_ST{soilthickness}.nc"
-            ST_instates_tomls = expand(Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{_level}"+"_ST{_t_str}.toml"), _t_str=ST_str)
-        localrule: True
-        script:
-            """src/calib/create_instate_toml.py"""
-    '''
-    Now in the looping structure we can wait for the best parameters upstream before we run the instates
-    the downside curently is the staticmaps in the input is consistently overwritten per level... 
-    '''
-    rule:
-        name: f"ST_instate_staticmaps_L{_level}"
-        input: 
-            in_tomls = Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{_level}"+"_ST{_t_str}.toml")
-        params:
-            base_grid = staticmaps,
-            level = _level,
-            ST_str = "{_t_str}",
-            ST_key = config["soilthickness_map"],
-            graph = graph,
-            sub_catch = subcatch,
-            lakes_in = lakes
-        localrule: True
-        output:
-            ST_grids = Path(input_dir, "instates", "staticmaps_L"+f"{_level}"+"_ST{_t_str}.nc")
-        script:
-            """src/calib/set_instate_ST.py"""
-    
-    '''
-    :: Run instates::
-    We wait for the output of the initial state defining tomls and then we run the instates
-    This will hopefully pick up on level 0, and then later on the other levels, hardcoding 0 here eliminates recursion
-    '''
-    rule:
-        name: f"run_instate_L{_level}"
-        input:
-            grid = Path(input_dir, "instates", "staticmaps_L"+f"{_level}"+"_ST{_t_str}.nc"),  
-            cfg = Path(input_dir, "instates", "wflow_sbm_getinstate_level"+f"{_level}"+"_ST{_t_str}.toml"),
-        params:
-            project = Path(base_dir, "bin").as_posix(),
-            threads = config["wflow_threads"]
-        output:
-            done = Path(input_dir, "instates", f"instate_level{_level}_ST"+"{_t_str}.nc")
-        group: "group_instate"
-        log:
-            Path(log_dir, f"instate_{_level}", f"instates_level{_level}_ST"+"{_t_str}.txt")
-        localrule: False
-        threads: 4
-        shell:
-            f"""julia --project="{{params.project}}" -t {{threads}} -e \
-            "using Pkg;\
-            Pkg.instantiate();\
-            using Wflow;\
-             Wflow.run()" {{input.cfg}}"""
-    
     """
     config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
     It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
@@ -226,14 +152,14 @@ for _level in range(0, last_level+1):
                     It takes a configuration file, a dataset of static maps, a parameter space instance, 
                     a list of parameter names, a list of parameter methods, a level, a graph, and a sub-catchment as parameters. 
                     The output is a set of static map files.
-    #DONE: Make sure the co-scaling logic is here.... 
-    #ADDED: lake_hqs to the output since i cannot see how to specify their specific location they are now alognside each grid file
+    NEW: The parameter space is wildcarded but if upstream bestparams exist we will randomnly choose which one to apply.
     '''
 
     rule:
         name: f"create_params_L{_level}"
         input: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"])
         params:
+            best_params = Path(calib_dir, f"level{_level-1}", "performanc.nc"),
             dataset = staticmaps,
             params = paramspace.instance,
             params_lname = lnames,

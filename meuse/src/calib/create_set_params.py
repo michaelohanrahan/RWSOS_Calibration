@@ -32,22 +32,31 @@ def create_set(
     for item in data.values():
         if ',' in item["short_name"]:
             columns.extend(item["short_name"].split(','))
+            SPLIT = True
         else:
             columns.append(item["short_name"])
-    
-    ds = pd.DataFrame(params, columns=columns[:-1])
-    ds[columns[-1]] = ds['nl']  # add 'nf' column with cell value the same as 'nl' column
-    
-    lnames = list(data.keys())
-    last_element = lnames[-1]  # Separate the last element into two parts
-    split_elements = last_element.split(',')
-    lnames = lnames[:-1] + split_elements # Replace the last element with the new components
-    
-    _methods = [
-        item["method"] for item in data.values()
-    ]
-    methods = _methods[:] + [_methods[-1]]  # add methods for N_Floodplein the same as N_Land
-    
+            SPLIT = False
+    # print(columns)
+    # print(params)
+    if SPLIT:
+        ds = pd.DataFrame(params, columns=columns[:-1])
+        ds[columns[-1]] = ds['nl']
+        lnames = list(data.keys())
+        last_element = lnames[-1]  # Separate the last element into two parts
+        split_elements = last_element.split(',')
+        lnames = lnames[:-1] + split_elements # Replace the last element with the new components
+        
+        _methods = [
+            item["method"] for item in data.values()
+        ]
+        methods = _methods[:] + [_methods[-1]]  # add methods for N_Floodplein the same as N_Land
+    else:
+        ds = pd.DataFrame(params, columns=columns)
+        lnames = list(data.keys())
+        methods = [
+            item["method"] for item in data.values()
+        ]
+
     # check if lnames, methods and ds.columns have the same length
     # if len(lnames) == len(methods) == len(ds.columns.values):
     #     print("Perfect!")
