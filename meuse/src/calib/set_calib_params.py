@@ -183,7 +183,7 @@ def main(
     Load the dataset (staticmaps) then update params for the desired gauge_ids
     the paramslname should be the same as the dataset key
     """
-    gauge_ids_d = graph[level]["elements"]
+    gauge_ids = graph[level]["elements"]
     
     # Load the current main dataset
     ds = xr.open_dataset(p)
