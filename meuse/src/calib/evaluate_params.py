@@ -39,7 +39,9 @@ def main(
     observed: Path | str,
     dry_month: list,
     window: int,
-    gauges: tuple | list,
+    level: str,
+    graph: dict,
+    # gauges: tuple | list,
     params: tuple | list,
     starttime: str,
     endtime: str,
@@ -53,7 +55,9 @@ def main(
     Args:
         modelled (tuple | list): List of paths to modelled data files.
         observed (Path | str): Path to the observed data file.
-        gauges (tuple | list): List of gauge names.
+        level (str): Level of the graph.
+        graph (dict): Graph of the model.
+        # gauges (tuple | list): List of gauge names.
         params (tuple | list): List of parameter values.
         starttime (str): Start time for data selection.
         endtime (str): End time for data selection.
@@ -69,6 +73,9 @@ def main(
     #TODO: optionality to have additional index for alternative dimension 
     # output directory
     out_dir = Path(out).parent
+    
+    # list of gauge ids (TODO: to be tested)
+    gauges = graph[level]["elements"]
 
     obs = xr.open_dataset(observed)
     obs = obs.sel(time=slice(starttime, endtime)) 
@@ -166,8 +173,7 @@ def main(
     # Set the index name of the csv
     out_ds.index.name = "gauges"
     # Write to file
-    print(out)
-    # out_ds.to_csv(out)
+    out_ds.to_csv(out)
 
 
 if __name__ == "__main__":
