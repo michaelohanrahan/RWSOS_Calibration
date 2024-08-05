@@ -127,15 +127,14 @@ def upper_level_random_params(l,
         lsplit = int(level.split('level')[0])
         level = f'level{lsplit-1}'
         
-        
-        gauge_id = graph[level]["elements"]
+        gauge_id = graph[level]["elements"] #or gauge ids
         gauge_int = [
             int(item) for item in gauge_id
         ]
         l.info(f"Updating the following upstream gauges: {gauge_int}")
         vds_u = vds[vds.value.isin(gauge_int)]
         
-        #random int
+        #random int 
         random_ints = [random.randint(1, 10) for _ in gauge_int]
         gauge_dict = {gauge: num for gauge, num in zip(gauge_int, random_ints)}
         col_method = {col: method for col, method in zip(params_lnames, params_method)}
