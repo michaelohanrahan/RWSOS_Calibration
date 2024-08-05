@@ -63,7 +63,6 @@ def main(
         # level = int(out_file.split('/')[-8][-1]) # the integer of the level
         thickness = str(''.join(out_file.split('/')[-7].split('~')[-1].split('.'))) #the joined float value as a string
         l.info(f"level: {level}, thickness: {thickness}")
-        
         #ex: "instate_level{level}_ST{thickness}.nc"
         st_instate_path = Path(forcing_path).parent / "instates" / f"instate_level{level}_ST{thickness}.nc"
         

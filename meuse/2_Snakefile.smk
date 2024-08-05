@@ -3,14 +3,7 @@ import os
 import platform
 from pathlib import Path
 import yaml
-# print(f"Current working directory: {os.getcwd()}")
-# print(f"Config file: {Path('config/calib.yml').as_posix()}")
-# print(f"Exists? {Path('config/calib.yml').exists()}") 
-# with open("config/calib.yml", "r") as f:
-#     config = yaml.safe_load(f)
 
-# print(f"config: {config}")
-# print(config)
 if platform.system() == "Windows":
     DRIVE = "p:/"
     PLATFORM = "Windows"
@@ -54,7 +47,7 @@ gauges = config["gauges"]
 #find last level from the final level directory
 levels = glob.glob(str(Path(inter_dir,'calib_data', "level*")))
 levels_ints = [int(level.split("level")[-1]) for level in levels]
-last_level = int(levels[-1].split("level")[-1])
+last_level = 5 #int(levels[-1].split("level")[-1])
 
 #define elements from the staticgeoms
 elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
@@ -165,6 +158,7 @@ for _level in range(0, last_level+1):
             sub_catch = subcatch,
             lakes_in = lakes
         localrule: True
+        group: "group_instate"
         output:
             ST_grids = Path(input_dir, "instates", "staticmaps_L"+f"{_level}"+"_ST{_t_str}.nc")
         script:
@@ -189,7 +183,7 @@ for _level in range(0, last_level+1):
         log:
             Path(log_dir, f"instate_{_level}", f"instates_level{_level}_ST"+"{_t_str}.txt")
         localrule: False
-        threads: 4
+        threads: config["wflow_threads"]
         shell:
             f"""julia --project="{{params.project}}" -t {{threads}} -e \
             "using Pkg;\
@@ -256,46 +250,30 @@ for _level in range(0, last_level+1):
     #TODO: modify the templace output to do output_scalar.nc
     '''
 
-    # rule:
-    #     name: f"wflow_L{_level}"
-    #     input: 
-    #         instates=expand(Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"), _t_str=ST_str),
-    #         cfg = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
-    #         staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
-    #         lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
-    #     params:
-    #         project = Path(base_dir, "bin").as_posix(),
-    #         # threads = config["wflow_threads"]
-    #     output: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc")
-    #     threads: 1
-    #     localrule: False
-    #     group: "group_wflow"
-    #     shell: 
-    #         f"""julia --project="{{params.project}}" -t {{threads}} -e \
-    #         "using Pkg;\
-    #         Pkg.instantiate();\
-    #         using Wflow;\
-    #          Wflow.run()" {{input.cfg}}"""
-    
     rule:
         name: f"wflow_L{_level}"
         input: 
-            instates=Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"),
+            instates=expand(Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"), _t_str=ST_str),
             cfg = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
             staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
+            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
         params:
             project = Path(base_dir, "bin").as_posix(),
-        output: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc"),
+            # threads = config["wflow_threads"]
+        output: 
+            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc"),
+            touch(Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done"))
+        
+        threads: config["wflow_threads"]
         localrule: False
         group: "group_wflow"
-        threads: 4
         shell: 
             f"""julia --project="{{params.project}}" -t {{threads}} -e \
             "using Pkg;\
             Pkg.instantiate();\
             using Wflow;\
              Wflow.run()" {{input.cfg}}"""
-
+    
     '''
     @JING 25.07
     Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
@@ -309,7 +287,9 @@ for _level in range(0, last_level+1):
 
     rule:
         name: f"evaluate_L{_level}"
-        input: expand(Path(calib_dir, f"level{_level}", "{params}", "run_default", "output_scalar.nc"), params=paramspace.instance_patterns)
+        input: 
+            expand(Path(calib_dir, f"level{_level}", "{params}", "run_default", "output_scalar.nc"), params=paramspace.instance_patterns),
+            expand(Path(calib_dir, f"level{_level}", "{params}", "run.done"), params=paramspace.instance_patterns),
         params: 
             observed_data = Path(source_dir, config["observed_data"]),
             dry_month = config["dry_months"],
@@ -348,7 +328,7 @@ for _level in range(0, last_level+1):
         output: 
             done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
             done = Path(calib_dir, f"level{_level}", "done.txt")
-        script:
+        script: 
             """src/calib/set_eval_params.py"""
 
 '''

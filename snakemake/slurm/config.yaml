@@ -1,0 +1,57 @@
+executor: slurm
+configfile: $HOME/documents/RWSoS/RWSOS_Calibration/meuse/config/calib.yml
+latency-wait: 10
+keep-going: True
+rerun-incomplete: True
+printshellcmds: True
+scheduler: greedy
+restart-times: 2
+forceall: False
+max-jobs-per-second: 1
+max-status-checks-per-second: 10
+#-------
+jobs: 50
+groups:
+  run_instate_L0: "group_instate"
+  run_instate_L1: "group_instate"
+  run_instate_L2: "group_instate"
+  run_instate_L3: "group_instate"
+  run_instate_L4: "group_instate"
+  run_instate_L5: "group_instate"
+  wflow_L0: "group_wflow"
+  wflow_L1: "group_wflow"
+  wflow_L2: "group_wflow"
+  wflow_L3: "group_wflow"
+  wflow_L4: "group_wflow"
+  wflow_L5: "group_wflow"
+
+group-components:
+  group_wflow: 4 #njobs/this group int... not quite working
+  group_instate: 4 #njobs/this group int... not quite working
+
+default-resources:
+  slurm_partition: "4pcpu"
+  slurm_account: "hyd"
+  qos: "sbatch"
+  mem_mb: "1M"
+  runtime: 1000
+  tasks: 1
+  cpus_per_task: 4
+  threads: 4
+
+
+set-resources:
+  group_wflow:
+    runtime: 1000
+    tasks: 4
+    cores: 4
+    cpus_per_task: 4
+    slurm_partition: "4pcpu"
+  group_instate:
+    runtime: 100
+    tasks: 4
+    cores: 4
+    cpus_per_task: 4
+    slurm_partition: "4pcpu"
+
+

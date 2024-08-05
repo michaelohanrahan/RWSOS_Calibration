@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=RWSorchestrator                                             # Job name
 #SBATCH --output=/u/ohanrah/documents/RWSoS/RWSOS_Calibration/meuse/data/0-log/h7/calib_orch_%j.log # Standard output and error log log
-#SBATCH --time=1-12:00:00  # Job duration (hh:mm:ss)
+#SBATCH --time=3-12:00:00  # Job duration (hh:mm:ss)
 #SBATCH --partition 4pcpu
 #SBATCH --ntasks=1  # Number of tasks (analyses) to run
 #SBATCH --mail-user=michael.ohanrahan@deltares.nl
