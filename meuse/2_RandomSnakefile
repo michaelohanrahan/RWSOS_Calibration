@@ -157,9 +157,9 @@ for _level in range(0, last_level+1):
 
     rule:
         name: f"create_params_L{_level}"
-        input: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"])
+        input: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"])  #?what is this used for?
         params:
-            best_params = Path(calib_dir, f"level{_level-1}", "performanc.nc"),
+            # best_params = Path(calib_dir, f"level{_level-1}", "performanc.nc"),
             dataset = staticmaps,
             params = paramspace.instance,
             params_lname = lnames,
