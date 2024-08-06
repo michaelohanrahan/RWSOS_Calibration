@@ -8,7 +8,6 @@ import xarray as xr
 from hydromt.raster import RasterDataset
 import random
 
-#TODO: to be tested
 
 def main(
     params: Path | str,
@@ -23,8 +22,8 @@ def main(
     Apply evaluation parameters to the static maps.
 
     Args:
-        params (Path or str): Path to the best params csv.
-        staticmaps (Path or str): Path to the original staticmaps file.
+        params (Path or str): Path to the best 10 params csv. (e.g., "best_10params.csv")
+        staticmaps (Path or str): Path to the original staticmaps file. #TODO: there will be 10 original staticmaps
         sub_catch (Path or str): Path to the sub catchments file.
         params_lname (tuple or list): List of parameter names.
         params_method (tuple or list): List of parameter methods.
@@ -34,6 +33,7 @@ def main(
         None
     """
     #preseve the precursor gridfiles
+    #TODO: there will be 10 original staticmaps
     prev_level = level-1
     if prev_level < 0:
         prev_level = 'original'
@@ -44,10 +44,10 @@ def main(
     
     shutil.copy(staticmaps, Path(save_old_dir) / save_old)  # save an old staticmaps
     
-    """_summary_"""
-    # Get the staticmaps
-    with xr.open_dataset(staticmaps) as _r:
-        ds = _r.load()
+    # """_summary_"""
+    # # Get the staticmaps
+    # with xr.open_dataset(staticmaps) as _r:
+    #     ds = _r.load()
 
     # Load the geometries
     vds = gpd.read_file(sub_catch)
@@ -59,34 +59,36 @@ def main(
     params_ds = pd.read_csv(params, index_col="gauges")
     params_ds.index = params_ds.index.astype(int)
     
-    # Randomly select one of the Top_x columns
-    selected_column = random.choice(params_ds.columns)
-  
-    selected_params = params_ds[selected_column].apply(eval)  # Convert string representations of dicts to dicts
+    #TODO: modify for later levels where there already multiple original staticmaps
+    for column in params_ds.columns:
+        # Get the staticmaps for each parameter set, TODO: select the right staticmaps (the right staticmaps needs to be registered in set_calib_params.py)
+        with xr.open_dataset(staticmaps) as _r:
+            ds = _r.load()
+
+        selected_params = params_ds[column].apply(eval)  # Convert string representations of dicts to dicts
+
+        par_da = [ds[var] for var in params_lname]
+
+        for gauge, param_set in selected_params.items():
+            # Select the sub-catchments corresponding to the current gauge
+            select_vds = vds[vds.value == gauge]
+            mask = ds.raster.geometry_mask(select_vds)
+
+            for idx, param_value in enumerate(param_set.values()):
+                if params_method[idx] == "mult":
+                    par_da[idx].values[mask] *= param_value
+                elif params_method[idx] == "set":
+                    par_da[idx].values[mask] = param_value
+                elif params_method[idx] == "add":
+                    par_da[idx].values[mask] += param_value
+
+        for idx, da in enumerate(par_da):
+            ds[params_lname[idx]] = da
+
+        # Save each modified staticmap with a unique name
+        modified_staticmap_path = out / f"staticmaps_{column}.nc"
+        ds.to_netcdf(modified_staticmap_path)
     
-    par_da = [
-        ds[var] for var in params_lname
-    ]
-    
-    for gauge, param_set in selected_params.items():
-        # Select the sub-catchments corresponding to the current gauge
-        select_vds = vds[vds.value == gauge]
-        mask = ds.raster.geometry_mask(select_vds)
-
-        for idx, param_value in enumerate(param_set.values()):
-            if params_method[idx] == "mult":
-                par_da[idx].values[mask] *= param_value
-            elif params_method[idx] == "set":
-                par_da[idx].values[mask] = param_value
-            elif params_method[idx] == "add":
-                par_da[idx].values[mask] += param_value
-    
-
-    for idx, da in enumerate(par_da):
-        ds[params_lname[idx]] = da
-
-    ds.to_netcdf(staticmaps)
-
     with open(out, "w") as _w:
         _w.write("Done!\n")
     pass          
@@ -94,7 +96,7 @@ def main(
 
 if __name__ == "__main__":
     
-    work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\UNREAL_TEST_DATA")
+    work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA")
     
     import pickle as pk
     with open(work_dir/'create_set_params.pkl', 'rb') as f:
