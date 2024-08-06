@@ -68,6 +68,11 @@ def create_set(
 
 if __name__ == "__main__":
 #     ds = create_set("c:/CODING/NONPRODUCT/puget/res/calib_recipe.json")
-    fn = R"c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\config\calib_recipe.json"
+    fn = R"c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\config\TEST_calib_recipe.json"
     lnames, methods, ds = create_set(fn)
-    print(ds)
+    
+    work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA")
+    # save the output to a pickle file
+    import pickle as pk
+    with open(work_dir/'create_set_params.pkl', 'wb') as f:
+        pk.dump({'lnames': lnames, 'methods': methods, 'ds': ds}, f)
