@@ -180,7 +180,7 @@ def main(
 
 if __name__ == "__main__":
     
-    work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\UNREAL_TEST_DATA")
+    work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA")
     
     # import necessary variables
     import pickle as pk
@@ -195,9 +195,9 @@ if __name__ == "__main__":
     observed = work_dir / 'observed_data.nc'
     dry_month = [6, 7, 8, 9, 10]
     window = 72
-    level = 'level10'
+    level = 'level5'
     import json
-    graph = json.load(open(Path(work_dir / 'hourly_levels_graph.json')))
+    graph = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
     params = df.to_dict(orient="records")[:10]  # only use the first 10 records, because we only have 10 modelled results to test
     starttime = '2015-01-01T02:00:00'
     endtime = '2018-02-21T23:00:00'
