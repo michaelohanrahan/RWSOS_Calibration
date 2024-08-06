@@ -122,7 +122,7 @@ def main(
             weighted=True,
         )
         res.append(r)
-
+    
     param_coords = create_coords_from_params(params)
     ds = None
     for metric in metrics:
@@ -174,9 +174,53 @@ def main(
     out_ds.index.name = "gauges"
     # Write to file
     out_ds.to_csv(out)
+    
+    # return ds, out_ds
 
 
 if __name__ == "__main__":
+    
+    work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\UNREAL_TEST_DATA")
+    
+    # import necessary variables
+    import pickle as pk
+    with open(work_dir/'create_set_params.pkl', 'rb') as f:
+        dict = pk.load(f)
+    lnames = dict['lnames']
+    methods = dict['methods']
+    df = dict['ds']
+    
+    # create inputs  
+    modelled = [work_dir/'output_scaler_test1.nc', work_dir/'output_scaler_test2.nc']*5 # to generate best 1o param sets
+    observed = work_dir / 'observed_data.nc'
+    dry_month = [6, 7, 8, 9, 10]
+    window = 72
+    level = 'level10'
+    import json
+    graph = json.load(open(Path(work_dir / 'hourly_levels_graph.json')))
+    params = df.to_dict(orient="records")[:10]  # only use the first 10 records, because we only have 10 modelled results to test
+    starttime = '2015-01-01T02:00:00'
+    endtime = '2018-02-21T23:00:00'
+    metrics = ["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
+    weights = [0.2, 0.25, 0.3, 0.25]
+    out = work_dir / 'best_10params.csv'
+    
+    # call function main()
+    ds_performance, out_ds_best_10params = main(
+        modelled=modelled,
+        observed=observed,
+        dry_month=dry_month,
+        window=window,
+        level=level,
+        graph=graph,
+        params=params,
+        starttime=starttime,
+        endtime=endtime,
+        metrics=metrics,
+        weights=weights,
+        out=out,
+    )
+    
     
     """
     This module is used to evaluate parameters for a model. 
@@ -202,48 +246,48 @@ if __name__ == "__main__":
     """
     
     
-    if "snakemake" in globals():
-        mod = globals()["snakemake"]
+    # if "snakemake" in globals():
+    #     mod = globals()["snakemake"]
         
-        main(
-            mod.input,
-            mod.params.observed_data,
-            mod.params.graph[mod.params.level]["elements"],
-            mod.params.params,
-            mod.params.starttime,
-            mod.params.endtime,
-            mod.params.metrics,
-            mod.params.weights,
-            mod.output.best_params,
-        )
+    #     main(
+    #         mod.input,
+    #         mod.params.observed_data,
+    #         mod.params.graph[mod.params.level]["elements"],
+    #         mod.params.params,
+    #         mod.params.starttime,
+    #         mod.params.endtime,
+    #         mod.params.metrics,
+    #         mod.params.weights,
+    #         mod.output.best_params,
+    #     )
 
-    else:
-        from create_set_params import create_set
-        from dependency_graph import sort_graph
-        graph = sort_graph(
-            Path(r"c:\git\puget\res\king_graph.json")
-        )
-        lnames, methods, ds = create_set(r"c:\git\puget\res\calib_recipe.json")
+    # else:
+    #     from create_set_params import create_set
+    #     from dependency_graph import sort_graph
+    #     graph = sort_graph(
+    #         Path(r"c:\git\puget\res\king_graph.json")
+    #     )
+    #     lnames, methods, ds = create_set(r"c:\git\puget\res\calib_recipe.json")
 
-        main(
-            modelled=[
-                Path(
-                    "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2", 
-                    "ksat{}_rd{}_st{}".format(*item.values()), 
-                    "run_default", 
-                    "output_scalar.nc"
-                ) 
-                for item in 
-                ds.to_dict(orient="records")
-            ],
-            observed="p:/1000365-002-wflow/tmp/usgs_wflow/data/GAUGES/discharge_obs_combined.nc",
-            dry_month=None,
-            window=None,
-            gauges=graph["level2"]["elements"],
-            params=ds.to_dict(orient="records"),
-            starttime="2011-01-01T00:00:00",
-            endtime="2011-12-31T00:00:00",
-            metrics=["kge", "rld"],
-            weights=[0.6, 0.4],
-            out="p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2/best_params.csv",
-        )
+    #     main(
+    #         modelled=[
+    #             Path(
+    #                 "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2", 
+    #                 "ksat{}_rd{}_st{}".format(*item.values()), 
+    #                 "run_default", 
+    #                 "output_scalar.nc"
+    #             ) 
+    #             for item in 
+    #             ds.to_dict(orient="records")
+    #         ],
+    #         observed="p:/1000365-002-wflow/tmp/usgs_wflow/data/GAUGES/discharge_obs_combined.nc",
+    #         dry_month=None,
+    #         window=None,
+    #         gauges=graph["level2"]["elements"],
+    #         params=ds.to_dict(orient="records"),
+    #         starttime="2011-01-01T00:00:00",
+    #         endtime="2011-12-31T00:00:00",
+    #         metrics=["kge", "rld"],
+    #         weights=[0.6, 0.4],
+    #         out="p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2/best_params.csv",
+    #     )

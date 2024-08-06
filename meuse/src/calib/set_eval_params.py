@@ -1,5 +1,6 @@
 from pathlib import Path
 from setuplog import setup_logging
+import shutil
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -41,7 +42,7 @@ def main(
     save_old_dir = out.parent / "intermediate"
     save_old = f"staticmaps_{prev_level}.nc"
     
-    shutil.copy(staticmaps, Path(save_old_dir) / save_old)
+    shutil.copy(staticmaps, Path(save_old_dir) / save_old)  # save an old staticmaps
     
     """_summary_"""
     # Get the staticmaps
@@ -60,6 +61,7 @@ def main(
     
     # Randomly select one of the Top_x columns
     selected_column = random.choice(params_ds.columns)
+  
     selected_params = params_ds[selected_column].apply(eval)  # Convert string representations of dicts to dicts
     
     par_da = [
@@ -91,26 +93,48 @@ def main(
 
 
 if __name__ == "__main__":
-    if "snakemake" in globals():
-        mod = globals()["snakemake"]
-        l = setup_logging('data/0-log', f'08-initial_instate_tomls_L{snakemake.params.level}.log')
-        main(
-            mod.input.best_params,
-            mod.params.staticmaps,
-            mod.params.sub_catch,
-            mod.params.params_lname,
-            mod.params.params_method,
-            mod.params.level,
-            mod.output.done,
-        )
+    
+    work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\UNREAL_TEST_DATA")
+    
+    import pickle as pk
+    with open(work_dir/'create_set_params.pkl', 'rb') as f:
+        dict = pk.load(f)
+    lnames = dict['lnames']
+    methods = dict['methods']
+    df = dict['ds']
+    
+    # inputs
+    params = work_dir / "best_10params.csv"
+    staticmaps = work_dir / "staticmaps/staticmaps.nc"
+    sub_catch = work_dir / 'subcatch_Hall.geojson'
+    params_lname = lnames
+    params_method = methods
+    level = 10
+    out = work_dir / "staticmaps"
+    
+    main(params, staticmaps, sub_catch, params_lname, params_method, level, out)
+    
+    
+    # if "snakemake" in globals():
+    #     mod = globals()["snakemake"]
+    #     l = setup_logging('data/0-log', f'08-initial_instate_tomls_L{snakemake.params.level}.log')
+    #     main(
+    #         mod.input.best_params,
+    #         mod.params.staticmaps,
+    #         mod.params.sub_catch,
+    #         mod.params.params_lname,
+    #         mod.params.params_method,
+    #         mod.params.level,
+    #         mod.output.done,
+    #     )
 
-    else:
-        main(
-            "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level1/best_params.csv",
-            "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/staticmaps.nc",
-            "p:/1000365-002-wflow/tmp/usgs_wflow/models/TEST_MODEL_KING/staticgeoms/subcatch_obs.geojson",
-            ["KsatHorFrac", "RootingDepth", "SoilThickness"],
-            ["set", "mult", "mult"],
-            "",
-        )
-    pass
+    # else:
+    #     main(
+    #         "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level1/best_params.csv",
+    #         "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/staticmaps.nc",
+    #         "p:/1000365-002-wflow/tmp/usgs_wflow/models/TEST_MODEL_KING/staticgeoms/subcatch_obs.geojson",
+    #         ["KsatHorFrac", "RootingDepth", "SoilThickness"],
+    #         ["set", "mult", "mult"],
+    #         "",
+    #     )
+    # pass
