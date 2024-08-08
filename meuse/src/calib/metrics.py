@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from scipy.signal import argrelmax, argrelmin, find_peaks
-from icecream import ic
+# from icecream import ic
 
 # from plot_rld import main as rld_fig
 
@@ -18,6 +18,7 @@ def kge(
     sim: xr.Dataset,
     obs: xr.Dataset,
     gauges: tuple | list,
+    gid: str,
 ):
     """_summary_"""
     res = {
@@ -29,7 +30,7 @@ def kge(
 
     for g in gauges:
         da = kge_ds(
-            sim.sel(wflow_id=g).Q,
+            sim.sel({gid:g}).Q,
             obs.sel(wflow_id=g).Q,
         )
 
@@ -45,12 +46,13 @@ def nse(
     sim: xr.Dataset,
     obs: xr.Dataset,
     gauges: tuple | list,
+    gid: str,
 ):
     res = []
     
     for g in gauges:
         da = skills.nashsutcliffe(
-            sim.sel(wflow_id=g).Q,
+            sim.sel({gid:g}).Q,
             obs.sel(wflow_id=g).Q,
         )
         res.append(round(float(da.values),4))
@@ -62,12 +64,13 @@ def nse_log(
     sim: xr.Dataset,
     obs: xr.Dataset,
     gauges: tuple | list,
+    gid: str,
 ):
     res = []
     
     for g in gauges:
         da = skills.lognashsutcliffe(
-            sim.sel(wflow_id=g).Q,
+            sim.sel({gid:g}).Q,
             obs.sel(wflow_id=g).Q,
         )
         res.append(round(float(da.values),4))
@@ -118,6 +121,7 @@ def nselog_mm7q(
     obs: xr.Dataset,
     dry_month: list,
     gauges: tuple | list,
+    gid: str,
 ):
     """nse-log of mm7q of modeled discharge compared to observations for selected dry months and gauges
 
@@ -134,7 +138,7 @@ def nselog_mm7q(
     res = []
     
     for g in gauges:
-        sim_mm7q = mm7q(sim.sel(wflow_id=g).Q, dry_month)
+        sim_mm7q = mm7q(sim.sel({gid:g}).Q, dry_month)
         obs_mm7q = mm7q(obs.sel(wflow_id=g).Q, dry_month)
         nselog_mm7q = skills.lognashsutcliffe(sim_mm7q, obs_mm7q)
         res.append(round(float(nselog_mm7q.values),4))
@@ -204,6 +208,11 @@ def _peaks(
     # get indices of peaks and their corresponding height
     peaks,_ = find_peaks(obs.values, distance=distance, prominence=prominence)
     
+    if isinstance(sim, tuple):
+        sim = sim[0]
+    if isinstance(obs, tuple):
+        obs = obs[0]
+        
     sim = sim.set_index({datetime_coord:'time'})
     obs = obs.set_index({datetime_coord:'time'})
     
@@ -280,6 +289,7 @@ def mae_peak_timing(
     obs: xr.Dataset,
     window: int,
     gauges: tuple | list,
+    gid: str,
 ):
     """mae of peak timing errors
 
@@ -297,7 +307,7 @@ def mae_peak_timing(
     res = []
     
     for g in gauges:
-        sim_g = sim.sel(wflow_id=g).Q
+        sim_g = sim.sel({gid:g}).Q,
         obs_g = obs.sel(wflow_id=g).Q
         _, timing_errors = _peaks(sim_g, obs_g, window)
         # compute mae of timing_erros
@@ -313,6 +323,7 @@ def mape_peak_magnitude(
     obs: xr.Dataset,
     window: int,
     gauges: tuple | list,
+    gid: str,
 ):
     """mape of peak magnitude for gauges
 
@@ -330,9 +341,14 @@ def mape_peak_magnitude(
     res = []
     
     for g in gauges:
-        sim_g = sim.sel(wflow_id=g).Q
+        sim_g = sim.sel({gid:g}).Q,
         obs_g = obs.sel(wflow_id=g).Q
+        if isinstance(sim_g, tuple):
+            sim_g = sim_g[0]
+        if isinstance(obs_g, tuple):
+            obs_g = obs_g[0]
         peaks, _ = _peaks(sim_g, obs_g, window)
+        
         # compute mape of peak magnitude
         peaks_index = pd.DatetimeIndex(peaks).dropna()
         obs_peak = obs_g.sel(time=peaks_index).values
@@ -447,13 +463,14 @@ def rld(
     sim: xr.Dataset,
     obs: xr.Dataset,
     gauges: tuple | list,
+    gid: str,
 ):
     """_summary_"""
     res = []
 
     for g in gauges:
         sim_e = _rld(
-            sim.sel(wflow_id=g).Q.values,
+            sim.sel({gid:g}).Q,
         )
         obs_e = _rld(
             obs.sel(wflow_id=g).Q.values,
@@ -485,7 +502,8 @@ def _peakdis(
 def peakdis(
     sim: xr.Dataset,
     obs: xr.Dataset,
-    gauges: tuple | list,    
+    gauges: tuple | list,  
+    gid: str,  
 ):
     """
     Calculate the peak discharge discrepancy between model (sim) and observed (obs) datasets for a given set of gauges.
@@ -502,7 +520,7 @@ def peakdis(
     res = []
     
     for g in gauges:
-        sim_val = _peakdis(sim.sel(wflow_id=g).Q.values)
+        sim_val = _peakdis(sim.sel({gid:g}).Q.values)
         obs_val = _peakdis(obs.sel(wflow_id=g).Q.values)
 
         if np.isnan(sim_val) or np.isnan(obs_val):
@@ -610,32 +628,32 @@ def weighted_euclidean(
     return list(res.round(4))
 
 
-if __name__ == "__main__":
-    ds = xr.open_dataset(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\wflow_meuse_20240529_flpN_landN\_output\ds_obs_model_combined.nc')
-    sim = ds.sel(runs='scale_10')
-    ic(sim)
+# if __name__ == "__main__":
+#     ds = xr.open_dataset(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\wflow_meuse_20240529_flpN_landN\_output\ds_obs_model_combined.nc')
+#     sim = ds.sel(runs='scale_10')
+#     ic(sim)
     
-    obs = ds.sel(runs='Obs.')
-    ic(obs)
+#     obs = ds.sel(runs='Obs.')
+#     ic(obs)
     
-    #best=1
-    kge_res = kge(sim, obs, [16, 801])
-    ic(kge_res)
+#     #best=1
+#     kge_res = kge(sim, obs, [16, 801])
+#     ic(kge_res)
     
-    #best=1
-    nse_res = nse(sim, obs, [16, 801])
-    ic(nse_res)
+#     #best=1
+#     nse_res = nse(sim, obs, [16, 801])
+#     ic(nse_res)
     
-    #best=1
-    nse_log_res = nse(sim, obs, [16, 801])
-    ic(nse_log_res)
+#     #best=1
+#     nse_log_res = nse(sim, obs, [16, 801])
+#     ic(nse_log_res)
     
-    #best=1
-    nselog_mm7q_res = nselog_mm7q(sim, obs, [6,11], [16, 801])
-    ic(nselog_mm7q_res)
+#     #best=1
+#     nselog_mm7q_res = nselog_mm7q(sim, obs, [6,11], [16, 801])
+#     ic(nselog_mm7q_res)
     
-    #normalized, returning a dict
-    peak_res = peak_errors(sim, obs, 72, [16, 801])
-    ic(peak_res)
+#     #normalized, returning a dict
+#     peak_res = peak_errors(sim, obs, 72, [16, 801])
+#     ic(peak_res)
     
-    weighted_euclidian_res = weighted_euclidean([], [0.5, 0.5])
+#     weighted_euclidian_res = weighted_euclidean([], [0.5, 0.5])

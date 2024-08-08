@@ -261,9 +261,7 @@ for _level in range(0, last_level+1):
             project = Path(base_dir, "bin").as_posix(),
             # threads = config["wflow_threads"]
         output: 
-            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc"),
-            touch(Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done"))
-        
+            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc")
         threads: config["wflow_threads"]
         localrule: False
         group: "group_wflow"
@@ -274,6 +272,16 @@ for _level in range(0, last_level+1):
             using Wflow;\
              Wflow.run()" {{input.cfg}}"""
     
+    rule:
+        name: f"done_L{_level}"
+        input: 
+            output = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc")
+        output:
+            done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done")
+        localrule: True
+        shell:
+            """touch {output.done}"""
+        
     '''
     @JING 25.07
     Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
@@ -288,7 +296,7 @@ for _level in range(0, last_level+1):
     rule:
         name: f"evaluate_L{_level}"
         input: 
-            expand(Path(calib_dir, f"level{_level}", "{params}", "run_default", "output_scalar.nc"), params=paramspace.instance_patterns),
+            expand(Path(calib_dir, f"level{_level}", "{params}", "output_scalar.nc"), params=paramspace.instance_patterns),
             expand(Path(calib_dir, f"level{_level}", "{params}", "run.done"), params=paramspace.instance_patterns),
         params: 
             observed_data = Path(source_dir, config["observed_data"]),
@@ -297,16 +305,17 @@ for _level in range(0, last_level+1):
             level = f"{_level}",
             graph = graph,
             params = df.to_dict(orient="records"), 
-            starttime = config["eval_starttime"],
-            endtime = config["eval_endtime"],
+            starttime = config["cal_eval_starttime"],
+            endtime = config["cal_eval_endtime"],
             metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"] #TODO: normalize mae
-            weights = config["weights"] # [0.2, 0.25, 0.3, 0.25]
-        localrule: False
+            weights = config["weights"], # [0.2, 0.25, 0.3, 0.25]
+            gaugeset = f"Q_gauges_{config['gauges']}", 
+        localrule: True
         output: 
-            best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv"),
-            performance = Path(calib_dir, f"level{_level}", "performance.nc")
+            performance = Path(calib_dir, f"level{_level}", "performance.nc"),
+            best_params = Path(calib_dir, f"level{_level}", "best_params.csv")
         script: 
-            """src/calib/evaluate_params.py"""         # TODO: modify this script
+            """src/calib/evaluate_params2.py"""         # TODO: modify this script
 
     '''
     This rule overwrites the staticmaps file with the best per level??
@@ -317,7 +326,7 @@ for _level in range(0, last_level+1):
     rule:
         name: f"set_params_L{_level}"
         input: 
-            best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv")
+            best_params = Path(calib_dir, f"level{_level}", "best_params.csv"),
         params:
             staticmaps = staticmaps,
             sub_catch = subcatch,
@@ -341,7 +350,7 @@ rule prep_final_stage:
         performance = glob.glob(str(Path(calib_dir, "level*", "performance.nc"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
-        cfg_args = [config["starttime"], config["endtime"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
+        cfg_args = [config["eval_runstart"], config["eval_runend"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
         staticmaps = staticmaps
     output: 
         cfg = Path(input_dir, config["wflow_cfg_name"]),
@@ -351,14 +360,54 @@ rule prep_final_stage:
     script:
         """src/calib/prep_final_stage.py"""
 
+'''Final instate: This rule creates the final instate for the model evaluation.'''
+
+rule final_instate_toml:
+    input: 
+        performance = Path(out_dir, "performance.nc"),
+        config_fn = cfg_template,
+    params: 
+        root = Path(input_dir, "instates").as_posix(),
+        level = "final",
+        starttime = config["eval_instart"],
+        endtime = config["eval_inend"],
+        staticmaps = staticmaps
+    localrule: True
+    output:
+        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
+        
+
+rule run_instate:
+    input:
+        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
+        staticmaps = Path(input_dir, "staticmaps.nc")
+    params: 
+        project = Path(base_dir, "bin").as_posix(),
+    output: 
+        outstate=Path(input_dir, "instates", "instate_level_final.nc"),
+        done = touch(Path(input_dir, "instates", "done_final_instate.txt"))
+    threads: config["wflow_threads"]
+    localrule: False
+    group: "group_wflow"
+    shell:
+        f"""julia --project="{{params.project}}" -t {{threads}} -e \
+        "using Pkg;\
+        Pkg.instantiate();\
+        using Wflow;\
+        Wflow.run()" {{input.cfg}}"""
+
 rule run_final_model:
     input:
+        done = Path(input_dir, "instates", "done_final_instate.txt"),
+        instate = Path(input_dir, "instates", "instate_level_final.nc"),
         cfg = Path(input_dir, config["wflow_cfg_name"]),
         staticmaps = Path(input_dir, "staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
-    output: Path(out_dir, "run_default", "output_scalar.nc")
+    output: Path(out_dir, "output_scalar.nc")
+    threads: config["wflow_threads"]
     localrule: False
+    group: "group_wflow"
     shell:
         f"""julia --project="{{params.project}}" -t {{threads}} -e \
         "using Pkg;\
@@ -368,7 +417,7 @@ rule run_final_model:
 
 rule visualize:
     input: 
-        scalar = Path(out_dir, "run_default", "output_scalar.nc"),
+        scalar = Path(out_dir, "output_scalar.nc"),
         performance = Path(out_dir, "performance.nc")
     params:
         observed_data = config["observed_data"],

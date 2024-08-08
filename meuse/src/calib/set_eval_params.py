@@ -6,8 +6,9 @@ import pandas as pd
 import xarray as xr
 from hydromt.raster import RasterDataset
 import random
+import ast
 
-#TODO: to be tested
+
 
 def main(
     params: Path | str,
@@ -16,7 +17,8 @@ def main(
     params_lname: tuple | list,
     params_method: tuple | list,
     level: int,
-    out: Path | str,
+    out: Path | str, #nc
+    txt: Path | str, #txt
 ):
     """
     Apply evaluation parameters to the static maps.
@@ -34,13 +36,10 @@ def main(
     """
     #preseve the precursor gridfiles
     prev_level = level-1
-    if prev_level < 0:
-        prev_level = 'original'
-    else:
-        f"L{prev_level}"
+    prev_level=f"L{prev_level}"
     save_old_dir = out.parent / "intermediate"
     save_old = f"staticmaps_{prev_level}.nc"
-    
+    os.makedirs(save_old_dir, exist_ok=True)
     shutil.copy(staticmaps, Path(save_old_dir) / save_old)
     
     """_summary_"""
@@ -54,13 +53,8 @@ def main(
     vds = vds.astype({"value": int})
 
     # Read the parameters
-    # Index by gauges
     params_ds = pd.read_csv(params, index_col="gauges")
     params_ds.index = params_ds.index.astype(int)
-    
-    # Randomly select one of the Top_x columns
-    selected_column = random.choice(params_ds.columns)
-    selected_params = params_ds[selected_column].apply(eval)  # Convert string representations of dicts to dicts
     
     par_da = [
         ds[var] for var in params_lname
@@ -70,6 +64,12 @@ def main(
         # Select the sub-catchments corresponding to the current gauge
         select_vds = vds[vds.value == gauge]
         mask = ds.raster.geometry_mask(select_vds)
+        
+        #param_set
+        param_row = params_ds.loc[gauge, "Top_1"]
+        param_set = ast.literal_eval(param_row)
+        l.info(f"Applying parameters for gauge {gauge}: {param_set}")
+        #the
 
         for idx, param_value in enumerate(param_set.values()):
             if params_method[idx] == "mult":
@@ -84,7 +84,7 @@ def main(
         ds[params_lname[idx]] = da
 
     ds.to_netcdf(staticmaps)
-
+    l.info(f"Updated staticmaps saved to {staticmaps}")
     with open(out, "w") as _w:
         _w.write("Done!\n")
     pass          
@@ -94,14 +94,15 @@ if __name__ == "__main__":
     if "snakemake" in globals():
         mod = globals()["snakemake"]
         l = setup_logging('data/0-log', f'08-initial_instate_tomls_L{snakemake.params.level}.log')
+
         main(
-            mod.input.best_params,
-            mod.params.staticmaps,
-            mod.params.sub_catch,
-            mod.params.params_lname,
-            mod.params.params_method,
-            mod.params.level,
-            mod.output.done,
+            params = mod.input.best_params,
+            staticmaps = mod.params.staticmaps,
+            sub_catch = mod.params.sub_catch,
+            params_lname = mod.params.params_lname,
+            params_method = mod.params.params_method,
+            level=mod.params.level,
+            out=mod.output.done,
         )
 
     else:
