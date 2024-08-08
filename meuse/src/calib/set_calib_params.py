@@ -70,31 +70,34 @@ def main(
         ds[params_lname[idx]] = da
     
     # Set param for upstream gauges
-    upgauge_ids = graph[level]["deps"]
-    upgauge_int = [int(item) for item in upgauge_ids]
-    l.info(f"Updating the following upstream gauges: {upgauge_int}")
-    random_sel_results = []
-    # for each upstream gauge, set random param from best_10params.csv
-    for upgauge in upgauge_int:
-        vds_upgauge = vds[vds.value == upgauge]
-        mask_up = ds.raster.geometry_mask(vds_upgauge)
-        
-        #TODO: find the csv that contain this upgauge from best_10params => lets call it csv for now
-        # select one from top1 to top10 for this upgauge
-        random_column, random_paramset = select_random_paramset(csv, upgauge)
-        random_sel_results.append({'upgauges': upgauge, 'selected_column': random_column, 'selected_paramset': random_paramset})
-        # modify staticmap based on the random paramset
-        for idx, value in enumerate(random_paramset.values()):
-            da = ds[params_lname[idx]]
-            if params_method[idx] == "mult":
-                da.values[mask_up] *= value
-            elif params_method[idx] == "set":
-                da.values[mask_up] = value
-            elif params_method[idx] == "add":
-                da.values[mask_up] += value          
-            ds[params_lname[idx]] = da
+    if not os.path.exists(best_10params) or level == 'level0':
+        l.info(f"Best params file not found or level is level0, skipping upper level random params")
+    else:
+        upgauge_ids = graph[level]["deps"]
+        upgauge_int = [int(item) for item in upgauge_ids]
+        l.info(f"Updating the following upstream gauges: {upgauge_int}")
+        random_sel_results = []
+        # for each upstream gauge, set random param from best_10params.csv
+        for upgauge in upgauge_int:
+            vds_upgauge = vds[vds.value == upgauge]
+            mask_up = ds.raster.geometry_mask(vds_upgauge)
             
-    df_random_sel_results = pd.DataFrame(random_sel_results)  #TODO: how to save this?
+            #TODO: find the csv that contain this upgauge from best_10params => lets call it csv for now
+            # select one from top1 to top10 for this upgauge
+            random_column, random_paramset = select_random_paramset(csv, upgauge)
+            random_sel_results.append({'upgauges': upgauge, 'selected_column': random_column, 'selected_paramset': random_paramset})
+            # modify staticmap based on the random paramset
+            for idx, value in enumerate(random_paramset.values()):
+                da = ds[params_lname[idx]]
+                if params_method[idx] == "mult":
+                    da.values[mask_up] *= value
+                elif params_method[idx] == "set":
+                    da.values[mask_up] = value
+                elif params_method[idx] == "add":
+                    da.values[mask_up] += value          
+                ds[params_lname[idx]] = da
+                
+        df_random_sel_results = pd.DataFrame(random_sel_results)  #TODO: how to save this?
     
     ds.to_netcdf(out)
     l.info(f"Writing dataset to {out}")
