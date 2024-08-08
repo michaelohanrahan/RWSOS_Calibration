@@ -1,4 +1,4 @@
-#%% TODO: 1) how to access best_10params: list[Path | str]. 2) how to save the random select paramset results
+#%% TODO: 1)change random_df based on new rule developed. 2)align variable names: graph_level, graph_node
 
 #%%
 from pathlib import Path
@@ -33,9 +33,10 @@ def main(
     params: dict,
     params_lname: tuple | list,
     params_method: tuple | list,
-    best_10params: list[Path | str], #TODO: a list of best_10params.csv from previous levels
+    random_df: Path | str, #TODO: a path to random_df created in previous rule
     level: str,
-    graph: dict,
+    graph_level: dict,
+    graph_node: dict,
     sub_catch: Path | str,
     lakes_in: Path | str,
     lakes_out: Path | str,
@@ -53,7 +54,7 @@ def main(
     vds = vds.astype({"value": int})
     
     # Set param for current level gauges
-    gauge_ids = graph[level]["elements"]
+    gauge_ids = graph_level[level]["elements"]
     gauge_int = [int(item) for item in gauge_ids]
     l.info(f"Updating the following current level gauges: {gauge_int}")
     vds_current = vds[vds.value.isin(gauge_int)]
@@ -70,22 +71,20 @@ def main(
         ds[params_lname[idx]] = da
     
     # Set param for upstream gauges
-    if not os.path.exists(best_10params) or level == 'level0':
-        l.info(f"Best params file not found or level is level0, skipping upper level random params")
+    if not os.path.exists(random_df) or level == 'level0':
+        l.info(f"random_df file not found or level is level0, skipping upper level random params")
     else:
-        upgauge_ids = graph[level]["deps"]
+        # select all the relevant upstream gauges (including further upstream)
+        upgauge_ids = [dep for node in gauge_ids for dep in graph_node[str(node)]['_deps']]
         upgauge_int = [int(item) for item in upgauge_ids]
         l.info(f"Updating the following upstream gauges: {upgauge_int}")
-        random_sel_results = []
-        # for each upstream gauge, set random param from best_10params.csv
+        # for each upstream gauge, set random param from random_df
         for upgauge in upgauge_int:
             vds_upgauge = vds[vds.value == upgauge]
             mask_up = ds.raster.geometry_mask(vds_upgauge)
             
-            #TODO: find the csv that contain this upgauge from best_10params => lets call it csv for now
-            # select one from top1 to top10 for this upgauge
-            random_column, random_paramset = select_random_paramset(csv, upgauge)
-            random_sel_results.append({'upgauges': upgauge, 'selected_column': random_column, 'selected_paramset': random_paramset})
+            #TODO: the idx should be the same as what current gauge used!
+            random_paramset = random_df[random_df.columns == upgauge]['idx']
             # modify staticmap based on the random paramset
             for idx, value in enumerate(random_paramset.values()):
                 da = ds[params_lname[idx]]
@@ -96,8 +95,6 @@ def main(
                 elif params_method[idx] == "add":
                     da.values[mask_up] += value          
                 ds[params_lname[idx]] = da
-                
-        df_random_sel_results = pd.DataFrame(random_sel_results)  #TODO: how to save this?
     
     ds.to_netcdf(out)
     l.info(f"Writing dataset to {out}")
@@ -130,46 +127,50 @@ if __name__ == "__main__":
     
     level = 'level5'
     import json
-    graph = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
+    graph_level = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
+    graph_node = json.load(open(Path(work_dir / 'Hall_nodes_graph.json')))
     sub_catch = work_dir / 'subcatch_Hall.geojson'
     
-        
+    gauge_ids = graph_level['level4']["elements"]
+    upgauge_ids = [dep for node in gauge_ids for dep in graph_node[str(node)]['_deps']]
     
     
-    l=setup_logging('data/0-log', '03-set_calib_params.log')
-    try:
-        if "snakemake" in globals():
-            mod = globals()["snakemake"]
+    
+    
+    # l=setup_logging('data/0-log', '03-set_calib_params.log')
+    # try:
+    #     if "snakemake" in globals():
+    #         mod = globals()["snakemake"]
 
-            main(
-                l,
-                mod.params.best_params,
-                mod.params.dataset,
-                mod.params.params,
-                mod.params.params_lname,
-                mod.params.params_method,
-                mod.params.level,
-                mod.params.graph[mod.params.level]["elements"],
-                mod.params.sub_catch,
-                mod.params.lake_in,
-                mod.output.lake_hqs, 
-                mod.output.staticmaps,
-            )
+    #         main(
+    #             l,
+    #             mod.params.best_params,
+    #             mod.params.dataset,
+    #             mod.params.params,
+    #             mod.params.params_lname,
+    #             mod.params.params_method,
+    #             mod.params.level,
+    #             mod.params.graph[mod.params.level]["elements"],
+    #             mod.params.sub_catch,
+    #             mod.params.lake_in,
+    #             mod.output.lake_hqs, 
+    #             mod.output.staticmaps,
+    #         )
 
-        else:
-            main(
-                "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/staticmaps.nc",
-                {"ksat": 5, "rd": 0.5, "st": 0.5},
-                ["KsatHorFrac", "RootingDepth", "SoilThickness"],
-                ["set", "mult", "mult"],
-                ['12112600', '12108500', '12105900', '12117000', '12115500', '12114500', '12120600', '12120000'],
-                "p:/1000365-002-wflow/tmp/usgs_wflow/models/TEST_MODEL_KING/staticgeoms/subcatch_obs.geojson",
-                "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level1/out.nc"
-            )
-        pass
+    #     else:
+    #         main(
+    #             "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/staticmaps.nc",
+    #             {"ksat": 5, "rd": 0.5, "st": 0.5},
+    #             ["KsatHorFrac", "RootingDepth", "SoilThickness"],
+    #             ["set", "mult", "mult"],
+    #             ['12112600', '12108500', '12105900', '12117000', '12115500', '12114500', '12120600', '12120000'],
+    #             "p:/1000365-002-wflow/tmp/usgs_wflow/models/TEST_MODEL_KING/staticgeoms/subcatch_obs.geojson",
+    #             "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level1/out.nc"
+    #         )
+    #     pass
 
-    except Exception as e:
-        l.error(f"An error occurred: {e}")
-        l.error(traceback.format_exc())
-        raise e
+    # except Exception as e:
+    #     l.error(f"An error occurred: {e}")
+    #     l.error(traceback.format_exc())
+    #     raise e
 
