@@ -80,8 +80,11 @@ cfg_template = Path(input_dir, "wflow_sbm.toml")
 #calib_dir
 calib_dir = Path(inter_dir, "calib_data")
 
-#graph
+#graph level
 graph = json.load(open(Path(inter_dir, f'{config["gauges"]}_levels_graph.json')))
+
+#graph node
+graph_node = json.load(open(Path(inter_dir, f'{config["gauges"]}_nodes_graph.json')))
 
 #soilthicknesses
 with open(config["calib_recipe"]) as recipe:
@@ -157,15 +160,17 @@ for _level in range(0, last_level+1):
 
     rule:
         name: f"create_params_L{_level}"
-        input: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"])  #?what is this used for?
+        input: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"])
         params:
             # best_params = Path(calib_dir, f"level{_level-1}", "performanc.nc"),
             dataset = staticmaps,
             params = paramspace.instance,
             params_lname = lnames,
             params_method = methods,
+            random_df = #TODO: path to random_df
             level = f"level{_level}",
-            graph = graph,
+            graph_level = graph,
+            graph_node = graph_node, 
             sub_catch = subcatch,
             lake_in = lakes
         localrule: True
@@ -235,9 +240,11 @@ for _level in range(0, last_level+1):
 
     rule:
         name: f"evaluate_L{_level}"
-        input: expand(Path(calib_dir, f"level{_level}", "{params}", "run_default", "output_scalar.nc"), params=paramspace.instance_patterns)
+        input: 
+            expand(Path(calib_dir, f"level{_level}", "{params}", "run_default", "output_scalar.nc"), params=paramspace.instance_patterns)
         params: 
             observed_data = Path(source_dir, config["observed_data"]),
+            #TODO: add random_df, best_10params_{_level-1}
             dry_month = config["dry_months"],
             window = config["window"],
             level = f"{_level}",
@@ -245,14 +252,14 @@ for _level in range(0, last_level+1):
             params = df.to_dict(orient="records"), 
             starttime = config["eval_starttime"],
             endtime = config["eval_endtime"],
-            metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"] #TODO: normalize mae
+            metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
             weights = config["weights"] # [0.2, 0.25, 0.3, 0.25]
         localrule: False
         output: 
             best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv"),
             performance = Path(calib_dir, f"level{_level}", "performance.nc")
         script: 
-            """src/calib/evaluate_params.py"""         # TODO: modify this script
+            """src/calib/evaluate_params.py"""       
 
     '''
     This rule overwrites the staticmaps file with the best per level??
