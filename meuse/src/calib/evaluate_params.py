@@ -1,8 +1,10 @@
 from pathlib import Path
-
+import os
 import numpy as np
 import pandas as pd
 import xarray as xr
+from setuplog import setup_logging
+import traceback
 
 #TODO: add peak timing to metrics, conforming to data structure
 from metrics import kge, nselog_mm7q, mae_peak_timing, mape_peak_magnitude, weighted_euclidean
@@ -35,6 +37,7 @@ def create_coords_from_params(
 
 
 def main(
+    l,
     modelled: tuple | list,
     observed: Path | str,
     #TODO:
@@ -50,6 +53,7 @@ def main(
     metrics: tuple | list,
     weights: tuple | list,
     out: Path | str,
+    gid: str,
 ):
     """
     Perform evaluation of model parameters.
@@ -75,12 +79,13 @@ def main(
     #TODO: optionality to have additional index for alternative dimension 
     # output directory
     out_dir = Path(out).parent
-    
+    os.makedirs(out_dir, exist_ok=True)
     # list of gauge ids (TODO: to be tested)
     gauges = graph[level]["elements"]
 
     obs = xr.open_dataset(observed)
-    obs = obs.sel(time=slice(starttime, endtime)) 
+    l.info(f"Opened observed data from {observed}")
+    obs = obs.sel(runs='Obs.', time=slice(starttime, endtime)) 
 
     res = []
 
@@ -95,7 +100,15 @@ def main(
         # Open and slice temporally 
         md = xr.open_dataset(_m)
         md = md.sel(time=slice(starttime, endtime))
+        
+        if len(md.time.values) == 0:
+            l.warning(f"\n{'*'*10}\n{_m}\nIs not a complete time series, Skipping...\n{'*'*10}")
+            continue
+        
+        if md[gid].dtype != int:
+            md[gid] = md[gid].astype(np.int64)
 
+        l.info(f"Opened modelled data from {_m}")
         # Calculate the metric values
         for metric in metrics:
             metric_func = METRICS.get(metric)
