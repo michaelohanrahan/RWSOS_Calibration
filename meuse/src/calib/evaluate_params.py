@@ -37,11 +37,13 @@ def create_coords_from_params(
 def main(
     modelled: tuple | list,
     observed: Path | str,
+    #TODO:
+    random_df: Path | str,
+    best_10params_previous: Path | str,	
     dry_month: list,
     window: int,
     level: str,
     graph: dict,
-    # gauges: tuple | list,
     params: tuple | list,
     starttime: str,
     endtime: str,
@@ -155,8 +157,6 @@ def main(
         Path(out_dir, "performance.nc")
     )
 
-    #TODO: 
-    # Best 10 parameters sets by indexing minimum euc. dist.
     best_10params = np.argsort(res, axis=0)[:10]
 
     _out = []
@@ -181,6 +181,7 @@ def main(
 if __name__ == "__main__":
     
     work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA")
+    random_df = pd.read_csv(work_dir / 'random_df.csv', index_col=0)
     
     # import necessary variables
     import pickle as pk
@@ -203,7 +204,7 @@ if __name__ == "__main__":
     endtime = '2018-02-21T23:00:00'
     metrics = ["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
     weights = [0.2, 0.25, 0.3, 0.25]
-    out = work_dir / 'best_10params.csv'
+    out = work_dir / f'best_10params_{level}.csv'
     
     # call function main()
     ds_performance, out_ds_best_10params = main(
