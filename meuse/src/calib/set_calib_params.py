@@ -1,4 +1,4 @@
-#%% TODO: align variable names: graph_level, graph_node
+#%%TODO: a path to random_df created in previous level
 
 #%%
 from pathlib import Path
@@ -22,8 +22,7 @@ def main(
     params_method: tuple | list,
     random_df: Path | str, #TODO: a path to random_df created in previous rule
     level: str,
-    graph_level: dict,
-    graph_node: dict,
+    graph: dict,
     sub_catch: Path | str,
     lakes_in: Path | str,
     lakes_out: Path | str,
@@ -44,7 +43,7 @@ def main(
     vds = vds.astype({"value": int})
     
     # Set param for current level gauges
-    gauge_ids = graph_level[level]["elements"]
+    gauge_ids = graph[level]["elements"]
     gauge_int = [int(item) for item in gauge_ids]
     l.info(f"Updating the following current level gauges: {gauge_int}")
     vds_current = vds[vds.value.isin(gauge_int)]
@@ -65,7 +64,7 @@ def main(
         l.info(f"random_df file not found or level is level0, skipping upper level random params")
     else:
         # select all the relevant upstream gauges (including further upstream)
-        upgauge_ids = [dep for node in gauge_ids for dep in graph_node[str(node)]['_deps']]
+        upgauge_ids = graph[level]['deps']
         upgauge_int = [int(item) for item in upgauge_ids]
         l.info(f"Updating the following upstream gauges: {upgauge_int}")
         
@@ -125,15 +124,17 @@ if __name__ == "__main__":
     
     level = 'level5'
     import json
-    graph_level = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
-    graph_node = json.load(open(Path(work_dir / 'Hall_nodes_graph.json')))
+    graph = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
     
     sub_catch = work_dir / 'subcatch_Hall.geojson'
     vds = gpd.read_file(sub_catch)
     vds = vds.astype({"value": int})
     
-    gauge_ids = graph_level['level4']["elements"]
-    upgauge_ids = [dep for node in gauge_ids for dep in graph_node[str(node)]['_deps']]
+    gauge_ids = graph['level4']["elements"]
+    upgauge_new = graph['level4']['deps']
+    
+
+
     
     
     # l=setup_logging('data/0-log', '03-set_calib_params.log')
