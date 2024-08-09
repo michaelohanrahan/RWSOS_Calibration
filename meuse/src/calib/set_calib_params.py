@@ -1,4 +1,4 @@
-#%% TODO: 1)change random_df based on new rule developed. 2)align variable names: graph_level, graph_node
+#%% TODO: align variable names: graph_level, graph_node
 
 #%%
 from pathlib import Path
@@ -12,19 +12,6 @@ import traceback
 import os
 import random
 import numpy as np
-
-def select_random_paramset(df, gauge):
-    """
-    df: csv that contains the best_10params
-    gauge: the gauge id
-    """
-    row = df[df.index == gauge]
-    if row.empty:
-        raise ValueError("Gauge not found in DataFrame")
-    random_column = random.choice(row.columns)
-    random_paramset = row[random_column].apply(eval).values[0]
-
-    return random_column, random_paramset
 
 
 def main(
@@ -48,6 +35,9 @@ def main(
     """
     # Load original staticmaps
     ds = xr.open_dataset(p)
+    
+    # Load the random_df
+    random_df = pd.read_csv(random_df, index_col=0)
 
     # Load the geometries
     vds = gpd.read_file(sub_catch)
@@ -78,13 +68,22 @@ def main(
         upgauge_ids = [dep for node in gauge_ids for dep in graph_node[str(node)]['_deps']]
         upgauge_int = [int(item) for item in upgauge_ids]
         l.info(f"Updating the following upstream gauges: {upgauge_int}")
-        # for each upstream gauge, set random param from random_df
+        
+        # select matching row from random_df
+        _mask = pd.Series([True] * len(random_df))
+        for key, value in params.items():
+            _mask = _mask & (random_df[key] == value)
+        random_df_sel = random_df[_mask]
+        # check if the matching is unique
+        if len(random_df_sel) != 1:
+            raise ValueError(f"Matching row in random_df is not unique! {len(random_df_sel)} rows found.")
+        
+        # for each upstream gauge, set random param from random_df_sel
         for upgauge in upgauge_int:
             vds_upgauge = vds[vds.value == upgauge]
             mask_up = ds.raster.geometry_mask(vds_upgauge)
-            
-            #TODO: the idx should be the same as what current gauge used!
-            random_paramset = random_df[random_df.columns == upgauge]['idx']
+            # select random paramset
+            random_paramset = random_df_sel[str(float(upgauge))].apply(eval)[0]
             # modify staticmap based on the random paramset
             for idx, value in enumerate(random_paramset.values()):
                 da = ds[params_lname[idx]]
@@ -109,8 +108,7 @@ def main(
 if __name__ == "__main__":
     
     work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA')
-    csv = pd.read_csv(work_dir / 'best_10params.csv', index_col='gauges')
-    csv.index=csv.index.astype(int)
+    random_df = pd.read_csv(work_dir / 'random_df.csv', index_col=0)
     
     p = work_dir / 'staticmaps/staticmaps.nc'
     
@@ -129,12 +127,13 @@ if __name__ == "__main__":
     import json
     graph_level = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
     graph_node = json.load(open(Path(work_dir / 'Hall_nodes_graph.json')))
+    
     sub_catch = work_dir / 'subcatch_Hall.geojson'
+    vds = gpd.read_file(sub_catch)
+    vds = vds.astype({"value": int})
     
     gauge_ids = graph_level['level4']["elements"]
     upgauge_ids = [dep for node in gauge_ids for dep in graph_node[str(node)]['_deps']]
-    
-    
     
     
     # l=setup_logging('data/0-log', '03-set_calib_params.log')
