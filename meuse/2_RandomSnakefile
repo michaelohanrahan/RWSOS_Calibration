@@ -169,8 +169,7 @@ for _level in range(0, last_level+1):
             params_method = methods,
             random_df = #TODO: path to random_df
             level = f"level{_level}",
-            graph_level = graph,
-            graph_node = graph_node, 
+            graph = graph,
             sub_catch = subcatch,
             lake_in = lakes
         localrule: True
