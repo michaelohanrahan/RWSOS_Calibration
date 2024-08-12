@@ -1,8 +1,10 @@
 from pathlib import Path
-
+import os
 import numpy as np
 import pandas as pd
 import xarray as xr
+from setuplog import setup_logging
+import traceback
 
 #TODO: add peak timing to metrics, conforming to data structure
 from metrics import kge, nselog_mm7q, mae_peak_timing, mape_peak_magnitude, weighted_euclidean
@@ -35,19 +37,23 @@ def create_coords_from_params(
 
 
 def main(
+    l,
     modelled: tuple | list,
     observed: Path | str,
+    #TODO:
+    random_df: Path | str,
+    best_10params_previous: Path | str,	
     dry_month: list,
     window: int,
     level: str,
     graph: dict,
-    # gauges: tuple | list,
     params: tuple | list,
     starttime: str,
     endtime: str,
     metrics: tuple | list,
     weights: tuple | list,
     out: Path | str,
+    gid: str,
 ):
     """
     Perform evaluation of model parameters.
@@ -73,12 +79,13 @@ def main(
     #TODO: optionality to have additional index for alternative dimension 
     # output directory
     out_dir = Path(out).parent
-    
+    os.makedirs(out_dir, exist_ok=True)
     # list of gauge ids (TODO: to be tested)
     gauges = graph[level]["elements"]
 
     obs = xr.open_dataset(observed)
-    obs = obs.sel(time=slice(starttime, endtime)) 
+    l.info(f"Opened observed data from {observed}")
+    obs = obs.sel(runs='Obs.', time=slice(starttime, endtime)) 
 
     res = []
 
@@ -93,7 +100,15 @@ def main(
         # Open and slice temporally 
         md = xr.open_dataset(_m)
         md = md.sel(time=slice(starttime, endtime))
+        
+        if len(md.time.values) == 0:
+            l.warning(f"\n{'*'*10}\n{_m}\nIs not a complete time series, Skipping...\n{'*'*10}")
+            continue
+        
+        if md[gid].dtype != int:
+            md[gid] = md[gid].astype(np.int64)
 
+        l.info(f"Opened modelled data from {_m}")
         # Calculate the metric values
         for metric in metrics:
             metric_func = METRICS.get(metric)
@@ -155,8 +170,6 @@ def main(
         Path(out_dir, "performance.nc")
     )
 
-    #TODO: 
-    # Best 10 parameters sets by indexing minimum euc. dist.
     best_10params = np.argsort(res, axis=0)[:10]
 
     _out = []
@@ -181,6 +194,7 @@ def main(
 if __name__ == "__main__":
     
     work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA")
+    random_df = pd.read_csv(work_dir / 'random_df.csv', index_col=0)
     
     # import necessary variables
     import pickle as pk
@@ -203,7 +217,7 @@ if __name__ == "__main__":
     endtime = '2018-02-21T23:00:00'
     metrics = ["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
     weights = [0.2, 0.25, 0.3, 0.25]
-    out = work_dir / 'best_10params.csv'
+    out = work_dir / f'best_10params_{level}.csv'
     
     # call function main()
     ds_performance, out_ds_best_10params = main(

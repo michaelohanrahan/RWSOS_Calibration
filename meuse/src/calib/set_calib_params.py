@@ -1,4 +1,4 @@
-#%% TODO: 1) how to access best_10params: list[Path | str]. 2) how to save the random select paramset results
+#%%TODO: a path to random_df created in previous level
 
 #%%
 from pathlib import Path
@@ -12,20 +12,6 @@ import traceback
 import os
 import random
 import numpy as np
-from pprint import pprint
-
-def select_random_paramset(df, gauge):
-    """
-    df: csv that contains the best_10params
-    gauge: the gauge id
-    """
-    row = df[df.index == gauge]
-    if row.empty:
-        raise ValueError("Gauge not found in DataFrame")
-    random_column = random.choice(row.columns)
-    random_paramset = row[random_column].apply(eval).values[0]
-
-    return random_column, random_paramset
 
 
 def main(
@@ -34,7 +20,7 @@ def main(
     params: dict,
     params_lname: tuple | list,
     params_method: tuple | list,
-    best_params: list[Path | str], #TODO: a list of best_10params.csv from previous levels
+    random_df: Path | str, #TODO: a path to random_df created in previous rule
     level: str,
     graph: dict,
     sub_catch: Path | str,
@@ -48,6 +34,9 @@ def main(
     """
     # Load original staticmaps
     ds = xr.open_dataset(p)
+    
+    # Load the random_df
+    random_df = pd.read_csv(random_df, index_col=0)
 
     # Load the geometries
     vds = gpd.read_file(sub_catch)
@@ -71,31 +60,39 @@ def main(
         ds[params_lname[idx]] = da
     
     # Set param for upstream gauges
-    upgauge_ids = graph[level]["deps"]
-    upgauge_int = [int(item) for item in upgauge_ids]
-    l.info(f"Updating the following upstream gauges: {upgauge_int}")
-    random_sel_results = []
-    # for each upstream gauge, set random param from best_10params.csv
-    for upgauge in upgauge_int:
-        vds_upgauge = vds[vds.value == upgauge]
-        mask_up = ds.raster.geometry_mask(vds_upgauge)
+    if not os.path.exists(random_df) or level == 'level0':
+        l.info(f"random_df file not found or level is level0, skipping upper level random params")
+    else:
+        # select all the relevant upstream gauges (including further upstream)
+        upgauge_ids = graph[level]['deps']
+        upgauge_int = [int(item) for item in upgauge_ids]
+        l.info(f"Updating the following upstream gauges: {upgauge_int}")
         
-        #TODO: find the csv that contain this upgauge from best_10params => lets call it csv for now
-        # select one from top1 to top10 for this upgauge
-        random_column, random_paramset = select_random_paramset(csv, upgauge)
-        random_sel_results.append({'upgauges': upgauge, 'selected_column': random_column, 'selected_paramset': random_paramset})
-        # modify staticmap based on the random paramset
-        for idx, value in enumerate(random_paramset.values()):
-            da = ds[params_lname[idx]]
-            if params_method[idx] == "mult":
-                da.values[mask_up] *= value
-            elif params_method[idx] == "set":
-                da.values[mask_up] = value
-            elif params_method[idx] == "add":
-                da.values[mask_up] += value          
-            ds[params_lname[idx]] = da
-            
-    df_random_sel_results = pd.DataFrame(random_sel_results)  #TODO: how to save this?
+        # select matching row from random_df
+        _mask = pd.Series([True] * len(random_df))
+        for key, value in params.items():
+            _mask = _mask & (random_df[key] == value)
+        random_df_sel = random_df[_mask]
+        # check if the matching is unique
+        if len(random_df_sel) != 1:
+            raise ValueError(f"Matching row in random_df is not unique! {len(random_df_sel)} rows found.")
+        
+        # for each upstream gauge, set random param from random_df_sel
+        for upgauge in upgauge_int:
+            vds_upgauge = vds[vds.value == upgauge]
+            mask_up = ds.raster.geometry_mask(vds_upgauge)
+            # select random paramset
+            random_paramset = random_df_sel[str(float(upgauge))].apply(eval)[0]
+            # modify staticmap based on the random paramset
+            for idx, value in enumerate(random_paramset.values()):
+                da = ds[params_lname[idx]]
+                if params_method[idx] == "mult":
+                    da.values[mask_up] *= value
+                elif params_method[idx] == "set":
+                    da.values[mask_up] = value
+                elif params_method[idx] == "add":
+                    da.values[mask_up] += value          
+                ds[params_lname[idx]] = da
     
     ds.to_netcdf(out)
     l.info(f"Writing dataset to {out}")
@@ -186,8 +183,8 @@ if __name__ == "__main__":
             )
 
 
-    except Exception as e:
-        l.error(f"An error occurred: {e}")
-        l.error(traceback.format_exc())
-        raise e
+    # except Exception as e:
+    #     l.error(f"An error occurred: {e}")
+    #     l.error(traceback.format_exc())
+    #     raise e
 
