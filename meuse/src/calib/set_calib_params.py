@@ -12,6 +12,7 @@ import traceback
 import os
 import random
 import numpy as np
+from pprint import pprint
 
 def select_random_paramset(df, gauge):
     """
@@ -33,7 +34,7 @@ def main(
     params: dict,
     params_lname: tuple | list,
     params_method: tuple | list,
-    best_10params: list[Path | str], #TODO: a list of best_10params.csv from previous levels
+    best_params: list[Path | str], #TODO: a list of best_10params.csv from previous levels
     level: str,
     graph: dict,
     sub_catch: Path | str,
@@ -107,32 +108,7 @@ def main(
 
 
 if __name__ == "__main__":
-    
-    work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA')
-    csv = pd.read_csv(work_dir / 'best_10params.csv', index_col='gauges')
-    csv.index=csv.index.astype(int)
-    
-    p = work_dir / 'staticmaps/staticmaps.nc'
-    
-    import pickle as pk
-    with open(work_dir/'create_set_params.pkl', 'rb') as f:
-        dict = pk.load(f)
-    params_lname = dict['lnames']
-    params_method = dict['methods']
-    df = dict['ds']
-    
-    from snakemake.utils import Paramspace
-    paramspace = Paramspace(df)
-    params = paramspace.instance
-    
-    level = 'level5'
-    import json
-    graph = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
-    sub_catch = work_dir / 'subcatch_Hall.geojson'
-    
-        
-    
-    
+
     l=setup_logging('data/0-log', '03-set_calib_params.log')
     try:
         if "snakemake" in globals():
@@ -140,30 +116,75 @@ if __name__ == "__main__":
 
             main(
                 l,
-                mod.params.best_params,
-                mod.params.dataset,
-                mod.params.params,
-                mod.params.params_lname,
-                mod.params.params_method,
-                mod.params.level,
-                mod.params.graph[mod.params.level]["elements"],
-                mod.params.sub_catch,
-                mod.params.lake_in,
-                mod.output.lake_hqs, 
-                mod.output.staticmaps,
+                p=mod.params.dataset,
+                params=mod.params.params,
+                params_lname=mod.params.params_lname,
+                params_method=mod.params.params_method,
+                best_params=mod.params.best_params,
+                level=mod.params.level,
+                graph=mod.params.graph,
+                sub_catch=mod.params.sub_catch,
+                lakes_in=mod.params.lake_in,
+                lakes_out=mod.output.lake_out, 
+                out=mod.output.staticmaps,
             )
 
         else:
+            from snakemake.utils import Paramspace
+            import json
+            import pickle as pk
+            
+            work_dir = Path(r'p:\11209265-grade2023\wflow\UNREAL_TEST_DATA')
+            csv = pd.read_csv(work_dir / 'best_10params.csv', index_col='gauges')
+            csv.index=csv.index.astype(int)
+            
+            p = work_dir / 'staticmaps/staticmaps.nc'
+            
+            with open(work_dir/'create_set_params.pkl', 'rb') as f:
+                d = pk.load(f)
+            params_lname = d['lnames']
+            params_method = d['methods']
+            df = d['ds']
+            
+            paramspace = Paramspace(df)
+            params = paramspace.instance
+            
+            level = 'level0'
+            graph = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
+            nodes = json.load(open(Path(work_dir / 'Hall_nodes_graph.json')))
+            sub_catch = work_dir / 'subcatch_Hall.geojson'
+            
+            gauges = graph[level]['elements']
+            pprint(gauges)
+            csv['level'] = level
+            # print(csv.head(1))
+            def create_param(df):
+                param = {col:round(random.uniform(0, 2), 2) for col in df.columns}
+                return param
+            
+            data = {
+                'gauges': list(gauges),
+                **{'Top_{}'.format(i): str(create_param(df)) for i in range(10+1)},
+            }
+            
+            best_params = pd.DataFrame(data)
+            pprint(best_params)
+            a
             main(
-                "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/staticmaps.nc",
-                {"ksat": 5, "rd": 0.5, "st": 0.5},
-                ["KsatHorFrac", "RootingDepth", "SoilThickness"],
-                ["set", "mult", "mult"],
-                ['12112600', '12108500', '12105900', '12117000', '12115500', '12114500', '12120600', '12120000'],
-                "p:/1000365-002-wflow/tmp/usgs_wflow/models/TEST_MODEL_KING/staticgeoms/subcatch_obs.geojson",
-                "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level1/out.nc"
+                l,
+                p=r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\3-input\staticmaps\staticmaps.nc",
+                params=params,
+                params_lname=params_lname,
+                params_method=params_method,
+                best_params=best_params,
+                level=mod.params.level,
+                graph=mod.params.graph,
+                sub_catch=mod.params.sub_catch,
+                lakes_in=mod.params.lake_in,
+                lakes_out=mod.output.lake_out, 
+                out=mod.output.staticmaps,
             )
-        pass
+
 
     except Exception as e:
         l.error(f"An error occurred: {e}")

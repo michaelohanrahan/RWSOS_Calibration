@@ -153,36 +153,78 @@ def generate_graph_levels(
 def find_longest_continuous_chain(graph):
     return nx.algorithms.dag.dag_longest_path(graph)
 
+def generate_graph_with_predecessors(DG, levels_dict):
+    """
+    Generates a dictionary with nodes, their levels, and their predecessors.
+
+    Parameters
+    ----------
+    DG : nx.DiGraph
+        Directed graph representing the subcatchments.
+    levels_dict : dict
+        Dictionary with node levels.
+
+    Returns
+    -------
+    dict
+        Dictionary with node information including predecessors.
+    """
+    nodes = {}
+    for node, data in DG.nodes(data=True):
+        level = None
+        for lvl, nodes_list in levels_dict.items():
+            if node in nodes_list:
+                level = lvl
+                break
+        predecessors = list(DG.predecessors(node))
+        nodes[node] = {
+            'level': level,
+            '_pre': predecessors
+        }
+    return nodes
 
 if __name__ == "__main__":
     try:
-        try:
+        # Set up logger
+        logger = setup_logger(Path.cwd(), 'create_dependency_graph.py')
+
+        if 'snakemake' in globals():
             gridfile = snakemake.input.gridfile
             gaugeset = snakemake.params.gaugeset
             testmode = False
 
-            # Set up logger
-            logger = setup_logger(Path.cwd(), 'create_dependency_graph.py')
+        elif 'args' in globals():
+            try:
+                ap = AP.ArgumentParser()
+                ap.add_argument("cwd", type=str)
+                ap.add_argument("--gridfile", type=str, required=True)
+                ap.add_argument("--gaugeset", type=str, required=True)
+                ap.add_argument("--testmode", type=bool, default=True)
+                args = ap.parse_args()
+                cwd = args.cwd
+                gridfile = args.gridfile
+                gaugeset = args.gaugeset
+                testmode = args.testmode
+                os.chdir(cwd)     
+            except:
+                logger.error("An error occurred while parsing arguments", exc_info=True)
+        else:
+            try:
+                cwd = "c:/git/RWSOS_randomsnake/meuse" 
+                os.chdir(cwd)
+                gridfile = "UNREAL_TEST_DATA/staticmaps/staticmaps.nc"
+                gaugeset = "Hall"
+                testmode = True
+            except:
+                logger.error("An error occurred while setting default arguments", exc_info=True)
+        
+        logger.info(f'cwd: {os.getcwd()}')
+        logger = setup_logger(os.getcwd(), 'create_dependency_graph.py')
+        logger.info(f'logger: {logger}')
+        logger.info(f'gridfile: {gridfile}')
+        logger.info(f'gaugeset: {gaugeset}')
+        logger.info(f'testmode: {testmode}')
 
-        except:
-            ap = AP.ArgumentParser()
-            ap.add_argument("cwd", type=str)
-            ap.add_argument("--gridfile", type=str, required=True)
-            ap.add_argument("--gaugeset", type=str, required=True)
-            ap.add_argument("--testmode", type=bool, default=True)
-            args = ap.parse_args()
-
-            os.chdir(args.cwd)
-            gridfile = args.gridfile
-            gaugeset = args.gaugeset
-            testmode = args.testmode
-
-            logger.info(f'cwd: {os.getcwd()}')
-            logger = setup_logger(os.getcwd(), 'create_dependency_graph.py')
-            logger.info(f'logger: {logger}')
-            logger.info(f'gridfile: {gridfile}')
-            logger.info(f'gaugeset: {gaugeset}')
-            logger.info(f'testmode: {testmode}')
         ds = xr.open_dataset(gridfile)
 
         sub = ds[f"wflow_subcatch_{gaugeset}"]
@@ -240,7 +282,20 @@ if __name__ == "__main__":
             # Store the layer and its dependencies in the levels_graph
             levels_graph[f'level{layer}'] = {'deps': list(deps), 'elements': [node for node, _ in nodes_in_layer]}
 
+        print(levels_dict)
+        pred = generate_graph_with_predecessors(graph, levels_dict)
+        print(pred)
+        
         if testmode:
+            with open(f'data/2-interim/{gaugeset}_nodes_graph.json', "w") as f:
+                json.dump(nodes, f, indent=4)
+                logger.info(f"Nodes for {gaugeset} have been saved to data/2-interim/{gaugeset}_nodes_graph.json")
+            with open(f'data/2-interim/{gaugeset}_levels_graph.json', "w") as f:
+                json.dump(levels_graph, f, indent=4)
+                logger.info(f"Levels for {gaugeset} have been saved to data/2-interim/{gaugeset}_levels_graph.json")
+            with open(f'data/2-interim/{gaugeset}_pred_graph.json', "w") as f:
+                json.dump(pred, f, indent=4)
+                logger.info(f"Predecessors for {gaugeset} have been saved to data/2-interim/{gaugeset}_pred_graph.json")
             logger.info(json.dumps(levels_graph, indent=4))
             plt.show()
             
@@ -252,7 +307,10 @@ if __name__ == "__main__":
             with open(f'data/2-interim/{gaugeset}_levels_graph.json', "w") as f:
                 json.dump(levels_graph, f, indent=4)
                 logger.info(f"Levels for {gaugeset} have been saved to data/2-interim/{gaugeset}_levels_graph.json")
-                
+            
+            with open(f'data/2-interim/{gaugeset}_pred_graph.json', "w") as f:
+                json.dump(pred, f, indent=4)
+                logger.info(f"Predecessors for {gaugeset} have been saved to data/2-interim/{gaugeset}_pred_graph.json")
             plt.savefig(f'data/5-visualization/{gaugeset}_dependency_graph.png')
             plt.close()
 

@@ -249,33 +249,33 @@ for _level in range(0, last_level+1):
             weights = config["weights"] # [0.2, 0.25, 0.3, 0.25]
         localrule: False
         output: 
-            best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv"),
+            best_params = Path(calib_dir, f"level{_level}", "best_params.csv"),
             performance = Path(calib_dir, f"level{_level}", "performance.nc")
         script: 
             """src/calib/evaluate_params.py"""         # TODO: modify this script
 
     '''
-    This rule overwrites the staticmaps file with the best per level??
-    #TODO: create a staticmaps per level? Not necessary if we are waiting for the done.txt
-            -- not necessary but as a failsafe we create a copy of the staticmaps for each level
+    :: Random dataframe is created ::
+    -- The paramspace is given a column per gauge in L0
+    -- For each param instance each gauge is randomnly given a Top_n
+    -- This lookup will serve to say when the L1 is run which params to use
+    -- Similarly, next iter, in L2 a new lookup will look up to L1 and with the L1 sets the L0
     '''
-
+    
     rule:
-        name: f"set_params_L{_level}"
+        name: f"random_data_L{_level}"
         input: 
-            best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv")
+            performance = Path(calib_dir, f"level{_level}", "performance.nc"),
+            best_params = Path(calib_dir, f"level{_level}", "best_params.csv")
         params:
-            staticmaps = staticmaps,
-            sub_catch = subcatch,
-            params_lname = lnames,
-            params_method = methods,
-            level=_level
-        localrule: True
-        output: 
-            done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
-            done = Path(calib_dir, f"level{_level}", "done.txt")
-        script:
-            """src/calib/set_eval_params.py"""
+            level = f"level{_level}",
+            graph = graph,
+            params = df,
+            best_params = pd.read_csv(best_params),
+            performance = xr.open_dataset(performance)
+        output:
+            Path(calib_dir, f"level{_level}", "random_params.csv")
+            
 
 '''
 Preparing the final stage: This rule prepares the final stage of the calibration process.
