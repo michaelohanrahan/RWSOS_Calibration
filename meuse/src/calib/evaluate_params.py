@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import ast
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -40,20 +41,20 @@ def main(
     l,
     modelled: tuple | list,
     observed: Path | str,
-    #TODO:
-    # random_df: Path | str,
-    # best_10params_previous: Path | str,	
+    random_df: Path | str,
+    best_10params_previous: Path | str,	
     dry_month: list,
     window: int,
     level: str,
     graph: dict,
+    graph_node: dict,
     params: tuple | list,
     starttime: str,
     endtime: str,
     metrics: tuple | list,
     weights: tuple | list,
-    out: Path | str,
     gid: str,
+    out: Path | str,
 ):
     """
     Perform evaluation of model parameters.
@@ -85,7 +86,7 @@ def main(
 
     obs = xr.open_dataset(observed)
     l.info(f"Opened observed data from {observed}")
-    obs = obs.sel(runs='Obs.', time=slice(starttime, endtime)) 
+    obs = obs.sel(time=slice(starttime, endtime)) 
 
     res = []
 
@@ -186,16 +187,38 @@ def main(
     for idx, best in enumerate(best_10params.T):
         _out.append([params[i] for i in best])
     
-    # Create a pandas dataframe for the best parameters
-    out_ds = pd.DataFrame(
-        _out,
-        index=pd.MultiIndex.from_product([level, gauges], names=['level', 'gauges']),
-        columns=[f"Top_{i+1}" for i in range(10)]
-    )
-
-    # Set the index name of the csv
-    out_ds.index.name = "gauges"
-    # Write to file
+    _out_ds = pd.DataFrame(
+            _out,
+            index=pd.MultiIndex.from_product([[level], gauges], names=['level', 'gauges']),
+            columns=[f"Top_{i+1}" for i in range(10)]
+        )
+    
+    # add for upstream gauges
+    for g in gauges:
+        _out_ds_sel = _out_ds.loc[(level, g)]  # select the top 10 parameters for the gauge g
+        upgauge_ids = graph_node[str(g)]['_deps']  # get the upstream gauges ids for gauge g
+        
+        for topx in _out_ds_sel.index:
+            
+            # search in random_df for the matching row for the Top_x
+            _mask = pd.Series([True] * len(random_df))
+            for key, value in ast.literal_eval(_out_ds_sel[topx]).items():
+                _mask = _mask & (random_df[key] == value)
+            random_df_sel = random_df[_mask]
+            
+            # select out the upstream gauges from random_df and fill in the _out_ds
+            for upgauge in upgauge_ids:
+                _out_ds.loc[(level, upgauge), topx] = random_df_sel[str(upgauge)].values[0]
+                
+    
+    # save the best 10 parameters result to dataframe (Load the previous level best parameters dataframe if exists)
+    if level == 'level0' or not os.path.exists(best_10params_previous):
+        out_ds = _out_ds
+    else:
+        prev_best_10params = pd.read_csv(best_10params_previous, index_col=[0, 1])
+        out_ds_temp = prev_best_10params.copy()
+        out_ds = pd.concat([out_ds_temp, _out_ds], axis=0)
+    
     out_ds.to_csv(out)
     
     return ds, out_ds
@@ -205,6 +228,7 @@ if __name__ == "__main__":
     
     work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA")
     random_df = pd.read_csv(work_dir / 'random_df.csv', index_col=0)
+    best_10params_previous = work_dir / 'best_10params_level4.csv'
     
     # import necessary variables
     import pickle as pk
@@ -222,17 +246,21 @@ if __name__ == "__main__":
     level = 'level5'
     import json
     graph = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
+    graph_node = json.load(open(Path(work_dir / 'Hall_nodes_graph.json')))
     params = df.to_dict(orient="records")[:10]  # only use the first 10 records, because we only have 10 modelled results to test
     starttime = '2015-01-01T02:00:00'
     endtime = '2018-02-21T23:00:00'
     metrics = ["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
     weights = [0.2, 0.25, 0.3, 0.25]
-    out = work_dir / f'best_10params_{level}.csv'
+    out = work_dir / f'best_10params_{level}.csv' 
     
     # call function main()
+    l = setup_logging(work_dir, "evaluate_params_0812.log")
     ds_performance, out_ds_best_10params = main(
+        l,
         modelled=modelled,
         observed=observed,
+        best_10params_previous=best_10params_previous,
         dry_month=dry_month,
         window=window,
         level=level,
@@ -242,6 +270,7 @@ if __name__ == "__main__":
         endtime=endtime,
         metrics=metrics,
         weights=weights,
+        gid='wflow_id',
         out=out,
     )
     
