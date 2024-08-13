@@ -243,11 +243,13 @@ for _level in range(0, last_level+1):
             expand(Path(calib_dir, f"level{_level}", "{params}", "run_default", "output_scalar.nc"), params=paramspace.instance_patterns)
         params: 
             observed_data = Path(source_dir, config["observed_data"]),
-            #TODO: add random_df, best_10params_{_level-1}
+            random_df = #TODO path to random_df,
+            best_10params_previous = #TODO path to the best_10params_{level-1},	
             dry_month = config["dry_months"],
             window = config["window"],
             level = f"{_level}",
             graph = graph,
+            graph_node = graph_node,
             params = df.to_dict(orient="records"), 
             starttime = config["eval_starttime"],
             endtime = config["eval_endtime"],
