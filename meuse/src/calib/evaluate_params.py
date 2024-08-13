@@ -1,13 +1,10 @@
 from pathlib import Path
 import os
-import ast
+# import ast
 import numpy as np
 import pandas as pd
 import xarray as xr
 from setuplog import setup_logging
-import traceback
-
-#TODO: add peak timing to metrics, conforming to data structure
 from metrics import kge, nselog_mm7q, mae_peak_timing, mape_peak_magnitude, weighted_euclidean
 
 # define a dictionary to specify the metrics to use
@@ -81,7 +78,6 @@ def main(
     # output directory
     out_dir = Path(out).parent
     os.makedirs(out_dir, exist_ok=True)
-    # list of gauge ids (TODO: to be tested)
     gauges = graph[level]["elements"]
 
     obs = xr.open_dataset(observed)
@@ -202,7 +198,8 @@ def main(
             
             # search in random_df for the matching row for the Top_x
             _mask = pd.Series([True] * len(random_df))
-            for key, value in ast.literal_eval(_out_ds_sel[topx]).items():
+            
+            for key, value in _out_ds_sel[topx].items():
                 _mask = _mask & (random_df[key] == value)
             random_df_sel = random_df[_mask]
             
@@ -226,6 +223,8 @@ def main(
 
 if __name__ == "__main__":
     
+    #NOTE: the TEST DATA cannot properly execute the following test code
+
     work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA")
     random_df = pd.read_csv(work_dir / 'random_df.csv', index_col=0)
     best_10params_previous = work_dir / 'best_10params_level4.csv'
@@ -255,16 +254,18 @@ if __name__ == "__main__":
     out = work_dir / f'best_10params_{level}.csv' 
     
     # call function main()
-    l = setup_logging(work_dir, "evaluate_params_0812.log")
-    ds_performance, out_ds_best_10params = main(
+    l = setup_logging(work_dir, "evaluate_params_0813.log")
+    ds_performance, df_best_10params = main(
         l,
         modelled=modelled,
         observed=observed,
+        random_df=random_df,
         best_10params_previous=best_10params_previous,
         dry_month=dry_month,
         window=window,
         level=level,
         graph=graph,
+        graph_node=graph_node,
         params=params,
         starttime=starttime,
         endtime=endtime,
