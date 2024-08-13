@@ -117,7 +117,7 @@ if __name__ == "__main__":
                 params=mod.params.params,
                 params_lname=mod.params.params_lname,
                 params_method=mod.params.params_method,
-                best_params=mod.params.best_params,
+                random_df=mod.params.random_df,
                 level=mod.params.level,
                 graph=mod.params.graph,
                 sub_catch=mod.params.sub_catch,
@@ -165,15 +165,14 @@ if __name__ == "__main__":
             }
             
             best_params = pd.DataFrame(data)
-            pprint(best_params)
-            a
+
             main(
                 l,
                 p=r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\3-input\staticmaps\staticmaps.nc",
                 params=params,
                 params_lname=params_lname,
                 params_method=params_method,
-                best_params=best_params,
+                random_df=random_df,
                 level=mod.params.level,
                 graph=mod.params.graph,
                 sub_catch=mod.params.sub_catch,
