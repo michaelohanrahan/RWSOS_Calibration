@@ -15,6 +15,7 @@ def main(
     params_df: pd.DataFrame,
     graph: dict,
 ):
+    #TODO: as change to LHS, params_df should be the param space for the next level
     random_df = params_df
     gauges = graph[level]['elements']
     level_int = int(level.split('level')[-1])
@@ -34,6 +35,9 @@ def main(
     
     random_df.to_csv(random_out, index=False)
     l.info(f"Random parameters saved to {random_out}")
+    with open(Path(out_dir, "done.txt"), "w") as f:
+        f.write("done")
+    l.info(f"Done flag saved to {out_dir/'done.txt'}")
 
 if __name__ == "__main__":
     # Set up logger
@@ -43,11 +47,11 @@ if __name__ == "__main__":
             snakemake = globals()["snakemake"]
             best_params = snakemake.input.best_params #"best_n_params"
             level = snakemake.params.level #"leveln"
-            params_df = snakemake.params.params_df #"params_df"
-            graph = snakemake.input.graph
+            params_df = snakemake.params.params #"params_df"
+            graph = snakemake.params.graph
         else:
             try:
-                cwd = Path("c:/git/RWSOS_randomsnake/meuse")
+                cwd = Path(r"c:\Users\deng_jg\work\05wflowRWS")
                 os.chdir(cwd)
                 data_dir = Path('UNREAL_TEST_DATA')
                 p = data_dir / 'staticmaps/staticmaps.nc'
