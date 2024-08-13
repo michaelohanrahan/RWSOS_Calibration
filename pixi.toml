@@ -17,7 +17,7 @@ install-kernel = "python -m ipykernel install --user --name rnel name> --display
 
 [pypi-dependencies]
 ipykernel = ">=6.29.3,<6.30"
-snakemake = { git = "https://github.com/michaelohanrahan/snakemake"}
+snakemake = { git = "https://github.com/michaelohanrahan/snakemake", branch="main"}
 
 [dependencies]
 pip = "*"
