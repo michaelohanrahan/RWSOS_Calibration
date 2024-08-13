@@ -41,8 +41,8 @@ def main(
     modelled: tuple | list,
     observed: Path | str,
     #TODO:
-    random_df: Path | str,
-    best_10params_previous: Path | str,	
+    # random_df: Path | str,
+    # best_10params_previous: Path | str,	
     dry_month: list,
     window: int,
     level: str,
@@ -117,11 +117,11 @@ def main(
             
             # Check if additional parameters are needed based on the metric type
             if metric == "nselog_mm7q":
-                e = metric_func(md, obs, dry_month, gauges)
+                e = metric_func(md, obs, dry_month, gauges, gid)
             elif metric in {"mae_peak_timing", "mape_peak_magnitude"}:
-                e = metric_func(md, obs, window, gauges)
+                e = metric_func(md, obs, window, gauges, gid)
             else:
-                e = metric_func(md, obs, gauges)
+                e = metric_func(md, obs, gauges, gid)
             
             # Special case for the 'kge' metric to extract specific component    
             if metric == "kge":
@@ -129,6 +129,8 @@ def main(
             
             metric_values[metric].append(e)
             evals.append(e)
+        l.info(f"Calculated metrics for {_m}")
+        l.info(f"Metrics: {evals}")
 
         # Get the euclidean distance
         r = weighted_euclidean(
@@ -136,9 +138,14 @@ def main(
             weights=weights,
             weighted=True,
         )
+        l.info(f"Euclidean distance: {r}")
         res.append(r)
     
+    l.info(f"Params: {params}")
     param_coords = create_coords_from_params(params)
+    l.info(f"Created parameter coordinates")    
+    l.info(f"Parameter coordinates: {param_coords}")
+    
     ds = None
     for metric in metrics:
         da = xr.DataArray(
@@ -166,9 +173,12 @@ def main(
         }
     )
     ds = ds.unstack()
+    l.info(f"Created xarray dataset with metrics and euclidean distance")
+    l.info(f"{ds}")
     ds.to_netcdf(
         Path(out_dir, "performance.nc")
     )
+    l.info(f"Saved the performance dataset to {out_dir}")
 
     best_10params = np.argsort(res, axis=0)[:10]
 
@@ -179,7 +189,7 @@ def main(
     # Create a pandas dataframe for the best parameters
     out_ds = pd.DataFrame(
         _out,
-        index=gauges,
+        index=pd.MultiIndex.from_product([level, gauges], names=['level', 'gauges']),
         columns=[f"Top_{i+1}" for i in range(10)]
     )
 
@@ -188,7 +198,7 @@ def main(
     # Write to file
     out_ds.to_csv(out)
     
-    # return ds, out_ds
+    return ds, out_ds
 
 
 if __name__ == "__main__":
