@@ -251,7 +251,7 @@ if __name__ == "__main__":
     endtime = '2018-02-21T23:00:00'
     metrics = ["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
     weights = [0.2, 0.25, 0.3, 0.25]
-    out = work_dir / f'best_10params_{level}.csv' 
+    out = work_dir / f'best_10params.csv' 
     
     # call function main()
     l = setup_logging(work_dir, "evaluate_params_0813.log")
