@@ -220,7 +220,6 @@ for _level in range(0, last_level+1):
                     It takes a configuration file, a dataset of static maps, a parameter space instance, 
                     a list of parameter names, a list of parameter methods, a level, a graph, and a sub-catchment as parameters. 
                     The output is a set of static map files.
-    #DONE: Make sure the co-scaling logic is here.... 
     #ADDED: lake_hqs to the output since i cannot see how to specify their specific location they are now alognside each grid file
     '''
 
@@ -239,7 +238,7 @@ for _level in range(0, last_level+1):
         localrule: True
         output: 
             staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
-            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
+            lake_out = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
         script: 
             """src/calib/set_calib_params.py"""
 
@@ -293,11 +292,35 @@ for _level in range(0, last_level+1):
     #TODO: add parameter to fn to sample from the 10 closest to minima
     '''
 
+    # rule:
+    #     name: f"evaluate_L{_level}"
+    #     input: 
+    #         expand(Path(calib_dir, f"level{_level}", "{params}", "output_scalar.nc"), params=paramspace.instance_patterns),
+    #         expand(Path(calib_dir, f"level{_level}", "{params}", "run.done"), params=paramspace.instance_patterns),
+    #     params: 
+    #         observed_data = Path(source_dir, config["observed_data"]),
+    #         dry_month = config["dry_months"],
+    #         window = config["window"],
+    #         level = f"{_level}",
+    #         graph = graph,
+    #         params = df.to_dict(orient="records"), 
+    #         starttime = config["cal_eval_starttime"],
+    #         endtime = config["cal_eval_endtime"],
+    #         metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"] #TODO: normalize mae
+    #         weights = config["weights"], # [0.2, 0.25, 0.3, 0.25]
+    #         gaugeset = f"Q_gauges_{config['gauges']}", 
+    #     localrule: True
+    #     group: "evaluate_level"   #TODO: add this group to the config
+    #     output: 
+    #         performance = Path(calib_dir, f"level{_level}", "performance.nc"),
+    #         best_params = Path(calib_dir, f"level{_level}", "best_params.csv")
+    #     script: 
+    #         """src/calib/evaluate_params.py"""         # TODO: modify this script to submit multiple grouped jobs
     rule:
         name: f"evaluate_L{_level}"
         input: 
-            expand(Path(calib_dir, f"level{_level}", "{params}", "output_scalar.nc"), params=paramspace.instance_patterns),
-            expand(Path(calib_dir, f"level{_level}", "{params}", "run.done"), params=paramspace.instance_patterns),
+            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc"),
+            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done"),
         params: 
             observed_data = Path(source_dir, config["observed_data"]),
             dry_month = config["dry_months"],
@@ -307,15 +330,29 @@ for _level in range(0, last_level+1):
             params = df.to_dict(orient="records"), 
             starttime = config["cal_eval_starttime"],
             endtime = config["cal_eval_endtime"],
-            metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"] #TODO: normalize mae
-            weights = config["weights"], # [0.2, 0.25, 0.3, 0.25]
+            metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
+            weights = config["weights"], 
             gaugeset = f"Q_gauges_{config['gauges']}", 
-        localrule: True
+        localrule: False
+        group: "evaluate_level"   #TODO: add this group to the config
+        output: 
+            outfile = Path(calib_dir, f"level{_level}", "eval", f"{paramspace.wildcard_pattern}"+".csv"),
+        resources:
+            runtime = 40
+            threads = 1
+            tasks = 1
+        script: 
+            """src/calib/evaluate_params.py"""         # TODO: modify this script to submit multiple grouped jobs
+    
+    rule:
+        name: f"combine_performance_L{_level}"
+        input:
+            performance_files=expand("path/to/output/performance_{run}.nc", run=RUNS)
         output: 
             performance = Path(calib_dir, f"level{_level}", "performance.nc"),
             best_params = Path(calib_dir, f"level{_level}", "best_params.csv")
-        script: 
-            """src/calib/evaluate_params2.py"""         # TODO: modify this script
+        script:
+            "combine_performance.py"
 
     '''
     This rule overwrites the staticmaps file with the best per level??

@@ -35,6 +35,11 @@ def create_coords_from_params(
 
     return coord
 
+def parse_params_from_path(file_path):
+    # Extract the part of the path that contains the parameters
+    path_parts = Path(file_path).parts
+    params_dict = {part.split('~')[0]:np.float64(part.split('~')[1]) for part in path_parts if '~' in part}  # Assuming the parameters are in the third last part of the path
+    return params_dict
 
 def main(
     l,
@@ -75,7 +80,6 @@ def main(
     out_dir = Path(out).parent
     os.makedirs(out_dir, exist_ok=True)
     obs = xr.open_dataset(observed)
-    l.info(f"Opened observed data from {observed}")
     obs = obs.sel(runs='Obs.', time=slice(starttime, endtime)) 
 
     res = []
@@ -84,22 +88,43 @@ def main(
         item: [] for item in metrics
     }
 
+    # Create a list to store the parameters, using only non-empty runs to do so
+    params = []
+    path_ex = 0
+    val_err = 0
+    no_time = 0
+    #failed runs
+    
     # Loop through the modelled data
     for _m in modelled:
         evals = []
-
+        
+        if not Path(_m).exists():
+            l.warning(f"\n{'*'*10}\n{_m}\nDoes not exist, Skipping...\n{'*'*10}")
+            path_ex += 1
+            continue
+        
         # Open and slice temporally 
-        md = xr.open_dataset(_m)
+        try:
+            md = xr.open_dataset(_m)
+        except Exception as e:
+            l.error(f"Failed to open modelled data from {_m}")
+            l.error(traceback.format_exc())
+            val_err += 1
+            continue
+        
         md = md.sel(time=slice(starttime, endtime))
         
         if len(md.time.values) == 0:
             l.warning(f"\n{'*'*10}\n{_m}\nIs not a complete time series, Skipping...\n{'*'*10}")
+            no_time += 1
             continue
+        
+        params.append(parse_params_from_path(_m))
         
         if md[gid].dtype != int:
             md[gid] = md[gid].astype(np.int64)
 
-        l.info(f"Opened modelled data from {_m}")
         # Calculate the metric values
         for metric in metrics:
             metric_func = METRICS.get(metric)
@@ -121,24 +146,22 @@ def main(
             metric_values[metric].append(e)
             evals.append(e)
         l.info(f"Calculated metrics for {_m}")
-        l.info(f"Metrics: {evals}")
-
         # Get the euclidean distance
         r = weighted_euclidean(
             np.array(evals),
             weights=weights,
             weighted=True,
         )
-        l.info(f"Euclidean distance: {r}")
         res.append(r)
-        l.info(f"\n{'='*30}\n -- Delete line 134 in eval when testing is complete -- \n{'='*30}\n")
-        #getout
-        break
+
+    #loop summary
+    l.info(f"Failed to open {path_ex + val_err + no_time} modelled data files")
+    l.info(f"- {path_ex} files did not exist")
+    l.info(f"- {val_err} files failed to open, (probably 'nc4 error', file not valid)")
+    l.info(f"- {no_time} files did not have a valid time dimension (empty)")
+    l.info(f"Successfully opened and evaluated {len(params)} modelled data files")
     
-    l.info(f"Params: {params}")
     param_coords = create_coords_from_params(params)
-    l.info(f"Created parameter coordinates")    
-    l.info(f"Parameter coordinates: {param_coords}")
     
     ds = None
     for metric in metrics:
@@ -175,15 +198,40 @@ def main(
         Path(out_dir, "performance.nc")
     )
     l.info(f"Saved the performance dataset to {out_dir}")
-
+    '''
+    Example:
+    04-evaluate_params.log - INFO - Saved the performance dataset to /data/2-interim/calib_data/level0
+    04-evaluate_params.log - INFO - <xarray.Dataset> Size: 3kB
+    Dimensions:              (ksat: 1, f: 1, st: 1, nr: 1, rd: 1, ml: 1, nl: 1,
+                            nf: 1, gauges: 60)
+    Coordinates:
+    * ksat                 (ksat) float64 8B 0.4
+    * f                    (f) float64 8B 0.5
+    * st                   (st) float64 8B 0.5
+    * nr                   (nr) float64 8B 0.5
+    * rd                   (rd) float64 8B 0.8
+    * ml                   (ml) float64 8B 0.6
+    * nl                   (nl) float64 8B 0.8
+    * nf                   (nf) float64 8B 0.8
+    * gauges               (gauges) float64 480B 42.0 43.0 ... 7.978e+03 8.166e+03
+    Data variables:
+        kge                  (gauges, ksat, f, st, nr, rd, ml, nl, nf) float64 480B ...
+        nselog_mm7q          (gauges, ksat, f, st, nr, rd, ml, nl, nf) float64 480B ...
+        mae_peak_timing      (gauges, ksat, f, st, nr, rd, ml, nl, nf) float64 480B ...
+        mape_peak_magnitude  (gauges, ksat, f, st, nr, rd, ml, nl, nf) float64 480B ...
+        euclidean            (gauges, ksat, f, st, nr, rd, ml, nl, nf) float64 480B ...
+    Attributes:
+        metrics:  ['kge', 'nselog_mm7q', 'mae_peak_timing', 'mape_peak_magnitude']
+        weights:  [0.2, 0.25, 0.3, 0.25]
+    '''
     #TODO: test this best 10 params part
     # Best 10 parameters sets by indexing minimum euc. dist.
-    best_10params = np.argsort(res, axis=0)[:10]
-
+    # best_10params = np.argsort(res, axis=0)[:10]
+    best_params = np.argmin(res, axis=0)
     _out = []
     for idx, best in enumerate(best_10params.T):
         _out.append([params[i] for i in best])
-    
+
     # Create a pandas dataframe for the best parameters
     out_ds = pd.DataFrame(
         _out,
@@ -238,7 +286,7 @@ if __name__ == "__main__":
                 endtime=mod.params.endtime,
                 metrics=mod.params.metrics,
                 weights=mod.params.weights,
-                out=mod.output.best_10params,
+                out=mod.output.best_params,
                 gid=mod.params.gaugeset,
             )
 

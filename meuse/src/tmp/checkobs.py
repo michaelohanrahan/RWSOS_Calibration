@@ -5,45 +5,26 @@ import os
 import pandas as pd
 import ast
 
-d= {   
-    "ksathorfrac_BRT_250": { 
-        "short_name": "ksat", 
-        "values": [0.2, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
-        "method": "mult"
-    },
-    "f_":{
-        "short_name": "f",
-        "values": [0.5, 0.75, 1.0, 1.25, 1.5],
-        "method": "mult"
-    },
-    "RootingDepth_obs_15": {
-        "short_name": "rd",
-        "values": [0.25, 0.5, 1, 1.5, 2.0, 2.5],
-        "method": "mult"
-    },
-    "SoilThickness_manual_cal": {
-        "short_name": "st",
-        "values": [0.5, 0.75, 1.0, 1.25, 1.5],
-        "method": "mult"
-    },
-    "N_River": {
-        "short_name": "nr",
-        "values": [0.5, 0.75, 1.0, 1.25, 1.5],
-        "method": "mult"
-    }, 
-    "MaxLeakage_manual_cal": {
-        "short_name": "ml",
-        "values": [0, 0.2, 0.6],
-        "method": "add"
-    }, 
-    "N,N_Floodplain": {
-        "short_name": "nl,nf",
-        "values": [0.8, 1.0, 1.2],
-        "method": "mult"
-    }
+# Sample DataFrame
+data = {
+    'gauges': [1, 2, 3],
+    'Top_1': ["{'param1': 10, 'param2': 20}", "{'param1': 30, 'param2': 40}", "{'param1': 50, 'param2': 60}"]
 }
-vals = 1
+params_ds = pd.DataFrame(data).set_index('gauges')
 
-for key, r in d.items():
-    vals *= len(r["values"])
-print(vals)
+# Print the DataFrame
+print("Original DataFrame:")
+print(params_ds)
+
+# Access the string in the DataFrame and convert it to a dictionary
+gauge = 1
+param_string = params_ds.loc[gauge, "Top_1"]
+param_set = ast.literal_eval(param_string)
+
+# Print the converted dictionary
+print("\nConverted Dictionary:")
+print(param_set)
+
+# Example usage in a loop
+for key, value in param_set.items():
+    print(f"Key: {key}, Value: {value}")

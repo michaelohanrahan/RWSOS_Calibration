@@ -79,7 +79,7 @@ if __name__ == "__main__":
     try:
         if "snakemake" in globals():
             mod = globals()["snakemake"]
-
+            
             main(
                 l,
                 mod.params.dataset,
@@ -89,7 +89,7 @@ if __name__ == "__main__":
                 mod.params.graph[mod.params.level]["elements"],
                 mod.params.sub_catch,
                 mod.params.lake_in,
-                mod.output.lake_hqs, 
+                mod.output.lake_out, 
                 mod.output.staticmaps,
             )
 

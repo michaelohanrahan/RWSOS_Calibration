@@ -60,10 +60,12 @@ def main(
         out_cfg["input"]["path_forcing"] = forcing_path.as_posix()
         
         #ex: p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/2-interim/calib_data/level0/ksat~0.4/f~1.5/st~1.5/nr~0.5/rd~0.8/ml~0.0/nl~0.8/wflow_sbm.toml
-        # level = int(out_file.split('/')[-8][-1]) # the integer of the level
-        thickness = str(''.join(out_file.split('/')[-7].split('~')[-1].split('.'))) #the joined float value as a string
+        parts = Path(out_file).parts
+        std = {var.split("~")[0]: float(var.split("~")[1]) for var in parts if "st" in var}
+        thickness = str(std["st"]).replace(".", "")
+        
         l.info(f"level: {level}, thickness: {thickness}")
-        #ex: "instate_level{level}_ST{thickness}.nc"
+        
         st_instate_path = Path(forcing_path).parent / "instates" / f"instate_level{level}_ST{thickness}.nc"
         
         #change the instate depending on the soilthickness
