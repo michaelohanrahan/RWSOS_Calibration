@@ -38,7 +38,7 @@ def main(
     l,
     modelled: tuple | list,
     observed: Path | str,
-    random_df: Path | str,
+    random_params: Path | str,
     best_10params_previous: Path | str,	
     dry_month: list,
     window: int,
@@ -196,16 +196,16 @@ def main(
         
         for topx in _out_ds_sel.index:
             
-            # search in random_df for the matching row for the Top_x
-            _mask = pd.Series([True] * len(random_df))
+            # search in random_params for the matching row for the Top_x
+            _mask = pd.Series([True] * len(random_params))
             
             for key, value in _out_ds_sel[topx].items():
-                _mask = _mask & (random_df[key] == value)
-            random_df_sel = random_df[_mask]
+                _mask = _mask & (random_params[key] == value)
+            random_params_sel = random_params[_mask]
             
-            # select out the upstream gauges from random_df and fill in the _out_ds
+            # select out the upstream gauges from random_params and fill in the _out_ds
             for upgauge in upgauge_ids:
-                _out_ds.loc[(level, upgauge), topx] = random_df_sel[str(upgauge)].values[0]
+                _out_ds.loc[(level, upgauge), topx] = random_params_sel[str(upgauge)].values[0]
                 
     
     # save the best 10 parameters result to dataframe (Load the previous level best parameters dataframe if exists)
@@ -226,7 +226,7 @@ if __name__ == "__main__":
     #NOTE: the TEST DATA cannot properly execute the following test code
 
     work_dir = Path(r"c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA")
-    random_df = pd.read_csv(work_dir / 'random_df.csv', index_col=0)
+    random_params = pd.read_csv(work_dir / 'random_df.csv', index_col=0)
     best_10params_previous = work_dir / 'best_10params_level4.csv'
     
     # import necessary variables
@@ -259,7 +259,7 @@ if __name__ == "__main__":
         l,
         modelled=modelled,
         observed=observed,
-        random_df=random_df,
+        random_params=random_params,
         best_10params_previous=best_10params_previous,
         dry_month=dry_month,
         window=window,

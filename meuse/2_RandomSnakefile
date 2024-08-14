@@ -122,6 +122,33 @@ rule init_done:
             f.write()
 
 for _level in range(0, last_level+1):
+    
+        '''
+    :: Random dataframe is created ::
+    -- The paramspace is given a column per gauge in L0
+    -- For each param instance each gauge is randomnly given a Top_n
+    -- This lookup will serve to say when the L1 is run which params to use
+    -- Similarly, next iter, in L2 a new lookup will look up to L1 and with the L1 sets the L0
+    '''
+    rule:
+        name: f"random_data_L{_level}"
+        input: 
+            performance = Path(calib_dir, f"level{_level}", "performance.nc"),
+            best_10params = Path(calib_dir, f"level{_level}", "best_params.csv")
+        params:
+            level = f"level{_level}",
+            graph = graph,
+            params = df,
+        output:
+            Path(calib_dir, f"level{_level}", "random_params.csv")
+            Path(calib_dir, f"level{_level}", "done.txt")
+        script:
+            """src/calib/random_params.py"""
+            Path(calib_dir, f"level{_level}", "done.txt")
+        script:
+            """src/calib/random_params.py"""
+    
+    
     """
     config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
     It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
@@ -161,7 +188,7 @@ for _level in range(0, last_level+1):
         name: f"create_params_L{_level}"
         input: 
             Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),  #TODO: what is this for?
-            random_df = Path(calib_dir, f"level{_level}", "random_params.csv"),
+            random_params = Path(calib_dir, f"level{_level}", "random_params.csv")
         params:
             dataset = staticmaps,
             params = paramspace.instance,
@@ -185,16 +212,12 @@ for _level in range(0, last_level+1):
     #DONE: modify the templace output to do output_scalar.nc
     #TODO: Work with grouped runs
     '''
-    #DONE: Only using the CAL time split...??? Shorter run time worse model...
-    #DONE: modify the templace output to do output_scalar.nc
-    #TODO: Work with grouped runs
-    '''
     rule:
         name: f"wflow_L{_level}"
         input: 
             instates=Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"),
             cfg = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
-            staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
+            staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc")
         params:
             project = Path(base_dir, "bin").as_posix(),
         output: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc"),
@@ -213,20 +236,13 @@ for _level in range(0, last_level+1):
     Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
     Output:  an unstacked performance.nc file with metrics and weights for each parameter set, and a best_10params.csv file with the best parameter set.
             out csv with the best parameter set for each gauge 
-            
-    #DONE: discuss if we want to have a multiple param selection.. 
-    #DONE: discuss if we want to have a multiple param selection.. 
-        - can sample within distance tolerance of weighted euclidian sample
-    #DONE: add parameter to fn to sample from the 10 closest to minima
-    #DONE: add parameter to fn to sample from the 10 closest to minima
     '''
-
     rule:
         name: f"evaluate_L{_level}"
         input: 
             modelled = expand(Path(calib_dir, f"level{_level}", "{params}", "run_default", "output_scalar.nc"), params=paramspace.instance_patterns),
-            random_df = Path(calib_dir, f"level{_level}", "random_params.csv"),
-            best_10params_previous = Path(calib_dir, f"level{_level-1}", "best_10params.csv"),
+            random_params = Path(calib_dir, f"level{_level}", "random_params.csv"),
+            best_10params_previous = Path(calib_dir, f"level{_level-1}", "best_10params.csv")
         params: 
             observed = Path(source_dir, config["observed_data"]),
             dry_month = config["dry_months"],
@@ -237,41 +253,14 @@ for _level in range(0, last_level+1):
             params = df.to_dict(orient="records"), 
             starttime = config["eval_starttime"],
             endtime = config["eval_endtime"],
-            metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
-            weights = config["weights"] # [0.2, 0.25, 0.3, 0.25]
+            metrics = config["metrics"],
+            weights = config["weights"]
         localrule: False
         output: 
             best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv"),
             performance = Path(calib_dir, f"level{_level}", "performance.nc")
         script: 
             """src/calib/evaluate_params.py"""       
-
-    '''
-    :: Random dataframe is created ::
-    -- The paramspace is given a column per gauge in L0
-    -- For each param instance each gauge is randomnly given a Top_n
-    -- This lookup will serve to say when the L1 is run which params to use
-    -- Similarly, next iter, in L2 a new lookup will look up to L1 and with the L1 sets the L0
-    '''
-    
-    rule:
-        name: f"random_data_L{_level}"
-        input: 
-            performance = Path(calib_dir, f"level{_level}", "performance.nc"),
-            best_10params = Path(calib_dir, f"level{_level}", "best_params.csv")
-        params:
-            level = f"level{_level}",
-            graph = graph,
-            params = df,
-        output:
-            Path(calib_dir, f"level{_level}", "random_params.csv")
-            Path(calib_dir, f"level{_level}", "done.txt")
-        script:
-            """src/calib/random_params.py"""
-            Path(calib_dir, f"level{_level}", "done.txt")
-        script:
-            """src/calib/random_params.py"""
-            
 
 '''
 Preparing the final stage: This rule prepares the final stage of the calibration process.

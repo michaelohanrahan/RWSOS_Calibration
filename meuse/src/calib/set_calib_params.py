@@ -1,4 +1,4 @@
-#%%TODO: a path to random_df created in previous level
+#%%TODO: a path to random_params created in previous level
 
 #%%
 from pathlib import Path
@@ -20,7 +20,7 @@ def main(
     params: dict,
     params_lname: tuple | list,
     params_method: tuple | list,
-    random_df: Path | str, #TODO: a path to random_df created in previous rule
+    random_params: Path | str, 
     level: str,
     graph: dict,
     sub_catch: Path | str,
@@ -35,8 +35,8 @@ def main(
     # Load original staticmaps
     ds = xr.open_dataset(p)
     
-    # Load the random_df
-    random_df = pd.read_csv(random_df, index_col=0)
+    # Load the random_params
+    random_params = pd.read_csv(random_params, index_col=0)
 
     # Load the geometries
     vds = gpd.read_file(sub_catch)
@@ -60,29 +60,29 @@ def main(
         ds[params_lname[idx]] = da
     
     # Set param for upstream gauges
-    if not os.path.exists(random_df) or level == 'level0':
-        l.info(f"random_df file not found or level is level0, skipping upper level random params")
+    if not os.path.exists(random_params) or level == 'level0':
+        l.info(f"random_params file not found or level is level0, skipping upper level random params")
     else:
         # select all the relevant upstream gauges (including further upstream)
         upgauge_ids = graph[level]['deps']
         upgauge_int = [int(item) for item in upgauge_ids]
         l.info(f"Updating the following upstream gauges: {upgauge_int}")
         
-        # select matching row from random_df
-        _mask = pd.Series([True] * len(random_df))
+        # select matching row from random_params
+        _mask = pd.Series([True] * len(random_params))
         for key, value in params.items():
-            _mask = _mask & (random_df[key] == value)
-        random_df_sel = random_df[_mask]
+            _mask = _mask & (random_params[key] == value)
+        random_params_sel = random_params[_mask]
         # check if the matching is unique
-        if len(random_df_sel) != 1:
-            raise ValueError(f"Matching row in random_df is not unique! {len(random_df_sel)} rows found.")
+        if len(random_params_sel) != 1:
+            raise ValueError(f"Matching row in random_params is not unique! {len(random_params_sel)} rows found.")
         
-        # for each upstream gauge, set random param from random_df_sel
+        # for each upstream gauge, set random param from random_params_sel
         for upgauge in upgauge_int:
             vds_upgauge = vds[vds.value == upgauge]
             mask_up = ds.raster.geometry_mask(vds_upgauge)
             # select random paramset
-            random_paramset = random_df_sel[str(float(upgauge))].apply(eval)[0]
+            random_paramset = random_params_sel[str(float(upgauge))].apply(eval)[0]
             # modify staticmap based on the random paramset
             for idx, value in enumerate(random_paramset.values()):
                 da = ds[params_lname[idx]]
@@ -117,7 +117,7 @@ if __name__ == "__main__":
                 params=mod.params.params,
                 params_lname=mod.params.params_lname,
                 params_method=mod.params.params_method,
-                random_df=mod.params.random_df,
+                random_params=mod.params.random_params,
                 level=mod.params.level,
                 graph=mod.params.graph,
                 sub_catch=mod.params.sub_catch,
@@ -172,7 +172,7 @@ if __name__ == "__main__":
                 params=params,
                 params_lname=params_lname,
                 params_method=params_method,
-                random_df=random_df,
+                random_params=random_params,
                 level=mod.params.level,
                 graph=mod.params.graph,
                 sub_catch=mod.params.sub_catch,
