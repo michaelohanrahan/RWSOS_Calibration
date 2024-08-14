@@ -79,6 +79,9 @@ graph = json.load(open(Path(inter_dir, f'{config["gauges"]}_levels_graph.json'))
 #graph node
 graph_node = json.load(open(Path(inter_dir, f'{config["gauges"]}_nodes_graph.json')))
 
+#graph pred
+graph_pred = json.load(open(Path(inter_dir, f'{config["gauges"]}_pred_graph.json')))
+
 #soilthicknesses
 with open(config["calib_recipe"]) as recipe:
     recipe = json.load(recipe)
@@ -133,18 +136,19 @@ for _level in range(0, last_level+1):
     rule:
         name: f"random_data_L{_level}"
         input: 
-            performance = Path(calib_dir, f"level{_level}", "performance.nc"),
-            best_10params = Path(calib_dir, f"level{_level}", "best_params.csv")
+            best_10params_previous = Path(calib_dir, f"level{_level-1}", "best_params.csv")
         params:
             level = f"level{_level}",
-            graph = graph,
-            params = df,
+            params = df,  #TODO: after changing to LHS, need to modify this
+            graph = graph,  # Hall_levels_graph.json
+            graph_pred = graph_pred,  # Hall_pred_graph.json
+            graph_node = graph_node,  # Hall_nodes_graph.json
         output:
-            Path(calib_dir, f"level{_level}", "random_params.csv")
-            Path(calib_dir, f"level{_level}", "done.txt")
+            random_params = Path(calib_dir, f"level{_level}", "random_params.csv")
+            file_done = Path(calib_dir, f"level{_level}", "done.txt")  #TODO: still needed?
         script:
             """src/calib/random_params.py"""
-            Path(calib_dir, f"level{_level}", "done.txt")
+            Path(calib_dir, f"level{_level}", "done.txt") #TODO: still needed?
         script:
             """src/calib/random_params.py"""
     
@@ -191,7 +195,7 @@ for _level in range(0, last_level+1):
             random_params = Path(calib_dir, f"level{_level}", "random_params.csv")
         params:
             dataset = staticmaps,
-            params = paramspace.instance,
+            params = paramspace.instance,  #TODO: after changing to LHS, need to modify this
             params_lname = lnames,
             params_method = methods,
             level = f"level{_level}",

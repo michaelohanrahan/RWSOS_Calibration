@@ -82,7 +82,10 @@ def main(
 
     obs = xr.open_dataset(observed)
     l.info(f"Opened observed data from {observed}")
-    obs = obs.sel(time=slice(starttime, endtime)) 
+    obs = obs.sel(time=slice(starttime, endtime))
+    
+    # laod random_params
+    random_params = pd.read_csv(random_params, index_col=0)
 
     res = []
 
@@ -192,7 +195,7 @@ def main(
     # add for upstream gauges
     for g in gauges:
         _out_ds_sel = _out_ds.loc[(level, g)]  # select the top 10 parameters for the gauge g
-        upgauge_ids = graph_node[str(g)]['_deps']  # get the upstream gauges ids for gauge g
+        upgauge_ids = graph_node[str(g)]['_deps']  # get all the upstream gauges (not only direct upstream) ids for gauge g
         
         for topx in _out_ds_sel.index:
             
