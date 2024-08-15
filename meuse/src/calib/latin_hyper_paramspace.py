@@ -12,7 +12,7 @@ def generate_samples(l, #logger
                      LEVEL:int,
                      RECIPE:str|Path, 
                      N_SAMPLES:int,
-                     OUT:str|Path,
+                    #  OUT:str|Path,
                      OPTIM=None,):
     
     #calibration recipe
@@ -31,7 +31,7 @@ def generate_samples(l, #logger
     for k, v in data.items():
         l_names.append(k)
         s_name = v['short_name']
-        method = v['method']
+        methods.append(v['method'])
         s_names.append(s_name)
         l_bounds_list.append(min(v['values']))
         u_bounds_list.append(max(v['values']))
@@ -49,7 +49,7 @@ def generate_samples(l, #logger
     sample_scaled = qmc.scale(samples, l_bounds_list, u_bounds_list)
     
     #Create a dataframe
-    params_df= pd.DataFrame(sample_scaled, columns=s_names)
+    params_df= pd.DataFrame(sample_scaled, columns=s_names, index=[LEVEL]*N_SAMPLES)
     
     #Split any columns with comma separation (co-scaling)
     cols = []
@@ -63,7 +63,7 @@ def generate_samples(l, #logger
             
     # Handle columns with comma separation
     for s_name in s_names:
-        print(s_name)
+        # print(s_name)
         if ',' in s_name:
             col1, col2 = s_name.split(',')
             params_df[col1] = params_df[s_name]
@@ -71,11 +71,62 @@ def generate_samples(l, #logger
             params_df.drop(columns=s_name, inplace=True)
     
     params_df = params_df[cols]  # Reorder columns to match the original order
-    params_df.round(2).to_csv(OUT, index=False)
-    l.info(f"Params for level{LEVEL} saved to {OUT}")
+    params_df.index.name = 'level'
+    
     return l_names, methods, params_df.round(2)
 
+
+def create_set_all_levels(l,
+                          last_level,
+                          RECIPE,
+                          N_SAMPLES,
+                          OPTIM,
+                          ):
+    
+    _df_list = []
+    for LEVEL in range(0, last_level+1):
+        l.info(f"Created parameter set for level {LEVEL}")
+        l_names, methods, params_df = generate_samples(l,
+                                        LEVEL=LEVEL, 
+                                        RECIPE=RECIPE, 
+                                        N_SAMPLES=N_SAMPLES, 
+                                        OPTIM=OPTIM)
+        _df_list.append(params_df)
+        
+    all_params_df = pd.concat(_df_list, axis=0)
+    
+    return l_names, methods, all_params_df
+
+
+
 if __name__ == "__main__":
+    
+    # test dev
+    work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA')
+    
+    # find last level from the final level directory
+    import glob
+    levels = glob.glob(str(Path(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\2-interim','calib_data', "level*")))
+    levels_ints = [int(level.split("level")[-1]) for level in levels]
+    last_level = int(levels[-1].split("level")[-1])
+    
+    # set up input vars
+    LEVEL = 0
+    l=setup_logging(work_dir, 'latin_hyper_paramspace.log')
+    RECIPE = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\config\calib_recipe.json')
+    N_SAMPLES = 1000
+    OPTIM = 'random-cd'
+    # OUT = work_dir / 'LHS_df.csv'
+    
+    l_names, methods, all_params_df = create_set_all_levels(l,
+                          last_level,
+                          RECIPE,
+                          N_SAMPLES,
+                          OPTIM,
+                          )
+    
+    
+    
     l=setup_logging('data/0-log', 'latin_hyper_paramspace.log')
     try:
         LEVEL = 0
