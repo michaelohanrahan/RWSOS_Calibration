@@ -142,7 +142,7 @@ for _level in range(0, last_level+1):
             best_10params_previous = Path(calib_dir, f"level{_level-1}", "best_params.csv")
         params:
             level = f"level{_level}",
-            params = df,
+            params_df = df,
             graph = graph,  # Hall_levels_graph.json
             graph_pred = graph_pred,  # Hall_pred_graph.json
             graph_node = graph_node,  # Hall_nodes_graph.json
@@ -196,7 +196,7 @@ for _level in range(0, last_level+1):
             random_params = Path(calib_dir, f"level{_level}", "random_params.csv")
         params:
             dataset = staticmaps,
-            params = paramspace.instance,  #TODO: after changing to LHS, need to modify this
+            params = paramspace.instance,
             params_lname = lnames,
             params_method = methods,
             level = f"level{_level}",

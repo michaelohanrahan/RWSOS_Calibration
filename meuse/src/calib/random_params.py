@@ -12,7 +12,7 @@ def main(
     l,
     level: str,
     best_10params_previous: Path | str,
-    params_df: pd.DataFrame,  #TODO: as change to LHS, params_df should be the param space for this level
+    params_df: pd.DataFrame,  #DONE: as change to LHS, params_df should be the param space for this level
     graph: dict,  # Hall_levels_graph.json
     graph_pred: dict,  # Hall_pred_graph.json
     graph_node: dict,  # Hall_nodes_graph.json 
@@ -21,7 +21,6 @@ def main(
     # load best_10params_previous
     best_10params_previous = pd.read_csv(best_10params_previous, index_col=[0, 1])
     
-    #TODO: as change to LHS, params_df should be the param space for this level
     random_params = params_df
     # current level gauges
     gauges = graph[level]['elements']  # list of float

@@ -1,4 +1,4 @@
-#%%TODO: a path to random_params created in previous level
+#%%DONE: a path to random_params created in previous level
 
 #%%
 from pathlib import Path
