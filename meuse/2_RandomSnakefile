@@ -28,7 +28,7 @@ import shutil
 import os
 from snakemake.utils import Paramspace
 import geopandas as gpd
-from src.calib.create_set_params import create_set
+from src.calib.latin_hyper_paramspace import create_set_all_levels
 import glob
 
 #=========================================================
@@ -52,9 +52,8 @@ last_level = int(levels[-1].split("level")[-1])
 #define elements from the staticgeoms
 elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
 
-#paramspace
-lnames, methods, df = create_set(config["calib_recipe"])
-paramspace = Paramspace(df)
+#parameter set dataframe using LHS method
+lnames, methods, all_level_df = create_set_all_levels(last_level=last_level, RECIPE=config["calib_recipe"], N_SAMPLES=1000, OPTIM='random-cd')
 
 #staticmaps
 staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
@@ -126,6 +125,10 @@ rule init_done:
 
 for _level in range(0, last_level+1):
     
+    # slice the parameter dataframe for the current level
+    df = all_level_df.loc(_level)
+    paramspace = Paramspace(df)
+    
         '''
     :: Random dataframe is created ::
     -- The paramspace is given a column per gauge in L0
@@ -139,7 +142,7 @@ for _level in range(0, last_level+1):
             best_10params_previous = Path(calib_dir, f"level{_level-1}", "best_params.csv")
         params:
             level = f"level{_level}",
-            params = df,  #TODO: after changing to LHS, need to modify this
+            params = df,
             graph = graph,  # Hall_levels_graph.json
             graph_pred = graph_pred,  # Hall_pred_graph.json
             graph_node = graph_node,  # Hall_nodes_graph.json
@@ -160,8 +163,6 @@ for _level in range(0, last_level+1):
     #DONE: in each config that accesses a certain level & soilthickness the instate reference should match
         If I can access the level and soilthickness from the {item} and {params} then we can point to the correct instate for each run
     """
-    latin)hypercube(config[calibe])
-    paramspa
     rule:
         name: f"config_L{_level}"
         input: 
@@ -254,7 +255,7 @@ for _level in range(0, last_level+1):
             level = f"{_level}",
             graph = graph,
             graph_node = graph_node,
-            params = df.to_dict(orient="records"), 
+            params = df.to_dict(orient="records"),
             starttime = config["eval_starttime"],
             endtime = config["eval_endtime"],
             metrics = config["metrics"],
