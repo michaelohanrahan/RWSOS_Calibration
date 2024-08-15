@@ -8,7 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def generate_samples(l, #logger
+def generate_samples(
+                    #  l, #logger
                      LEVEL:int,
                      RECIPE:str|Path, 
                      N_SAMPLES:int,
@@ -76,8 +77,7 @@ def generate_samples(l, #logger
     return l_names, methods, params_df.round(2)
 
 
-def create_set_all_levels(l,
-                          last_level,
+def create_set_all_levels(last_level,
                           RECIPE,
                           N_SAMPLES,
                           OPTIM,
@@ -85,12 +85,12 @@ def create_set_all_levels(l,
     
     _df_list = []
     for LEVEL in range(0, last_level+1):
-        l.info(f"Created parameter set for level {LEVEL}")
-        l_names, methods, params_df = generate_samples(l,
-                                        LEVEL=LEVEL, 
-                                        RECIPE=RECIPE, 
-                                        N_SAMPLES=N_SAMPLES, 
-                                        OPTIM=OPTIM)
+        l_names, methods, params_df = generate_samples(
+                                    LEVEL=LEVEL, 
+                                    RECIPE=RECIPE, 
+                                    N_SAMPLES=N_SAMPLES, 
+                                    OPTIM=OPTIM,                            
+        )
         _df_list.append(params_df)
         
     all_params_df = pd.concat(_df_list, axis=0)
@@ -111,14 +111,13 @@ if __name__ == "__main__":
     last_level = int(levels[-1].split("level")[-1])
     
     # set up input vars
-    LEVEL = 0
     l=setup_logging(work_dir, 'latin_hyper_paramspace.log')
     RECIPE = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\config\calib_recipe.json')
     N_SAMPLES = 1000
     OPTIM = 'random-cd'
     # OUT = work_dir / 'LHS_df.csv'
     
-    l_names, methods, all_params_df = create_set_all_levels(l,
+    l_names, methods, all_params_df = create_set_all_levels(
                           last_level,
                           RECIPE,
                           N_SAMPLES,
