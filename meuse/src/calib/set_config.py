@@ -119,15 +119,15 @@ if __name__ == "__main__":
         mod = globals()["snakemake"]
         try:
             main(
-                mod.params.level,
-                mod.params.cfg_template,
-                mod.params.starttime,
-                mod.params.endtime,
+                level=mod.params.level,
+                cfg=mod.params.cfg_template,
+                starttime=mod.params.starttime,
+                endtime=mod.params.endtime,
                 # mod.params.timestep,
-                mod.params.forcing_path,
-                mod.output,
-                mod.params.gaugemap,
-                l
+                forcing_path=mod.params.forcing_path,
+                out=mod.output,
+                gaugemap=mod.params.gaugemap,
+                l=l
             )
         except Exception as e:
             l.error(f"An error occurred: {e}")

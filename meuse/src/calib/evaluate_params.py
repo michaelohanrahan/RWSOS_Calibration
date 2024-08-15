@@ -276,7 +276,7 @@ if __name__ == "__main__":
             mod = globals()["snakemake"]
             main(
                 l,
-                modelled=mod.input,
+                modelled=mod.input.sim,
                 observed=mod.params.observed_data,
                 dry_month=mod.params.dry_month,
                 window=mod.params.window,

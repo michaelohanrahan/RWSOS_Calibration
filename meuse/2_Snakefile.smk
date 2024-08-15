@@ -319,15 +319,15 @@ for _level in range(0, last_level+1):
     rule:
         name: f"evaluate_L{_level}"
         input: 
-            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc"),
-            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done"),
+            sim = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc"),
+            done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done"),
         params: 
             observed_data = Path(source_dir, config["observed_data"]),
             dry_month = config["dry_months"],
             window = config["window"],
             level = f"{_level}",
             graph = graph,
-            params = df.to_dict(orient="records"), 
+            params = paramspace.wildcard_pattern, 
             starttime = config["cal_eval_starttime"],
             endtime = config["cal_eval_endtime"],
             metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
@@ -336,9 +336,9 @@ for _level in range(0, last_level+1):
         localrule: False
         group: "evaluate_level"   #TODO: add this group to the config
         output: 
-            outfile = Path(calib_dir, f"level{_level}", "eval", f"{paramspace.wildcard_pattern}"+".csv"),
+            eval_done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "evaluate.done")
         resources:
-            runtime = 40
+            runtime = 60
             threads = 1
             tasks = 1
         script: 
