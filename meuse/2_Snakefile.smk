@@ -158,7 +158,7 @@ for _level in range(0, last_level+1):
             sub_catch = subcatch,
             lakes_in = lakes
         localrule: True
-        group: "group_instate"
+        group: f"instate_L{_level}"
         output:
             ST_grids = Path(input_dir, "instates", "staticmaps_L"+f"{_level}"+"_ST{_t_str}.nc")
         script:
@@ -179,7 +179,7 @@ for _level in range(0, last_level+1):
             threads = config["wflow_threads"]
         output:
             done = Path(input_dir, "instates", f"instate_level{_level}_ST"+"{_t_str}.nc")
-        group: "group_instate"
+        group: f"instate_L{_level}"
         log:
             Path(log_dir, f"instate_{_level}", f"instates_level{_level}_ST"+"{_t_str}.txt")
         localrule: False
@@ -263,7 +263,7 @@ for _level in range(0, last_level+1):
             Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc")
         threads: config["wflow_threads"]
         localrule: False
-        group: "group_wflow"
+        group: f"wflow_L{_level}"
         shell: 
             f"""julia --project="{{params.project}}" -t {{threads}} -e \
             "using Pkg;\
@@ -282,40 +282,12 @@ for _level in range(0, last_level+1):
             """touch {output.done}"""
         
     '''
-    @JING 25.07
     Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
     Output:  an unstacked performance.nc file with metrics and weights for each parameter set, and a best_params.csv file with the best parameter set.
             out csv with the best parameter set for each gauge 
             
-    #TODO: discuss if we want to have a multiple param selection.. 
-        - can sample within distance tolerance of weighted euclidian sample
-    #TODO: add parameter to fn to sample from the 10 closest to minima
     '''
 
-    # rule:
-    #     name: f"evaluate_L{_level}"
-    #     input: 
-    #         expand(Path(calib_dir, f"level{_level}", "{params}", "output_scalar.nc"), params=paramspace.instance_patterns),
-    #         expand(Path(calib_dir, f"level{_level}", "{params}", "run.done"), params=paramspace.instance_patterns),
-    #     params: 
-    #         observed_data = Path(source_dir, config["observed_data"]),
-    #         dry_month = config["dry_months"],
-    #         window = config["window"],
-    #         level = f"{_level}",
-    #         graph = graph,
-    #         params = df.to_dict(orient="records"), 
-    #         starttime = config["cal_eval_starttime"],
-    #         endtime = config["cal_eval_endtime"],
-    #         metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"] #TODO: normalize mae
-    #         weights = config["weights"], # [0.2, 0.25, 0.3, 0.25]
-    #         gaugeset = f"Q_gauges_{config['gauges']}", 
-    #     localrule: True
-    #     group: "evaluate_level"   #TODO: add this group to the config
-    #     output: 
-    #         performance = Path(calib_dir, f"level{_level}", "performance.nc"),
-    #         best_params = Path(calib_dir, f"level{_level}", "best_params.csv")
-    #     script: 
-    #         """src/calib/evaluate_params.py"""         # TODO: modify this script to submit multiple grouped jobs
     rule:
         name: f"evaluate_L{_level}"
         input: 
@@ -334,25 +306,33 @@ for _level in range(0, last_level+1):
             weights = config["weights"], 
             gaugeset = f"Q_gauges_{config['gauges']}", 
         localrule: False
-        group: "evaluate_level"   #TODO: add this group to the config
+        group: f"evaluate_L{_level}"   #TODO: add this group to the config
         output: 
+            performance = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "performance.nc"),
             eval_done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "evaluate.done")
-        resources:
-            runtime = 60
-            threads = 1
-            tasks = 1
+        threads: 1
+        resources: 
+            time = "00:30:00",
+            mem_mb = 8000
         script: 
-            """src/calib/evaluate_params.py"""         # TODO: modify this script to submit multiple grouped jobs
-    
+            """src/calib/evaluate_per_run.py""" # TODO: modify this script to submit multiple grouped jobs
+
+
     rule:
         name: f"combine_performance_L{_level}"
         input:
-            performance_files=expand("path/to/output/performance_{run}.nc", run=RUNS)
+            done = expand(Path(calib_dir, f"level{_level}", '{params}', "evaluate.done"), params=paramspace.instance_patterns),
+            performance_files=expand(Path(calib_dir, f"level{_level}", "{params}", "performance.nc"), params=paramspace.instance_patterns)
         output: 
             performance = Path(calib_dir, f"level{_level}", "performance.nc"),
-            best_params = Path(calib_dir, f"level{_level}", "best_params.csv")
+            best_params = Path(calib_dir, f"level{_level}", "best_params.csv") #defaults to best 10
+        localrule: True
+        threads: 4
+        resources:
+            time = "00:03:00",
+            mem_mb = 32000
         script:
-            "combine_performance.py"
+            "src/calib/combine_evaluated.py"
 
     '''
     This rule overwrites the staticmaps file with the best per level??
@@ -425,7 +405,7 @@ rule run_instate:
         done = touch(Path(input_dir, "instates", "done_final_instate.txt"))
     threads: config["wflow_threads"]
     localrule: False
-    group: "group_wflow"
+    group: "wflow"
     shell:
         f"""julia --project="{{params.project}}" -t {{threads}} -e \
         "using Pkg;\
@@ -444,7 +424,7 @@ rule run_final_model:
     output: Path(out_dir, "output_scalar.nc")
     threads: config["wflow_threads"]
     localrule: False
-    group: "group_wflow"
+    group: "wflow"
     shell:
         f"""julia --project="{{params.project}}" -t {{threads}} -e \
         "using Pkg;\

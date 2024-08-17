@@ -6,7 +6,6 @@ import xarray as xr
 from setuplog import setup_logging
 import traceback
 from timeit import default_timer as timer
-from icecream import ic
 
 from metrics import kge, nselog_mm7q, mae_peak_timing, mape_peak_magnitude, weighted_euclidean
 from metrics import _obs_peaks, _sim_peaks
@@ -147,8 +146,8 @@ def main(
         
         metric_values[metric].append(e)
         end = timer()
-        ic(f"Calculated {metric} in {end-start} seconds")
-        ic(f"{metric} value: {e}")
+        l.info(f"Calculated {metric} in {end-start} seconds")
+        l.info(f"{metric} value: {e}")
         evals.append(e)
     
     l.info(f"Calculated metrics for {_m}")
@@ -159,17 +158,12 @@ def main(
         weights=weights,
         weighted=True,
     )
-    # ic(res)
-    
+
     param_coords = create_index_from_params(params)
-    
-    # ic(param_coords)
-    # ic(len(param_coords))
-    # ic(len(gauges))
     
     ds = None
     for metric in metrics:
-        ic(metric)
+        l.info(metric)
         #metric_values[metric] has an array of len 60 at level 0
         da = xr.DataArray(
             metric_values[metric], 
@@ -177,7 +171,7 @@ def main(
             dims=['params', 'gauges'],
             attrs={"metric": metric}
         )
-        ic(da)
+        l.info(da)
         da.name = metric
         if ds is None:
             ds = da.to_dataset()
@@ -185,7 +179,7 @@ def main(
 
         ds[metric] = da
     
-    # ic(ds)
+    # l.info(ds)
     
     if res.ndim == 1:
         res = res.reshape((len(param_coords), len(gauges)))
@@ -202,8 +196,6 @@ def main(
             "weights": weights,
         }
     )
-
-    l.info(f"Created xarray dataset with metrics and euclidean distance")
 
     ds = ds.unstack()
     ds.to_netcdf(
@@ -222,23 +214,7 @@ if __name__ == "__main__":
     """
     This module is used to evaluate parameters for a model. 
 
-    It contains a main function that takes in a variety of inputs including observed data, 
-    graph elements, parameters, start and end times, metrics, weights, and a path to output 
-    the best parameters. 
-
-    The main function is designed to be run either directly or through Snakemake. 
-    If run directly, it will use default paths and parameters defined in the script. 
-    If run through Snakemake, it will use the input, params, and output defined in the 
-    Snakemake rule.
-
-    Functions:
-    ----------
-    main : Function to evaluate parameters and output the best ones.
-
-    Modules:
-    --------
-    create_set_params : Module to create a set of parameters.
-    dependency_graph : Module to sort the graph.
+    it will evaluate per run returning a netcdf file with the performance metrics for each run.
 
     """
     
@@ -258,7 +234,7 @@ if __name__ == "__main__":
                 endtime=mod.params.endtime,
                 metrics=mod.params.metrics,
                 weights=mod.params.weights,
-                out=mod.output.best_params,
+                out=mod.output.performance,
                 gid=mod.params.gaugeset,
             )
 
