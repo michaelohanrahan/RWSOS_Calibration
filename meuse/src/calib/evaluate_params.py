@@ -1,10 +1,12 @@
 from pathlib import Path
 import os
-# import ast
 import numpy as np
 import pandas as pd
 import xarray as xr
 from setuplog import setup_logging
+import traceback
+
+#TODO: add peak timing to metrics, conforming to data structure
 from metrics import kge, nselog_mm7q, mae_peak_timing, mape_peak_magnitude, weighted_euclidean
 
 # define a dictionary to specify the metrics to use
@@ -33,8 +35,14 @@ def create_coords_from_params(
 
     return coord
 
+def parse_params_from_path(file_path):
+    # Extract the part of the path that contains the parameters
+    path_parts = Path(file_path).parts
+    params_dict = {part.split('~')[0]:np.float64(part.split('~')[1]) for part in path_parts if '~' in part}  # Assuming the parameters are in the third last part of the path
+    return params_dict
 
 def main(
+    l,
     l,
     modelled: tuple | list,
     observed: Path | str,
@@ -52,6 +60,7 @@ def main(
     weights: tuple | list,
     gid: str,
     out: Path | str,
+    gid: str,
 ):
     """
     Perform evaluation of model parameters.
@@ -78,11 +87,9 @@ def main(
     # output directory
     out_dir = Path(out).parent
     os.makedirs(out_dir, exist_ok=True)
-    gauges = graph[level]["elements"]
-
     obs = xr.open_dataset(observed)
     l.info(f"Opened observed data from {observed}")
-    obs = obs.sel(time=slice(starttime, endtime))
+    obs = obs.sel(runs='Obs.', time=slice(starttime, endtime))
     
     # laod random_params
     random_params = pd.read_csv(random_params, index_col=0)
@@ -93,22 +100,43 @@ def main(
         item: [] for item in metrics
     }
 
+    # Create a list to store the parameters, using only non-empty runs to do so
+    params = []
+    path_ex = 0
+    val_err = 0
+    no_time = 0
+    #failed runs
+    
     # Loop through the modelled data
     for _m in modelled:
         evals = []
-
+        
+        if not Path(_m).exists():
+            l.warning(f"\n{'*'*10}\n{_m}\nDoes not exist, Skipping...\n{'*'*10}")
+            path_ex += 1
+            continue
+        
         # Open and slice temporally 
-        md = xr.open_dataset(_m)
+        try:
+            md = xr.open_dataset(_m)
+        except Exception as e:
+            l.error(f"Failed to open modelled data from {_m}")
+            l.error(traceback.format_exc())
+            val_err += 1
+            continue
+        
         md = md.sel(time=slice(starttime, endtime))
         
         if len(md.time.values) == 0:
             l.warning(f"\n{'*'*10}\n{_m}\nIs not a complete time series, Skipping...\n{'*'*10}")
+            no_time += 1
             continue
+        
+        params.append(parse_params_from_path(_m))
         
         if md[gid].dtype != int:
             md[gid] = md[gid].astype(np.int64)
 
-        l.info(f"Opened modelled data from {_m}")
         # Calculate the metric values
         for metric in metrics:
             metric_func = METRICS.get(metric)
@@ -117,11 +145,11 @@ def main(
             
             # Check if additional parameters are needed based on the metric type
             if metric == "nselog_mm7q":
-                e = metric_func(md, obs, dry_month, gauges, gid)
+                e = metric_func(md, obs, dry_month, gauges, gid, gid)
             elif metric in {"mae_peak_timing", "mape_peak_magnitude"}:
-                e = metric_func(md, obs, window, gauges, gid)
+                e = metric_func(md, obs, window, gauges, gid, gid)
             else:
-                e = metric_func(md, obs, gauges, gid)
+                e = metric_func(md, obs, gauges, gid, gid)
             
             # Special case for the 'kge' metric to extract specific component    
             if metric == "kge":
@@ -140,14 +168,19 @@ def main(
         )
         l.info(f"Euclidean distance: {r}")
         res.append(r)
+
+    #loop summary
+    l.info(f"Failed to open {path_ex + val_err + no_time} modelled data files")
+    l.info(f"- {path_ex} files did not exist")
+    l.info(f"- {val_err} files failed to open, (probably 'nc4 error', file not valid)")
+    l.info(f"- {no_time} files did not have a valid time dimension (empty)")
+    l.info(f"Successfully opened and evaluated {len(params)} modelled data files")
     
-    l.info(f"Params: {params}")
     param_coords = create_coords_from_params(params)
-    l.info(f"Created parameter coordinates")    
-    l.info(f"Parameter coordinates: {param_coords}")
-    
     ds = None
     for metric in metrics:
+        #mmetric_values[metric] has an array of len 60
+        #there are now 128 values in the potential params
         da = xr.DataArray(
             metric_values[metric], 
             coords=[('params', param_coords), ('gauges', gauges)], 
@@ -173,6 +206,8 @@ def main(
         }
     )
     ds = ds.unstack()
+    l.info(f"Created xarray dataset with metrics and euclidean distance")
+    l.info(f"{ds}")
     l.info(f"Created xarray dataset with metrics and euclidean distance")
     l.info(f"{ds}")
     ds.to_netcdf(
@@ -303,48 +338,46 @@ if __name__ == "__main__":
     """
     
     
-    # if "snakemake" in globals():
-    #     mod = globals()["snakemake"]
+    if "snakemake" in globals():
+        mod = globals()["snakemake"]
         
-    #     main(
-    #         mod.input,
-    #         mod.params.observed_data,
-    #         mod.params.graph[mod.params.level]["elements"],
-    #         mod.params.params,
-    #         mod.params.starttime,
-    #         mod.params.endtime,
-    #         mod.params.metrics,
-    #         mod.params.weights,
-    #         mod.output.best_params,
-    #     )
+        main(
+            mod.input,
+            mod.params.observed_data,
+            mod.params.graph[mod.params.level]["elements"],
+            mod.params.params,
+            mod.params.starttime,
+            mod.params.endtime,
+            mod.params.metrics,
+            mod.params.weights,
+            mod.output.best_params,
+        )
 
-    # else:
-    #     from create_set_params import create_set
-    #     from dependency_graph import sort_graph
-    #     graph = sort_graph(
-    #         Path(r"c:\git\puget\res\king_graph.json")
-    #     )
-    #     lnames, methods, ds = create_set(r"c:\git\puget\res\calib_recipe.json")
+    else:
+        from create_set_params import create_set
+        from dependency_graph import sort_graph
+        graph = sort_graph(
+            Path("c:/CODING/NONPRODUCT/puget/res/king_graph.json")
+        )
+        lnames, methods, ds = create_set("c:/CODING/NONPRODUCT/puget/res/calib_recipe.json")
 
-    #     main(
-    #         modelled=[
-    #             Path(
-    #                 "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2", 
-    #                 "ksat{}_rd{}_st{}".format(*item.values()), 
-    #                 "run_default", 
-    #                 "output_scalar.nc"
-    #             ) 
-    #             for item in 
-    #             ds.to_dict(orient="records")
-    #         ],
-    #         observed="p:/1000365-002-wflow/tmp/usgs_wflow/data/GAUGES/discharge_obs_combined.nc",
-    #         dry_month=None,
-    #         window=None,
-    #         gauges=graph["level2"]["elements"],
-    #         params=ds.to_dict(orient="records"),
-    #         starttime="2011-01-01T00:00:00",
-    #         endtime="2011-12-31T00:00:00",
-    #         metrics=["kge", "rld"],
-    #         weights=[0.6, 0.4],
-    #         out="p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2/best_params.csv",
-    #     )
+        main(
+            [
+                Path(
+                    "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2", 
+                    "ksat{}_rd{}_st{}".format(*item.values()), 
+                    "run_default", 
+                    "output_scalar.nc"
+                ) 
+                for item in 
+                ds.to_dict(orient="records")
+            ],
+            "p:/1000365-002-wflow/tmp/usgs_wflow/data/GAUGES/discharge_obs_combined.nc",
+            graph["level2"]["elements"],
+            ds.to_dict(orient="records"),
+            "2011-01-01T00:00:00",
+            "2011-12-31T00:00:00",
+            ["kge", "rld"],
+            [0.6, 0.4],
+            "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level2/best_params.csv",
+        )

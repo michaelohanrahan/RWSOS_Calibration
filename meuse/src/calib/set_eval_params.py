@@ -7,6 +7,8 @@ import pandas as pd
 import xarray as xr
 from hydromt.raster import RasterDataset
 import random
+import ast
+
 
 
 def main(
@@ -16,7 +18,8 @@ def main(
     params_lname: tuple | list,
     params_method: tuple | list,
     level: int,
-    out: Path | str,
+    out: Path | str, #nc
+    txt: Path | str, #txt
 ):
     """
     Apply evaluation parameters to the static maps.
@@ -35,10 +38,7 @@ def main(
     #preseve the precursor gridfiles
     #TODO: there will be 10 original staticmaps
     prev_level = level-1
-    if prev_level < 0:
-        prev_level = 'original'
-    else:
-        f"L{prev_level}"
+    prev_level=f"L{prev_level}"
     save_old_dir = out.parent / "intermediate"
     save_old = f"staticmaps_{prev_level}.nc"
     
@@ -55,7 +55,6 @@ def main(
     vds = vds.astype({"value": int})
 
     # Read the parameters
-    # Index by gauges
     params_ds = pd.read_csv(params, index_col="gauges")
     params_ds.index = params_ds.index.astype(int)
     

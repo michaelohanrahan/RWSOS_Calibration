@@ -110,7 +110,7 @@ if __name__ == "__main__":
     try:
         if "snakemake" in globals():
             mod = globals()["snakemake"]
-
+            
             main(
                 l,
                 p=mod.params.dataset,

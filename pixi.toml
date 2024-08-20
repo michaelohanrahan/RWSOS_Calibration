@@ -32,6 +32,8 @@ numpy = "<2.0"
 cookiecutter = "*"
 jinja2-time = "*"
 snakemake-executor-plugin-slurm = ">=0.8.0,<0.9"
+netcdf4 = ">=1.7.1,<2"
+snakemake-executor-plugin-cluster-generic = ">=1.0.9,<2"
 
 [target.win-64.dependencies]
 datrie = "*"

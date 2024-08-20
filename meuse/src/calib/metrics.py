@@ -1,6 +1,4 @@
-# Modified by Jing on July 17, 2024
-# TO-DOs: 
-## 1. do we need func: _peakdis, peakdis, fix_minmax, fix_maxmin, fix_gap?
+# Modified by Mike on 14-08-2024
 
 
 import hydromt.stats as stats
@@ -9,6 +7,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from scipy.signal import argrelmax, argrelmin, find_peaks
+# from timeit import default_timer as timer
 # from icecream import ic
 
 # from plot_rld import main as rld_fig
@@ -18,6 +17,7 @@ def kge(
     sim: xr.Dataset,
     obs: xr.Dataset,
     gauges: tuple | list,
+    gid: str,
     gid: str,
 ):
     """_summary_"""
@@ -30,6 +30,7 @@ def kge(
 
     for g in gauges:
         da = kge_ds(
+            sim.sel({gid:g}).Q,
             sim.sel({gid:g}).Q,
             obs.sel(wflow_id=g).Q,
         )
@@ -47,11 +48,13 @@ def nse(
     obs: xr.Dataset,
     gauges: tuple | list,
     gid: str,
+    gid: str,
 ):
     res = []
     
     for g in gauges:
         da = skills.nashsutcliffe(
+            sim.sel({gid:g}).Q,
             sim.sel({gid:g}).Q,
             obs.sel(wflow_id=g).Q,
         )
@@ -65,11 +68,13 @@ def nse_log(
     obs: xr.Dataset,
     gauges: tuple | list,
     gid: str,
+    gid: str,
 ):
     res = []
     
     for g in gauges:
         da = skills.lognashsutcliffe(
+            sim.sel({gid:g}).Q,
             sim.sel({gid:g}).Q,
             obs.sel(wflow_id=g).Q,
         )
@@ -122,6 +127,7 @@ def nselog_mm7q(
     dry_month: list,
     gauges: tuple | list,
     gid: str,
+    gid: str,
 ):
     """nse-log of mm7q of modeled discharge compared to observations for selected dry months and gauges
 
@@ -139,6 +145,7 @@ def nselog_mm7q(
     
     for g in gauges:
         sim_mm7q = mm7q(sim.sel({gid:g}).Q, dry_month)
+        sim_mm7q = mm7q(sim.sel({gid:g}).Q, dry_month)
         obs_mm7q = mm7q(obs.sel(wflow_id=g).Q, dry_month)
         nselog_mm7q = skills.lognashsutcliffe(sim_mm7q, obs_mm7q)
         res.append(round(float(nselog_mm7q.values),4))
@@ -146,31 +153,138 @@ def nselog_mm7q(
     return res
 
 
-def _peaks(
-    sim: xr.DataArray,
+# def _peaks(
+#     sim: xr.DataArray,
+#     obs: xr.DataArray,
+#     window: int, 
+#     distance: int = None,
+#     prominence: float = None, 
+#     datetime_coord: str = None,
+# ):
+#     """Difference in peak flow timing.
+#     Uses scipy.find_peaks to find peaks in the observed time series. Starting with all observed peaks, those with a
+#     prominence of less than half of standard deviation of the observed time series are discarded. And the lowest peaks
+#     are subsequently discarded until all remaining peaks have a distance of at least 24*3 steps. Finally, the
+#     corresponding peaks in the simulated time series are searched in a window of size `window` on either side of the
+#     observed peaks and the absolute time differences between observed and simulated peaks is calculated.
+    
+#     Parameters
+#     ----------
+#     sim : xr.DataArray
+#         Simulated time series.
+#     obs : xr.DataArray
+#         Observed time series.
+#     window : int
+#         Size of window to consider on each side of the observed peak for finding the simulated peak. That is, the total
+#         window length to find the peak in the simulations is :math:`2 * \\text{window} + 1` centered at the observed
+#         peak.
+#     distance: int, optional
+#         Required minimal horizontal distance (>= 1) in samples between neighbouring peaks. 
+#         Larger distance will filter out peaks that are close in time.
+#         Default value is 24*3=72
+#     prominence: float, optional
+#         Required prominence of peaks. The peaks with a prominence less than this are discarded.
+#         Larger prominence will filter out peaks that are close in time and magnitude.
+#         Default value is np.std(obs.values).
+#     datetime_coord : str, optional
+#         Name of datetime coordinate. Tried to infer automatically as 'time' if not specified.
+
+#     Returns
+#     -------
+#     peaks : numpy array (datetime64)
+#         Datetime indices of peaks in obs. 
+#     timing_errors : list (float)
+#         Difference in peak timing. Positive value indicates simulated peak is late. Negative value indicates simulated peak is early.
+
+#     References
+#     -------
+#     https://github.com/neuralhydrology/neuralhydrology/blob/master/neuralhydrology/evaluation/metrics.py#L538
+#     https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html
+    
+#     """   
+    
+#     if distance is None:
+#         distance = 24*3  # default value as 24*3
+    
+#     if prominence is None:
+#         prominence = np.nanstd(obs.values)  # default value as 0.5 * np.std(obs.values)
+        
+#     if datetime_coord is None:
+#         datetime_coord = 'time'  # default value as 'time'
+    
+#     # get indices of peaks and their corresponding height
+#     start = timer()
+#     peaks,_ = find_peaks(obs.values, distance=distance, prominence=prominence)
+#     end = timer()
+#     ic("peak timing only: ", end-start)
+    
+#     #REST OF THE FUNCTION
+#     start = timer()
+#     if isinstance(sim, tuple):
+#         sim = sim[0]
+#     if isinstance(obs, tuple):
+#         obs = obs[0]
+        
+#     sim = sim.set_index({datetime_coord:'time'})
+#     obs = obs.set_index({datetime_coord:'time'})
+    
+#     # convert peak indices to datetime indices
+#     peaks = obs[datetime_coord].values[peaks]
+    
+#     # evaluate timing
+#     valid_peaks = []
+#     timing_errors = []
+#     window = pd.Timedelta(hours=int(window))
+    
+#     for idx in peaks:
+#         # To make peaks datetime stamps we need to make window a timedelta
+#         # skip peaks at the start and end of the sequence and peaks around missing observations
+        
+#         if (idx - window < sim.time.min()) or (idx + window > sim.time.max()) or (pd.date_range(start=idx - window, end=idx + window, freq='1H').size != window/pd.Timedelta(hours=1)*2 + 1):
+#             continue
+#         valid_peaks.append(idx)
+
+#         # check if the value at idx is a peak (both neighbors must be smaller)
+#         if (sim.loc[idx] > sim.loc[idx - pd.Timedelta(hours=1)]) and (sim.loc[idx] > sim.loc[idx + pd.Timedelta(hours=1)]):
+#             peak_sim = sim.loc[idx]
+#         else:
+#             # define peak around idx as the max value inside of the window
+#             values = sim.loc[idx - window : idx + window]
+#             if not values.isnull().all():
+#                 peak_sim = values[values.argmax()]
+#             else:
+#                 # Handle the case when all values are NaN
+#                 peak_sim = np.nan
+
+#         # If peak_sim is NaN, skip this iteration
+#         if pd.isnull(peak_sim):
+#             timing_errors.append(np.nan)
+#             continue
+
+#         # get xarray object of qobs peak, for getting the date and calculating the datetime offset
+#         peak_obs = obs.loc[idx]
+
+#         # calculate the time difference between the peaks (positive value: sim is late; negative value: sim is early)
+#         delta = peak_sim.time - peak_obs.time
+#         timing_error = delta.values / pd.to_timedelta('1H')
+#         timing_errors.append(timing_error)
+#     end = timer()
+#     ic("whole function run", end-start)
+    
+#     return np.array(valid_peaks), timing_errors
+def _obs_peaks(
     obs: xr.DataArray,
-    window: int, 
     distance: int = None,
     prominence: float = None, 
     datetime_coord: str = None,
 ):
-    """Difference in peak flow timing.
-    Uses scipy.find_peaks to find peaks in the observed time series. Starting with all observed peaks, those with a
-    prominence of less than half of standard deviation of the observed time series are discarded. And the lowest peaks
-    are subsequently discarded until all remaining peaks have a distance of at least 24*3 steps. Finally, the
-    corresponding peaks in the simulated time series are searched in a window of size `window` on either side of the
-    observed peaks and the absolute time differences between observed and simulated peaks is calculated.
-    
+    """
+    Finds peaks in the observed time series using scipy.find_peaks.
+
     Parameters
     ----------
-    sim : xr.DataArray
-        Simulated time series.
     obs : xr.DataArray
         Observed time series.
-    window : int
-        Size of window to consider on each side of the observed peak for finding the simulated peak. That is, the total
-        window length to find the peak in the simulations is :math:`2 * \\text{window} + 1` centered at the observed
-        peak.
     distance: int, optional
         Required minimal horizontal distance (>= 1) in samples between neighbouring peaks. 
         Larger distance will filter out peaks that are close in time.
@@ -186,16 +300,7 @@ def _peaks(
     -------
     peaks : numpy array (datetime64)
         Datetime indices of peaks in obs. 
-    timing_errors : list (float)
-        Difference in peak timing. Positive value indicates simulated peak is late. Negative value indicates simulated peak is early.
-
-    References
-    -------
-    https://github.com/neuralhydrology/neuralhydrology/blob/master/neuralhydrology/evaluation/metrics.py#L538
-    https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html
-    
-    """   
-    
+    """
     if distance is None:
         distance = 24*3  # default value as 24*3
     
@@ -204,60 +309,203 @@ def _peaks(
         
     if datetime_coord is None:
         datetime_coord = 'time'  # default value as 'time'
+
+    peak_indices, _ = find_peaks(obs.values, distance=distance, prominence=prominence)
     
-    # get indices of peaks and their corresponding height
-    peaks,_ = find_peaks(obs.values, distance=distance, prominence=prominence)
+    # Convert peak indices to datetime indices
+    peaktime = obs[datetime_coord].values[peak_indices]
+    peakval = obs[peak_indices].values
+
+    return {'t': peaktime, 'Q': peakval}
+
+# def _sim_peaks(
+#     sim: xr.DataArray,
+#     peaks: np.array,
+#     window: int,
+#     datetime_coord: str = None,
+# )-> dict:
+#     """
+#     Finds the corresponding peaks in the simulated time series within a specified window around the observed peaks.
+
+#     Parameters
+#     ----------
+#     sim : xr.DataArray
+#         Simulated time series.
+#     peaks : np.array
+#         Datetime indices of peaks in the observed time series.
+#     window : int
+#         Size of window to consider on each side of the observed peak for finding the simulated peak.
+#     datetime_coord : str, optional
+#         Name of datetime coordinate. Tried to infer automatically as 'time' if not specified.
+
+#     Returns
+#     -------
+#     sim_peaks : dict
+#         A dictionary with observed peak times as keys and corresponding simulated peak times as values.
+#     """
+#     start = timer()
+#     if datetime_coord is None:
+#         datetime_coord = 'time'  # default value as 'time'
+
+#     if isinstance(sim, tuple):
+#         sim = sim[0]
     
+#     sim = sim.set_index({datetime_coord: 'time'})
+
+#     sim_peaks = {}
+#     window = pd.Timedelta(hours=int(window))
+
+#     for idx in peaks:
+#         # Skip peaks at the start and end of the sequence and peaks around missing observations
+#         if (idx - window < sim.time.min()) or (idx + window > sim.time.max()):
+#             continue
+
+#         # Define peak around idx as the max value inside of the window
+#         values = sim.loc[idx - window: idx + window]
+#         if not values.isnull().all():
+#             peak_sim = values[values.argmax()]
+#         else:
+#             # Handle the case when all values are NaN
+#             peak_sim = np.nan
+
+#         if not pd.isnull(peak_sim):
+#             sim_peaks[idx] = peak_sim.time
+#     end = timer()
+#     ic("Simulated peak finding time: ", end-start)
+#     #will be a dict with obs peak time as key and sim peak time as value
+#     return sim_peaks
+
+def _sim_peaks(
+    sim: xr.DataArray,
+    obs: dict,
+    window: int,
+    datetime_coord: str = None,
+) -> dict:
+    """
+    Finds the corresponding peaks in the simulated time series within a specified window around the observed peaks.
+
+    Parameters
+    ----------
+    sim : xr.DataArray
+        Simulated time series.
+    peaks : np.array
+        Datetime indices of peaks in the observed time series.
+    window : int
+        Size of window to consider on each side of the observed peak for finding the simulated peak.
+    datetime_coord : str, optional
+        Name of datetime coordinate. Tried to infer automatically as 'time' if not specified.
+
+    Returns
+    -------
+    sim_peaks : dict
+        A dictionary with observed peak times as keys and corresponding simulated peak times as clean string values.
+    """
+    if datetime_coord is None:
+        datetime_coord = 'time'  # default value as 'time'
+
     if isinstance(sim, tuple):
         sim = sim[0]
-    if isinstance(obs, tuple):
-        obs = obs[0]
-        
-    sim = sim.set_index({datetime_coord:'time'})
-    obs = obs.set_index({datetime_coord:'time'})
     
-    # convert peak indices to datetime indices
-    peaks = obs[datetime_coord].values[peaks]
-    
-    # evaluate timing
-    valid_peaks = []
-    timing_errors = []
+    sim = sim.set_index({datetime_coord: 'time'})
+
+    obs_t = []
+    sim_t = []
+    obs_q = []
+    sim_q = []
     window = pd.Timedelta(hours=int(window))
     
+    peaks = obs['t']
+    Qdict = {k: v for k, v in zip(obs['t'], obs['Q'])}
     for idx in peaks:
-        # To make peaks datetime stamps we need to make window a timedelta
-        # skip peaks at the start and end of the sequence and peaks around missing observations
-        
-        if (idx - window < sim.time.min()) or (idx + window > sim.time.max()) or (pd.date_range(start=idx - window, end=idx + window, freq='1H').size != window/pd.Timedelta(hours=1)*2 + 1):
+        # Skip peaks at the start and end of the sequence and peaks around missing observations
+        if (idx - window < sim.time.min()) or (idx + window > sim.time.max()):
             continue
-        valid_peaks.append(idx)
 
-        # check if the value at idx is a peak (both neighbors must be smaller)
-        if (sim.loc[idx] > sim.loc[idx - pd.Timedelta(hours=1)]) and (sim.loc[idx] > sim.loc[idx + pd.Timedelta(hours=1)]):
-            peak_sim = sim.loc[idx]
+        # Define peak around idx as the max value inside of the window
+        values = sim.loc[idx - window: idx + window]
+        if not values.isnull().all():
+            peak_sim_time = values.idxmax().values
+            peak_sim_val = values.loc[peak_sim_time].values
         else:
-            # define peak around idx as the max value inside of the window
-            values = sim.loc[idx - window : idx + window]
-            if not values.isnull().all():
-                peak_sim = values[values.argmax()]
-            else:
-                # Handle the case when all values are NaN
-                peak_sim = np.nan
-
-        # If peak_sim is NaN, skip this iteration
-        if pd.isnull(peak_sim):
-            timing_errors.append(np.nan)
+            # Handle the case when all values are NaN
+            peak_sim_val = np.nan
+            peak_sim_time = np.nan
             continue
 
-        # get xarray object of qobs peak, for getting the date and calculating the datetime offset
-        peak_obs = obs.loc[idx]
+        if not pd.isnull(peak_sim_time):
+            obs_t.append(idx)
+            obs_q.append(Qdict[idx])
+            sim_t.append(peak_sim_time)
+            sim_q.append(peak_sim_val)
+    sim_peaks = {'t_obs': obs_t, 'Q_obs': obs_q, 't_sim': sim_t, 'Q_sim': sim_q}
 
-        # calculate the time difference between the peaks (positive value: sim is late; negative value: sim is early)
-        delta = peak_sim.time - peak_obs.time
-        timing_error = delta.values / pd.to_timedelta('1H')
-        timing_errors.append(timing_error)
+    return sim_peaks
 
-    return np.array(valid_peaks), timing_errors
+
+# def calculate_timing_errors(
+#     obs_peaks: dict,
+#     peaks: dict,
+#     window: int,
+# ):
+#     """
+#     #TODO: Update the docstring to reflect precalc peaks
+#     Calculates the timing errors between observed and simulated peaks.
+
+#     Parameters
+#     ----------
+#     sim : xr.DataArray
+#         Simulated time series.
+#     obs : xr.DataArray
+#         Observed time series.
+#     peaks : np.array
+#         Datetime indices of peaks in the observed time series.
+#     window : int
+#         Size of window to consider on each side of the observed peak for finding the simulated peak.
+#     datetime_coord : str, optional
+#         Name of datetime coordinate. Tried to infer automatically as 'time' if not specified.
+
+#     Returns
+#     -------
+#     timing_errors : list (float)
+#         Difference in peak timing. Positive value indicates simulated peak is late. Negative value indicates simulated peak is early.
+#     """
+    
+#     timing_errors = []
+    
+#     for idx in peaks:
+#         # Skip peaks at the start and end of the sequence and peaks around missing observations
+#         if (idx - window < sim.time.min()) or (idx + window > sim.time.max()) or (pd.date_range(start=idx - window, end=idx + window, freq='1H').size != window/pd.Timedelta(hours=1)*2 + 1):
+#             continue
+
+#         # Check if the value at idx is a peak (both neighbors must be smaller)
+#         if (sim.loc[idx] > sim.loc[idx - pd.Timedelta(hours=1)]) and (sim.loc[idx] > sim.loc[idx + pd.Timedelta(hours=1)]):
+#             peak_sim = sim.loc[idx]
+#         else:
+#             # Define peak around idx as the max value inside of the window
+#             values = sim.loc[idx - window : idx + window]
+#             if not values.isnull().all():
+#                 peak_sim = values[values.argmax()]
+#             else:
+#                 # Handle the case when all values are NaN
+#                 peak_sim = np.nan
+
+#         # If peak_sim is NaN, skip this iteration
+#         if pd.isnull(peak_sim):
+#             timing_errors.append(np.nan)
+#             continue
+
+#         # Get xarray object of obs peak for getting the date and calculating the datetime offset
+#         peak_obs = obs.loc[idx]
+
+#         # Calculate the time difference between the peaks (positive value: sim is late; negative value: sim is early)
+#         delta = peak_sim.time - peak_obs.time
+#         timing_error = delta.values / pd.to_timedelta('1H')
+#         timing_errors.append(timing_error)
+
+#     end = timer()
+#     ic("Timing errors calculation time: ", end-start)
+    
+#     return timing_errors
 
 #TODO: mae has very different value ranges compared to KGE, NSE, MAPE. How to integrate to a weighted euclidean?
 # 1-log(mae+1)? or 1-mae/window?
@@ -285,79 +533,122 @@ def normalize_mape(val:float):
     return norm
 
 def mae_peak_timing(
-    sim: xr.Dataset,
-    obs: xr.Dataset,
+    peaks: dict,
     window: int,
-    gauges: tuple | list,
-    gid: str,
-):
-    """mae of peak timing errors
+) -> list:
+    """
+    Calculates the Mean Absolute Error (MAE) of peak timing errors for the given gauges.
 
     Args:
-        sim (xr.Dataset): Model dataset containing discharge values.
-        obs (xr.Dataset): Observed dataset containing discharge values.
-        window (int): Size of window to consider on each side of the observed peak for 
-                      finding the simulated peak.
-        gauges (tuple | list): Tuple or list of gauges wflow_id for which needs to be calculated.
+        sim (dict): Dictionary containing simulated peak times for each gauge.
+        obs (dict): Dictionary containing observed peak times for each gauge.
+        window (int): Size of window to consider on each side of the observed peak for finding the simulated peak.
+        gauges (tuple or list): Tuple or list of gauges (wflow_id) for which the MAE needs to be calculated.
+        gid (str): Identifier for the gauge ID in the dataset (not used in this function, but kept for consistency).
 
     Returns:
-        List: List of mae_peak_timing for each gauge (wflow_id).
+        List: List of MAE of peak timing errors for each gauge (wflow_id).
     """
     
     res = []
     
-    for g in gauges:
-        sim_g = sim.sel({gid:g}).Q,
-        obs_g = obs.sel(wflow_id=g).Q
-        _, timing_errors = _peaks(sim_g, obs_g, window)
-        # compute mae of timing_erros
+    for g in peaks.keys():
+        obs_g = np.array(peaks[g]['t_obs'])
+        sim_g = np.array(peaks[g]['t_sim'])
+        
+        # Ensure observed and simulated peaks have the same length
+        if len(sim_g) != len(obs_g):
+            raise ValueError(f"Length of observed and simulated peaks should be equal for gauge {g}")
+
+        # Calculate timing errors as the difference between observed and simulated peaks
+        timing_errors = [(sim_time-obs_time) / np.timedelta64(1,'h') for obs_time, sim_time in zip(obs_g, sim_g)]
+        
+        # Filter out timing errors that are exactly equal to the window size (as per your original intention)
+        timing_errors = np.array([error for error in timing_errors if error != window])
+        
+        # Compute MAE of timing errors
         mae_peak_timing = np.mean(np.abs(timing_errors))
-        # normalize mae and store results
-        res.append(normalize_mae(round(float(mae_peak_timing),4), window))
+        
+        # Normalize MAE and store the result
+        res.append(normalize_mae(round(float(mae_peak_timing), 4), window))
     
     return res
-
 
 def mape_peak_magnitude(
-    sim: xr.Dataset,
-    obs: xr.Dataset,
+    peaks: dict,
     window: int,
-    gauges: tuple | list,
-    gid: str,
-):
-    """mape of peak magnitude for gauges
+) -> list:
+    """
+    Calculates the Mean Absolute Percentage Error (MAPE) of peak magnitudes for the given gauges.
 
     Args:
-        sim (xr.Dataset): Model dataset containing discharge values.
-        obs (xr.Dataset): Observed dataset containing discharge values.
-        window (int): Size of window to consider on each side of the observed peak for 
-                      finding the simulated peak.
-        gauges (tuple | list): Tuple or list of gauges wflow_id for which needs to be calculated.
+        peaks (dict): Dictionary containing both observed and simulated peak times and magnitudes for each gauge.
+        window (int): Size of window to consider on each side of the observed peak for finding the simulated peak.
 
     Returns:
-        List: List of mape_peak_magnitude for each gauge (wflow_id).
+        List: List of MAPE of peak magnitudes for each gauge (wflow_id).
     """
     
     res = []
     
-    for g in gauges:
-        sim_g = sim.sel({gid:g}).Q,
-        obs_g = obs.sel(wflow_id=g).Q
-        if isinstance(sim_g, tuple):
-            sim_g = sim_g[0]
-        if isinstance(obs_g, tuple):
-            obs_g = obs_g[0]
-        peaks, _ = _peaks(sim_g, obs_g, window)
+    for g in peaks.keys():
+        obs_magnitudes = np.array(peaks[g]['Q_obs'])
+        sim_magnitudes = np.array(peaks[g]['Q_sim'])
+
+        # Ensure observed and simulated magnitudes have the same length
+        if len(sim_magnitudes) != len(obs_magnitudes):
+            raise ValueError(f"Length of observed and simulated magnitudes should be equal for gauge {g}")
         
-        # compute mape of peak magnitude
-        peaks_index = pd.DatetimeIndex(peaks).dropna()
-        obs_peak = obs_g.sel(time=peaks_index).values
-        sim_peak = sim_g.sel(time=peaks_index).values
-        mape_peak_magnitude = np.sum(np.abs((sim_peak - obs_peak) / obs_peak)) / peaks.size
-        # normalize mape and store results
-        res.append(normalize_mape(round(float(mape_peak_magnitude),4)))
+        # Compute MAPE of peak magnitudes
+        mape_peak_magnitude = np.mean(np.abs((sim_magnitudes - obs_magnitudes) / obs_magnitudes)) * 100  # MAPE is usually expressed as a percentage
+        
+        # Store the result
+        res.append(round(float(mape_peak_magnitude), 4))
     
     return res
+
+
+# def mape_peak_magnitude(
+#     peaks: dict,
+#     window: int,
+# ):
+#     """mape of peak magnitude for gauges
+
+#     Args:
+#         sim (xr.Dataset): Model dataset containing discharge values.
+#         obs (xr.Dataset): Observed dataset containing discharge values.
+#         window (int): Size of window to consider on each side of the observed peak for 
+#                       finding the simulated peak.
+#         gauges (tuple | list): Tuple or list of gauges wflow_id for which needs to be calculated.
+
+#     Returns:
+#         List: List of mape_peak_magnitude for each gauge (wflow_id).
+#     """
+    
+#     res = []
+    
+#     for g in gauges:
+#         sim_g = sim.sel({gid:g}).Q,
+#         obs_g = obs.sel(wflow_id=g).Q
+#         if isinstance(sim_g, tuple):
+#             sim_g = sim_g[0]
+#         if isinstance(obs_g, tuple):
+#             obs_g = obs_g[0]
+        
+#         if precomputed_peaks:
+#             peaks = precomputed_peaks[g]
+#         else:
+#             peaks, _ = _peaks(sim_g, obs_g, window)
+        
+#         # compute mape of peak magnitude
+#         peaks_index = pd.DatetimeIndex(peaks).dropna()
+#         obs_peak = obs_g.sel(time=peaks_index).values
+#         sim_peak = sim_g.sel(time=peaks_index).values
+#         mape_peak_magnitude = np.sum(np.abs((sim_peak - obs_peak) / obs_peak)) / peaks.size
+#         # normalize mape and store results
+#         res.append(normalize_mape(round(float(mape_peak_magnitude),4)))
+    
+#     return res
     
     
 def _rld(
@@ -613,8 +904,11 @@ def weighted_euclidean(
 ):
     """_summary_"""
 
-    if weighted and len(weights) != len(coef) or sum(weights) != 1:
-        raise ValueError("")
+    if weighted and len(weights) != len(coef):
+        raise ValueError("The length of weights should be equal to the length of coef")
+    
+    if weighted and sum(weights) != 1:
+        raise ValueError("The sum of weights should be equal to 1")
     
     if not weighted:
         weights = [1] * len(coef)
@@ -625,35 +919,35 @@ def weighted_euclidean(
 
     res = np.sqrt(sum(dist))
 
-    return list(res.round(4))
+    return np.array(res.round(4))
 
 
-if __name__ == "__main__":
-    ds = xr.open_dataset(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\wflow_meuse_20240529_flpN_landN\_output\ds_obs_model_combined.nc')
-    sim = ds.sel(runs='scale_10')
-    ic(sim)
+# if __name__ == "__main__":
+#     ds = xr.open_dataset(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\wflow_meuse_20240529_flpN_landN\_output\ds_obs_model_combined.nc')
+#     sim = ds.sel(runs='scale_10')
+#     ic(sim)
     
-    obs = ds.sel(runs='Obs.')
-    ic(obs)
+#     obs = ds.sel(runs='Obs.')
+#     ic(obs)
     
-    #best=1
-    kge_res = kge(sim, obs, [16, 801])
-    ic(kge_res)
+#     #best=1
+#     kge_res = kge(sim, obs, [16, 801])
+#     ic(kge_res)
     
-    #best=1
-    nse_res = nse(sim, obs, [16, 801])
-    ic(nse_res)
+#     #best=1
+#     nse_res = nse(sim, obs, [16, 801])
+#     ic(nse_res)
     
-    #best=1
-    nse_log_res = nse(sim, obs, [16, 801])
-    ic(nse_log_res)
+#     #best=1
+#     nse_log_res = nse(sim, obs, [16, 801])
+#     ic(nse_log_res)
     
-    #best=1
-    nselog_mm7q_res = nselog_mm7q(sim, obs, [6,11], [16, 801])
-    ic(nselog_mm7q_res)
+#     #best=1
+#     nselog_mm7q_res = nselog_mm7q(sim, obs, [6,11], [16, 801])
+#     ic(nselog_mm7q_res)
     
-    #normalized, returning a dict
-    peak_res = peak_errors(sim, obs, 72, [16, 801])
-    ic(peak_res)
+#     #normalized, returning a dict
+#     peak_res = peak_errors(sim, obs, 72, [16, 801])
+#     ic(peak_res)
     
-    weighted_euclidian_res = weighted_euclidean([], [0.5, 0.5])
+#     weighted_euclidian_res = weighted_euclidean([], [0.5, 0.5])

@@ -1,16 +1,8 @@
-localrules: init_done,initial_instate_tomls_L0
 import os 
 import platform
 from pathlib import Path
 import yaml
-# print(f"Current working directory: {os.getcwd()}")
-# print(f"Config file: {Path('config/calib.yml').as_posix()}")
-# print(f"Exists? {Path('config/calib.yml').exists()}") 
-# with open("config/calib.yml", "r") as f:
-#     config = yaml.safe_load(f)
 
-# print(f"config: {config}")
-print(config)
 if platform.system() == "Windows":
     DRIVE = "p:/"
     PLATFORM = "Windows"

@@ -47,7 +47,7 @@ gauges = config["gauges"]
 #find last level from the final level directory
 levels = glob.glob(str(Path(inter_dir,'calib_data', "level*")))
 levels_ints = [int(level.split("level")[-1]) for level in levels]
-last_level = int(levels[-1].split("level")[-1])
+last_level = 5 #int(levels[-1].split("level")[-1])
 
 #define elements from the staticgeoms
 elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
@@ -206,7 +206,7 @@ for _level in range(0, last_level+1):
         localrule: True
         output: 
             staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
-            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
+            lake_out = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
         script: 
             """src/calib/set_calib_params.py"""
 
@@ -220,52 +220,109 @@ for _level in range(0, last_level+1):
     rule:
         name: f"wflow_L{_level}"
         input: 
-            instates=Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"),
+            instates=expand(Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"), _t_str=ST_str),
             cfg = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
-            staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc")
+            staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
+            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
         params:
             project = Path(base_dir, "bin").as_posix(),
-        output: Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run_default", "output_scalar.nc"),
+            # threads = config["wflow_threads"]
+        output: 
+            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc")
+        threads: config["wflow_threads"]
         localrule: False
-        group: "group_wflow"
-        threads: 4
+        group: f"wflow_L{_level}"
         shell: 
             f"""julia --project="{{params.project}}" -t {{threads}} -e \
             "using Pkg;\
             Pkg.instantiate();\
             using Wflow;\
              Wflow.run()" {{input.cfg}}"""
-
+    
+    rule:
+        name: f"done_L{_level}"
+        input: 
+            output = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc")
+        output:
+            done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done")
+        localrule: True
+        shell:
+            """touch {output.done}"""
+        
     '''
-    @JING 25.07
     Evaluate: This rule evaluates the performance of the model by comparing the model output with observed data and outputs the best parameters and performance metrics.
     Output:  an unstacked performance.nc file with metrics and weights for each parameter set, and a best_10params.csv file with the best parameter set.
             out csv with the best parameter set for each gauge 
+            
     '''
     rule:
         name: f"evaluate_L{_level}"
         input: 
-            modelled = expand(Path(calib_dir, f"level{_level}", "{params}", "run_default", "output_scalar.nc"), params=paramspace.instance_patterns),
-            random_params = Path(calib_dir, f"level{_level}", "random_params.csv"),
-            best_10params_previous = Path(calib_dir, f"level{_level-1}", "best_10params.csv")
+            sim = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc"),
+            done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done"),
         params: 
             observed = Path(source_dir, config["observed_data"]),
             dry_month = config["dry_months"],
             window = config["window"],
             level = f"{_level}",
             graph = graph,
-            graph_node = graph_node,
-            params = df.to_dict(orient="records"),
-            starttime = config["eval_starttime"],
-            endtime = config["eval_endtime"],
-            metrics = config["metrics"],
-            weights = config["weights"]
+            params = paramspace.wildcard_pattern, 
+            starttime = config["cal_eval_starttime"],
+            endtime = config["cal_eval_endtime"],
+            metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
+            weights = config["weights"], 
+            gaugeset = f"Q_gauges_{config['gauges']}", 
         localrule: False
+        group: f"evaluate_L{_level}"   #TODO: add this group to the config
         output: 
-            best_10params = Path(calib_dir, f"level{_level}", "best_10params.csv"),
-            performance = Path(calib_dir, f"level{_level}", "performance.nc")
+            performance = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "performance.nc"),
+            eval_done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "evaluate.done")
+        threads: 1
+        resources: 
+            time = "00:30:00",
+            mem_mb = 8000
         script: 
-            """src/calib/evaluate_params.py"""       
+            """src/calib/evaluate_per_run.py""" # TODO: modify this script to submit multiple grouped jobs
+
+
+    rule:
+        name: f"combine_performance_L{_level}"
+        input:
+            done = expand(Path(calib_dir, f"level{_level}", '{params}', "evaluate.done"), params=paramspace.instance_patterns),
+            performance_files=expand(Path(calib_dir, f"level{_level}", "{params}", "performance.nc"), params=paramspace.instance_patterns)
+        output: 
+            performance = Path(calib_dir, f"level{_level}", "performance.nc"),
+            best_params = Path(calib_dir, f"level{_level}", "best_params.csv") #defaults to best 10
+        localrule: True
+        threads: 4
+        resources:
+            time = "00:03:00",
+            mem_mb = 32000
+        script:
+            "src/calib/combine_evaluated.py"
+
+    '''
+    This rule overwrites the staticmaps file with the best per level??
+    #TODO: create a staticmaps per level? Not necessary if we are waiting for the done.txt
+            -- not necessary but as a failsafe we create a copy of the staticmaps for each level
+    '''
+
+    rule:
+        name: f"set_params_L{_level}"
+        input: 
+            best_params = Path(calib_dir, f"level{_level}", "best_params.csv"),
+        params:
+            staticmaps = staticmaps,
+            sub_catch = subcatch,
+            params_lname = lnames,
+            params_method = methods,
+            level=_level
+        localrule: True
+        output: 
+            done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
+            done = Path(calib_dir, f"level{_level}", "done.txt")
+        script: 
+            """src/calib/set_eval_params.py"""
 
 '''
 Preparing the final stage: This rule prepares the final stage of the calibration process.
@@ -277,7 +334,7 @@ rule prep_final_stage:
         performance = glob.glob(str(Path(calib_dir, "level*", "performance.nc"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
-        cfg_args = [config["starttime"], config["endtime"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
+        cfg_args = [config["eval_runstart"], config["eval_runend"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
         staticmaps = staticmaps
     output: 
         cfg = Path(input_dir, config["wflow_cfg_name"]),
@@ -287,14 +344,54 @@ rule prep_final_stage:
     script:
         """src/calib/prep_final_stage.py"""
 
+'''Final instate: This rule creates the final instate for the model evaluation.'''
+
+rule final_instate_toml:
+    input: 
+        performance = Path(out_dir, "performance.nc"),
+        config_fn = cfg_template,
+    params: 
+        root = Path(input_dir, "instates").as_posix(),
+        level = "final",
+        starttime = config["eval_instart"],
+        endtime = config["eval_inend"],
+        staticmaps = staticmaps
+    localrule: True
+    output:
+        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
+        
+
+rule run_instate:
+    input:
+        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
+        staticmaps = Path(input_dir, "staticmaps.nc")
+    params: 
+        project = Path(base_dir, "bin").as_posix(),
+    output: 
+        outstate=Path(input_dir, "instates", "instate_level_final.nc"),
+        done = touch(Path(input_dir, "instates", "done_final_instate.txt"))
+    threads: config["wflow_threads"]
+    localrule: False
+    group: "wflow"
+    shell:
+        f"""julia --project="{{params.project}}" -t {{threads}} -e \
+        "using Pkg;\
+        Pkg.instantiate();\
+        using Wflow;\
+        Wflow.run()" {{input.cfg}}"""
+
 rule run_final_model:
     input:
+        done = Path(input_dir, "instates", "done_final_instate.txt"),
+        instate = Path(input_dir, "instates", "instate_level_final.nc"),
         cfg = Path(input_dir, config["wflow_cfg_name"]),
         staticmaps = Path(input_dir, "staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
-    output: Path(out_dir, "run_default", "output_scalar.nc")
+    output: Path(out_dir, "output_scalar.nc")
+    threads: config["wflow_threads"]
     localrule: False
+    group: "wflow"
     shell:
         f"""julia --project="{{params.project}}" -t {{threads}} -e \
         "using Pkg;\
@@ -304,7 +401,7 @@ rule run_final_model:
 
 rule visualize:
     input: 
-        scalar = Path(out_dir, "run_default", "output_scalar.nc"),
+        scalar = Path(out_dir, "output_scalar.nc"),
         performance = Path(out_dir, "performance.nc")
     params:
         observed_data = config["observed_data"],
