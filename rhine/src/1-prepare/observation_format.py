@@ -8,7 +8,7 @@ import xarray as xr
 import numpy as np
 from pathlib import Path
 
-work_dir = Path(r'p:\11209265-grade2023\wflow\wflow_rhine_julia\measurements\vanBart')
+work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\1-external')
 fn_obs = work_dir / 'discharge_obs_hr_appended.nc'  # original obs file
 
 # load original obs
@@ -16,14 +16,21 @@ obs = xr.open_dataset(fn_obs)
 obs = obs.assign_coords(stations=('stations', obs.stations.values))
 
 # create standard obs nc file format (reference: Meuse)
-variables = ['Q']
+variables = ['Q', 'x', 'y', 'z', 'lon', 'lat', 'station_id', 'station_names']
 time_rng = obs.time.values
 wflow_id = obs.stations.values
 runs = ['Obs.']
 
-S = np.zeros((len(time_rng), len(wflow_id), len(runs)))
-v = (('time', 'wflow_id', 'runs'), S)
-h = {k:v for k in variables}
+S1 = np.zeros((len(time_rng), len(wflow_id), len(runs)))
+S2 = np.zeros((len(wflow_id), len(runs)))
+v1 = (('time', 'wflow_id', 'runs'), S1)  # create coordinate for Q
+v2 = (('wflow_id', 'runs'), S2)  # create coordinate for other variables
+h = {}  # create data variable dictionary containing coordinates information
+for var in variables:
+    if var == 'Q':
+        h[var] = v1
+    else:
+        h[var] = v2
 
 ds = xr.Dataset(
     data_vars=h,
@@ -31,7 +38,12 @@ ds = xr.Dataset(
             'wflow_id': wflow_id,
             'runs': runs})
 ds = ds * np.nan
-ds['Q'].loc[:, :, 'Obs.'] = obs['Qm'].loc[:, :].values
+
+for var in variables:  # copy data from original obs to new ds
+    if var == 'Q':
+        ds['Q'].loc[:, :, 'Obs.'] = obs['Qm'].loc[:, :].values
+    else:
+        ds[var].loc[:, 'Obs.'] = obs[var].loc[:].values
 
 
 # # check if obs Qm are correctly copied to ds Q

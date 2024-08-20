@@ -1,7 +1,14 @@
+"""
+This script is borrowed from Meuse project, used for sanity check on observation data
+Created by Jing Deng
+Date: 2024-08-19
+"""
+
 import xarray as xr
 import geopandas as gpd
 import pandas as pd 
-import os 
+import os
+from pathlib import Path 
 from hydromt import DataCatalog as DC
 from argparse import ArgumentParser as AP
 import traceback
@@ -184,24 +191,33 @@ def get_dc_data(model:str, cwd:str, plat:str, freq:str='H'):
   
 if __name__ == '__main__':
     
-    from pathlib import Path
-    work_dir = Path(r'p:\11209265-grade2023\wflow\wflow_rhine_julia\measurements\vanBart')
-    fn_obs = work_dir / 'discharge_obs_hr_appended.nc'
+    work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\1-external')
+    obs = xr.open_dataset(work_dir / 'discharge_obs_hr_FORMAT.nc')
     
-    # load original obs
-    obs = xr.open_dataset(fn_obs)
-    # create standard obs nc file format (reference: meuse: create_discharge_data.py, rhine:)
-    variables = ['Q']
-    S = np.zeros((len(rng), len(obs_keys), len(runs)))\
-    v = (('time', 'wflow_id', 'runs'), S)
-    h = {k:v for k in variables}
+    # check the nan value percentage
+    obs_temp = obs.sel(time=slice('1996-01-01', None))
+    nan_percentage_list = []
+    for id in obs_temp.wflow_id.values:
+        nan_percentage = obs_temp.sel(wflow_id=id, runs='Obs.').Q.isnull().values.mean()
+        nan_percentage_list.append(nan_percentage)
+
+    df_nan_percentage = pd.DataFrame({'wflow_id': obs_temp.wflow_id.values, 'nan_percentage': nan_percentage_list})
     
-    ds = xr.Dataset(
-        data_vars=h,
-        coords={'time': rng,
-                'stations': [station.split("_")[1] for station in obs_keys],
-                'runs': runs})
-    ds = ds * np.nan
+    high_nan_percentage_ids = df_nan_percentage[df_nan_percentage['nan_percentage'] > 0.8]['wflow_id']
+    num_high_nan_percentage_ids = len(high_nan_percentage_ids)
+    print(f"Number of wflow_id with nan_percentage > 0.6: {num_high_nan_percentage_ids}")
+    
+    df_nan_percentage.to_csv(work_dir / 'nan_percentage_1996_2016.csv', index=False)
+    
+    # Calculate statistics of nan_percentage
+    nan_percentage_hist = df_nan_percentage['nan_percentage'].plot.hist(bins=20)
+    plt.xlabel('NaN Percentage')
+    plt.ylabel('Frequency')
+    plt.title('Histogram of NaN Percentage')
+    plt.show()
+    
+    
+    
     
     
     
