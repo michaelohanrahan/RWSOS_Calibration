@@ -44,6 +44,7 @@ for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
 
 gauges = config["gauges"]
 
+
 #find last level from the final level directory
 levels = glob.glob(str(Path(inter_dir,'calib_data', "level*")))
 levels_ints = [int(level.split("level")[-1]) for level in levels]
@@ -53,6 +54,7 @@ last_level = 5 #int(levels[-1].split("level")[-1])
 elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
 
 #parameter set dataframe using LHS method
+#TODO: N_SAMPLES to config
 lnames, methods, all_level_df = create_set_all_levels(last_level=last_level, RECIPE=config["calib_recipe"], N_SAMPLES=1000, OPTIM='random-cd')
 
 #staticmaps
@@ -129,44 +131,40 @@ for _level in range(0, last_level+1):
     df = all_level_df.loc(_level)
     paramspace = Paramspace(df)
     
-        '''
-    :: Random dataframe is created ::
-    -- The paramspace is given a column per gauge in L0
-    -- For each param instance each gauge is randomnly given a Top_n
-    -- This lookup will serve to say when the L1 is run which params to use
-    -- Similarly, next iter, in L2 a new lookup will look up to L1 and with the L1 sets the L0
+    '''
+    :: Random dataframe ::
+        -- The paramspace is given a column per gauge in L0
+        -- For each param instance each gauge is randomnly given a Top_n
+        -- This lookup will serve to say when the L1 is run which params to use
+        -- Similarly, next iter, in L2 a new lookup will look up to L1 and with the L1 sets the L0
+        -- L0 creates empty dataframe
     '''
     rule:
         name: f"random_data_L{_level}"
         input: 
-            best_10params_previous = Path(calib_dir, f"level{_level-1}", "best_params.csv")
+            done = Path(calib_dir, f"level{_level-1}", "done.txt"),
+            best_params_previous = Path(calib_dir, f"level{_level-1}", "best_params.csv")
         params:
             level = f"level{_level}",
             params_df = df,
             graph = graph,  # Hall_levels_graph.json
             graph_pred = graph_pred,  # Hall_pred_graph.json
             graph_node = graph_node,  # Hall_nodes_graph.json
+        localrule: True
         output:
             random_params = Path(calib_dir, f"level{_level}", "random_params.csv")
-            file_done = Path(calib_dir, f"level{_level}", "done.txt")  #TODO: still needed?
         script:
             """src/calib/random_params.py"""
-            Path(calib_dir, f"level{_level}", "done.txt") #TODO: still needed?
-        script:
-            """src/calib/random_params.py"""
-    
-    
     """
-    config: This rule modifies a blueprint configuration file for a specific time period and forcing path. 
-    It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
-    The output is a set of modified configuration files.
-    #DONE: in each config that accesses a certain level & soilthickness the instate reference should match
-        If I can access the level and soilthickness from the {item} and {params} then we can point to the correct instate for each run
+    ::config::
+            This rule modifies a blueprint configuration file for a specific time period and forcing path. 
+            It takes the blueprint configuration file, start time, end time, time step, and forcing path as parameters. 
+            The output is a set of modified configuration files.
     """
     rule:
         name: f"config_L{_level}"
         input: 
-            flag = Path(calib_dir, f"level{_level-1}","done.txt"),
+            # flag = Path(calib_dir, f"level{_level-1}","done.txt"),
             random_params = Path(calib_dir, f"level{_level-1}","random_params.csv")
         params: 
             level = _level,
@@ -182,10 +180,11 @@ for _level in range(0, last_level+1):
             """src/calib/set_config.py"""
 
     '''
-    create_params:  This rule creates parameter sets for the Wflow model. 
-                    It takes a configuration file, a dataset of static maps, a parameter space instance, 
-                    a list of parameter names, a list of parameter methods, a level, a graph, and a sub-catchment as parameters. 
-                    The output is a set of static map files.
+    :: create_params ::  
+            This rule creates parameter sets for the Wflow model. 
+            It takes a configuration file, a dataset of static maps, a parameter space instance, 
+            a list of parameter names, a list of parameter methods, a level, a graph, and a sub-catchment as parameters. 
+            The output is a set of static map files.
     NEW: The parameter space is wildcarded but if upstream bestparams exist we will randomly choose which one to apply.
     '''
 
@@ -211,11 +210,8 @@ for _level in range(0, last_level+1):
             """src/calib/set_calib_params.py"""
 
     '''
-    wflow: This rule runs the hydrological model. It takes a configuration file and a grid (staticmap) file as input.
-    #DONE: Wflow expects the appropriate instate
-    #DONE: Only using the CAL time split...??? Shorter run time worse model...
-    #DONE: modify the templace output to do output_scalar.nc
-    #TODO: Work with grouped runs
+    ::wflow:: 
+            This rule runs the hydrological model. It takes a configuration file and a grid (staticmap) file as input.
     '''
     rule:
         name: f"wflow_L{_level}"
@@ -225,13 +221,15 @@ for _level in range(0, last_level+1):
             staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
             lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
         params:
-            project = Path(base_dir, "bin").as_posix(),
-            # threads = config["wflow_threads"]
+            project = Path(base_dir, "bin").as_posix()
         output: 
             Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc")
-        threads: config["wflow_threads"]
         localrule: False
         group: f"wflow_L{_level}"
+        threads: 1
+        resources: 
+            time = "12:00:00",
+            mem_mb = 8000
         shell: 
             f"""julia --project="{{params.project}}" -t {{threads}} -e \
             "using Pkg;\
@@ -296,7 +294,7 @@ for _level in range(0, last_level+1):
         localrule: True
         threads: 4
         resources:
-            time = "00:03:00",
+            time = "01:00:00",
             mem_mb = 32000
         script:
             "src/calib/combine_evaluated.py"

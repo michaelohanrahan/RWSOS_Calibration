@@ -1,6 +1,4 @@
-#%%DONE: a path to random_params created in previous level
 
-#%%
 from pathlib import Path
 import pandas as pd
 import geopandas as gpd
@@ -30,7 +28,7 @@ def main(
 ):
     """
     Load the dataset (staticmaps) then update params for the desired gauge_ids
-    the paramslname should be the same as the dataset key
+    the params lname should be the same as the dataset key
     """
     # Load original staticmaps
     ds = xr.open_dataset(p)
@@ -69,6 +67,7 @@ def main(
         l.info(f"Updating the following upstream gauges: {upgauge_int}")
         
         # select matching row from random_params
+        # masking matches exact param values, rather than indexing
         _mask = pd.Series([True] * len(random_params))
         for key, value in params.items():
             _mask = _mask & (random_params[key] == value)
@@ -181,9 +180,4 @@ if __name__ == "__main__":
                 out=mod.output.staticmaps,
             )
 
-
-    # except Exception as e:
-    #     l.error(f"An error occurred: {e}")
-    #     l.error(traceback.format_exc())
-    #     raise e
 
