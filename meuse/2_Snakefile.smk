@@ -303,6 +303,7 @@ for _level in range(0, last_level+1):
     This rule overwrites the staticmaps file with the best per level??
     #TODO: create a staticmaps per level? Not necessary if we are waiting for the done.txt
             -- not necessary but as a failsafe we create a copy of the staticmaps for each level
+    #TODO: need to modify the script for our new random selection method!?
     '''
 
     rule:
