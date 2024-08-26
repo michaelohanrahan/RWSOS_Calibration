@@ -27,6 +27,7 @@ def main(
         for g in gauges:
             # select direct upstream gauges (graph_pred)
             pred_upgauge_ids = graph_pred[str(g)]['_pre']  # list of float
+            
             # search in the best_params_previous for this direct upstream
             for pred in pred_upgauge_ids:  # pred: float
                 pred_level = graph_pred[str(pred)]['level']
@@ -36,6 +37,7 @@ def main(
                 n_Top = [int(i.split('_')[-1]) for i in best_params_previous.columns if 'Top' in i]
                 Top_max = max(n_Top)
                 random_col = random.randint(1, Top_max)
+                
                 # select the random one and fill in random_params dataframe
                 random_params[pred] = best_params_previous.loc[(pred_level, int(pred)), f"Top_{random_col}"]
                 for upgauge in upgauges_ids:  # upgauge: float
@@ -65,6 +67,7 @@ if __name__ == "__main__":
             graph = snakemake.params.graph
             graph_pred = snakemake.params.graph_pred
             graph_node = snakemake.params.graph_node
+            out = snakemake.output.random_params
         else:
             try:
                 cwd = Path(r"c:\Users\deng_jg\work\05wflowRWS")
@@ -87,6 +90,7 @@ if __name__ == "__main__":
                 }
                 best_params_previous = pd.DataFrame(data)
                 best_params_previous = best_params_previous.set_index('gauges')
+                out = Path('data/2-interim', level, 'random_params.csv')
                 
                 
             except Exception as e:

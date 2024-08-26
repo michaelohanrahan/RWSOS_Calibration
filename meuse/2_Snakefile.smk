@@ -115,8 +115,8 @@ rule init_done:
     params:
         d = Path(calib_dir, "level-1")
     output: 
-        p = Path(calib_dir, "level-1", "done.txt")
-        r = Path(calib_dir, "level-1", "random_params.csv")
+        p = Path(calib_dir, "level-1", "level.done")
+        r = Path(calib_dir, "level-1", "best_params.csv")
     localrule: True
     run:
         os.makedirs(params.d, exist_ok=True)
@@ -127,22 +127,23 @@ rule init_done:
 
 for _level in range(0, last_level+1):
     
+    '''
+    ** WILDCARDING **
+    -- The wildcarding is done for the level of the calibration
+    #¿¿Q??: Does this actually work ot build the dag or do we have to slice the wildcards instead??? 
+    '''
     # slice the parameter dataframe for the current level
     df = all_level_df.loc(_level)
     paramspace = Paramspace(df)
     
     '''
     :: Random dataframe ::
-        -- The paramspace is given a column per gauge in L0
-        -- For each param instance each gauge is randomnly given a Top_n
-        -- This lookup will serve to say when the L1 is run which params to use
-        -- Similarly, next iter, in L2 a new lookup will look up to L1 and with the L1 sets the L0
-        -- L0 creates empty dataframe
+        -- In the previous 
     '''
     rule:
         name: f"random_data_L{_level}"
         input: 
-            done = Path(calib_dir, f"level{_level-1}", "done.txt"),
+            done = Path(calib_dir, f"level{_level-1}", "level.done"),
             best_params_previous = Path(calib_dir, f"level{_level-1}", "best_params.csv")
         params:
             level = f"level{_level}",
@@ -300,9 +301,10 @@ for _level in range(0, last_level+1):
             "src/calib/combine_evaluated.py"
 
     '''
-    This rule overwrites the staticmaps file with the best per level??
-    #TODO: create a staticmaps per level? Not necessary if we are waiting for the done.txt
-            -- not necessary but as a failsafe we create a copy of the staticmaps for each level
+    :: set params ::
+            This rule inherits the best parameters from the previous level and sets those within the base staticmaps. 
+            The previous level staticmaps is saved for posterity in the intermediate folder. 
+            The output is a set of staticmaps and a level.done file.
     '''
 
     rule:
@@ -318,7 +320,7 @@ for _level in range(0, last_level+1):
         localrule: True
         output: 
             done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
-            done = Path(calib_dir, f"level{_level}", "done.txt")
+            done = Path(calib_dir, f"level{_level}", "level.done")
         script: 
             """src/calib/set_eval_params.py"""
 
@@ -328,7 +330,7 @@ Preparing the final stage: This rule prepares the final stage of the calibration
 
 rule prep_final_stage:
     input: 
-        done = Path(calib_dir, "level"+f'{last_level}', "done.txt"),
+        done = Path(calib_dir, "level"+f'{last_level}', "level.done"),
         performance = glob.glob(str(Path(calib_dir, "level*", "performance.nc"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
