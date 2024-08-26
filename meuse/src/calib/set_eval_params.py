@@ -9,7 +9,7 @@ from hydromt.raster import RasterDataset
 import random
 import ast
 
-
+#TODO: need to modify the main function for our new random selection method!
 
 def main(
     params: Path | str,
