@@ -297,16 +297,16 @@ def plot_peak_timing_distribution(run_keys,
     bin_edges = np.arange(-70, 90, 10)
 
     # Plot combined histogram and KDE in the top subplot
-    for var in run_keys:
-        if var != 'Obs.':
-            sns.ecdfplot(peak_dict[16][var]['timing_errors'], 
-                        ax=axs[0], label=var, color=color_dict[var],
-                        stat='percent', linewidth=2.5)
+    # for var in run_keys:
+    #     if var != 'Obs.':
+    #         sns.ecdfplot(peak_dict[16][var]['timing_errors'], 
+    #                     ax=axs[0], label=var, color=color_dict[var],
+    #                     stat='percent', linewidth=2.5)
 
-    axs[0].set_title('Empirical Cumulative Distribution of Relative Timing Data', fontsize=16)
-    axs[0].set_ylabel('Percent (%)', fontsize=14)
-    axs[0].grid(True, linestyle='--', alpha=0.6)
-    axs[0].legend()
+    # axs[0].set_title('Empirical Cumulative Distribution of Relative Timing Data', fontsize=16)
+    # axs[0].set_ylabel('Percent (%)', fontsize=14)
+    # axs[0].grid(True, linestyle='--', alpha=0.6)
+    # axs[0].legend()
 
     # Plot separate histograms in the subsequent subplots
     for i, var in enumerate([v for v in run_keys if v != 'Obs.'], start=1):

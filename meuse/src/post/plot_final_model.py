@@ -1,27 +1,52 @@
-#TODO: organize functions to plot hydrograph, peak errors, etc.
+#TODO: add benchmarks to main function
 
 from pathlib import Path
+from typing import List
 
 import numpy as np
 import xarray as xr
+import pandas as pd
+from datetime import datetime
+import matplotlib.pyplot as plt
 
-from func_plot_signature import plot_signatures, plot_hydro
-from typing import List
+# self defined functions
+from peak_timing import plot_peaks_ts, peak_timing_for_runs, plot_peak_timing_distribution
+from metrics.run_peak_metrics import store_peak_info
+from func_plot_signature import plot_signatures
+
 
 def main(
     md_data: Path | str,
     obs_data: Path | str,
-    gauges: List[str],
     starttime: str,
     endtime: str,
-    period_start: tuple | list,
-    period_length: tuple | list,
-    period_unit: str,
+    GaugeToPlot: Path | str, # path to the dataframe of gauges to plot (wflow_id_add_HBV_new.csv)
+    savefig: bool,
+    plotfig: bool,
+    # period_start: tuple | list,
+    # period_length: tuple | list,
+    # period_unit: str,
     output_dir: Path | str,
 ):
 
+    """
+    Main function to process and plot hydrological data.
+    Args:
+        md_data (Path | str): Path to the model output data file.
+        obs_data (Path | str): Path to the observed data file.
+        starttime (str): Start time for data processing and plotting.
+        endtime (str): End time for data processing and plotting.
+        GaugeToPlot (Path | str): Path to the CSV file containing gauge information.
+        savefig (bool): Flag to save generated figures.
+        plotfig (bool): Flag to display generated figures.
+        output_dir (Path | str): Directory to save output files and figures.
+    Returns:
+        None.
 
-    """_summary_"""
+    This function reads model and observed data, processes it for specified gauges and time period,
+    and prepares a combined dataset. It can optionally generate and save various plots including
+    hydrographs, peak timing analysis, and hydrological signatures.
+    """
     # cfg path
     output_dir = Path(output_dir)
     if not output_dir.exists():
@@ -29,22 +54,25 @@ def main(
 
     md_ds = xr.open_dataset(md_data)
     obs_ds = xr.open_dataset(obs_data)
-    # obs_ds.Q.values = obs_ds.Q.values * (0.3048**3) #TODO: no need for this?
-
-    # Convert gauges to integers for obs_ds
-    gauges_int = [int(gauge) for gauge in gauges]
-
-    temp = obs_ds.sel(wflow_id=gauges_int, time=slice(starttime, endtime), runs='Obs.')
+    
+    df_GaugeToPlot = pd.read_csv(GaugeToPlot)
+    gauges = list(df_GaugeToPlot['wflow_id'].values)  # integers
+    gauges_str = [str(gauge) for gauge in gauges]  # Convert gauges to strings for md_ds
+    
+    # prepare obs data-array
+    temp = obs_ds.sel(wflow_id=gauges, time=slice(starttime, endtime), runs='Obs.')
     da = xr.DataArray(
         np.expand_dims(temp.Q.values, 2),
         coords = {
             "time": temp.time.values,
-            "wflow_id": gauges_int,
+            "wflow_id": gauges,
             "runs": ["Obs.",]
         },
         dims = ["time", "wflow_id", "runs"]
     )
-    temp = md_ds.sel(Q_gauges_Hall=gauges, time=slice(starttime, endtime))
+    
+    # prepare md data-array
+    temp = md_ds.sel(Q_gauges_Hall=gauges_str, time=slice(starttime, endtime))
     da = xr.concat(
         [
             da, 
@@ -52,7 +80,7 @@ def main(
                 np.expand_dims(temp.Q.values, 2),
                 coords = {
                     "time": temp.time.values,
-                    "wflow_id": gauges_int,
+                    "wflow_id": gauges,
                     "runs": ["Md.",]
                 },
                 dims = ["time", "wflow_id", "runs"],
@@ -60,9 +88,50 @@ def main(
         ],
         dim="runs",
     )
+    
+    # convert data-array to dataset
     ds = da.to_dataset(name="Q")
     
-    return ds
+    # plot interactive hydrograph
+    
+    color_list = ['#377eb8', 
+              '#ff7f00', 
+              '#4daf4a', 
+              '#f781bf', 
+              '#a65628', 
+              '#984ea3', 
+              '#999999', 
+              '#e41a1c', 
+              '#dede00', 
+              '#ff7f00', 
+              '#a65628', 
+              '#f781bf']
+    start = datetime.strptime(starttime, '%Y-%m-%d')
+    end = datetime.strptime(endtime, '%Y-%m-%d')
+    run_keys = ds.runs.values
+    color_dict = {f'{key}': color_list[i] for i, key in enumerate(run_keys)}
+    peak_dict = store_peak_info(ds.sel(time=slice(starttime,endtime)), 'wflow_id', 72)
+    plot_peaks_ts(ds,
+                  df_GaugeToPlot,
+                  start, 
+                  end,
+                  Folder_plots=output_dir,
+                  color_dict=color_dict,
+                  run_keys=run_keys,
+                  peak_dict=peak_dict,
+                  savefig=savefig,
+                  id_key='wflow_id')
+    
+    # plot peak timing error
+    peak_timing_for_runs(ds,
+                         df_GaugeToPlot, 
+                         output_dir, 
+                         peak_dict=peak_dict,
+                         plotfig=plotfig,
+                         savefig=savefig)
+    
+    # not fully working
+    plot_peak_timing_distribution(run_keys, peak_dict, color_dict, output_dir)
 
     # hydro_periods = []
     # for idx, _s in enumerate(period_start):
@@ -77,9 +146,6 @@ def main(
     
     # pass
     # ### prepare dataset to make plots
-    
-    # #TODO: add a function to plot interactive hydrograph
-    
     
     # colors = [
     #     # "#a6cee3",
@@ -146,66 +212,21 @@ if __name__ == "__main__":
     work_dir = Path(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\best_run_level0_result')
     md_data = work_dir / 'output_run/output_scalar.nc'
     obs_data = work_dir / 'discharge_hourlyobs_HBV_combined.nc'
-    gauges = ['4', '801', '10', '11', '12', '16']
-    starttime = '2008-08-01T00:00:00'
-    endtime = '2018-02-22T00:00:00'
-    period_start = ['2008-02-01', '2010-02-01', '2012-02-01']
-    period_length = [365, 365, 365]
-    period_unit = 'h'
+    GaugeToPlot = work_dir / 'wflow_id_add_HBV_new.csv'
+    starttime = '2008-08-01'
+    endtime = '2018-02-22'
     output_dir = work_dir / 'figures'
     
     ds = main(
         md_data=md_data,
         obs_data=obs_data,
-        gauges=gauges,
         starttime=starttime,
         endtime=endtime,
-        period_start=period_start,
-        period_length=period_length,
-        period_unit=period_unit,
+        GaugeToPlot=GaugeToPlot,
+        savefig=False,
+        plotfig=False,
         output_dir=output_dir,
     )
-    
-    from peak_timing import plot_peaks_ts
-    import pandas as pd
-    from datetime import datetime
-    from metrics.run_peak_metrics import store_peak_info
-    
-    df_GaugeToPlot = pd.read_csv(work_dir / 'wflow_id_add_HBV_new.csv')
-    start = datetime.strptime('2008-01-01', '%Y-%m-%d')
-    end = datetime.strptime('2018-02-22', '%Y-%m-%d')
-    
-    color_list = ['#377eb8', 
-              '#ff7f00', 
-              '#4daf4a', 
-              '#f781bf', 
-              '#a65628', 
-              '#984ea3', 
-              '#999999', 
-              '#e41a1c', 
-              '#dede00', 
-              '#ff7f00', 
-              '#a65628', 
-              '#f781bf']
-    run_keys = ds.runs.values
-    color_dict = {f'{key}': color_list[i] for i, key in enumerate(run_keys)}
-    
-    
-    peak_dict = store_peak_info(ds.sel(time=slice(start,end)), 'wflow_id', 72)
-    
-    
-    plot_peaks_ts(ds,
-                  df_GaugeToPlot,
-                  start, 
-                  end,
-                  Folder_plots=output_dir,
-                  color_dict=color_dict,
-                  run_keys=run_keys,
-                  peak_dict=peak_dict,
-                  savefig=True,
-                  id_key='wflow_id')
-    
-
     
     
     # if "snakemake" in globals():
