@@ -1,0 +1,62 @@
+<PAMDataset>
+  <Subdataset name="SoilThickness_manual_cal">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">4000</MDI>
+          <MDI key="STATISTICS_MEAN">2214.5329811215</MDI>
+          <MDI key="STATISTICS_MINIMUM">600</MDI>
+          <MDI key="STATISTICS_STDDEV">953.57770065321</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+  <Subdataset name="RootingDepth_obs_15">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">1036.2883864781</MDI>
+          <MDI key="STATISTICS_MEAN">598.74521390338</MDI>
+          <MDI key="STATISTICS_MINIMUM">276.6388965316</MDI>
+          <MDI key="STATISTICS_STDDEV">115.63874192723</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+  <Subdataset name="N_River">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">0.050000000745058</MDI>
+          <MDI key="STATISTICS_MEAN">0.044208459010692</MDI>
+          <MDI key="STATISTICS_MINIMUM">0.029999999329448</MDI>
+          <MDI key="STATISTICS_STDDEV">0.0074200995647469</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+  <Subdataset name="MaxLeakage_manual_cal">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">0.3</MDI>
+          <MDI key="STATISTICS_MEAN">0.0051868581576712</MDI>
+          <MDI key="STATISTICS_MINIMUM">0</MDI>
+          <MDI key="STATISTICS_STDDEV">0.031960462220327</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+  <Subdataset name="f_">
+    <PAMDataset>
+      <PAMRasterBand band="1">
+        <Metadata>
+          <MDI key="STATISTICS_MAXIMUM">0.0023920189123601</MDI>
+          <MDI key="STATISTICS_MEAN">0.0012314127835715</MDI>
+          <MDI key="STATISTICS_MINIMUM">3.0680646887049e-05</MDI>
+          <MDI key="STATISTICS_STDDEV">0.00048739705572542</MDI>
+        </Metadata>
+      </PAMRasterBand>
+    </PAMDataset>
+  </Subdataset>
+</PAMDataset>
