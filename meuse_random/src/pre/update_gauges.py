@@ -29,14 +29,11 @@ def main(root:str,
         gauges = Path(Path.cwd(), gauges)
         
     gauges = gpd.read_file(gauges, crs=crs, read_geometry=False, columns=[index_col, 'x', 'y'])
-    ic(gauges)
-    ic(index_col)
-    ic(gauges[index_col])
     
     if ignore_list:
         gauges = gauges[~gauges[index_col].isin(ignore_list)]
         
-    ic(len(gauges))
+
     if 'geometry' not in gauges.columns:
         if 'x' in gauges.columns and 'y' in gauges.columns:
             gauges['geometry'] = gpd.points_from_xy(gauges['x'], gauges['y'])
@@ -57,20 +54,24 @@ def main(root:str,
         root=root,
         mode="r",
         config_fn = config_old,
-        data_libs = [],
+        data_libs = ['deltares_data'],
         logger=logger,
         )
-    
+    logger.info(f'WflowModel version: {wflow_sbm.__version__}')
+    logger.info(f"Setting CRS to {crs}")
+    w.set_crs(crs)
+    ic(w.crs)
     w.read_config()
     w.read_geoms()
     w.read_grid()
-    ic(w.grid)
+    # ic(w.grid)
     
     w.set_root(
         root=new_root,
         mode=mode
         )
-    
+    ic(w.root)
+    ic(w.crs)
     
     w.setup_gauges(
         gauges_fn=gauges,
@@ -118,7 +119,7 @@ if __name__ == "__main__":
     os.chdir(args.cwd)
     root = os.getcwd()
     
-    ic(root)
+    # ic(root)
     
     if args.new_root:
         new_root = os.path.join(root, args.new_root)
@@ -134,7 +135,7 @@ if __name__ == "__main__":
         ignore_list = None
         
     root = os.path.join(root, args.config_root)
-    ic(ignore_list)
+    # ic(ignore_list)
     main(root=root, 
          gauges=args.gauges, 
          new_root=new_root,

@@ -23,21 +23,16 @@ else:
     DRIVE = "/p"
     COPY = "cp"
 
-#working directory
-os.chdir(Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', "meuse").as_posix())
-
 ## Some preparatory actions
 # Ensure the model directory is there
-config: 'config/calib.yml'
-if not os.path.exists("config/calib.yml"):
-    raise FileNotFoundError("config/calib.yml not found. Please create it.")
+configfile: 'config/calib.yml'
 
-# if "TEST" in config["calib_recipe"]:
-#     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
+basin = config["basin"]         
+#working directory
+workdir: Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', basin).as_posix()
 
 #default directories
 base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
-basin = config["basin"]                                     # meuse
 source_dir = Path(base_dir, basin, config["source_dir"])    # data/1-external
 inter_dir = Path(base_dir, basin, config["inter_dir"])      # data/2-intermediate
 input_dir = Path(base_dir, basin, config["input_dir"])      # data/3-input
@@ -62,9 +57,11 @@ rule all:
     input:  Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc"),
             Path(inter_dir, f'{config["gauges"]}_levels_graph.json'),
             Path(inter_dir, "gaugesadded", f"wflow_sbm_addgauges.toml"),
+            Path(inter_dir, "addflp", "wflow_sbm_addflp.toml"),
+            Path(inter_dir, "addflp", "staticmaps", "staticmaps.nc"),
             Path(input_dir, "wflow_sbm.toml"),
-            Path(input_dir, "staticmaps", "staticmaps.nc"),
             directory(expand(Path(inter_dir, "calib_data", "level{level}"), level=range(0, expected_levels))),
+            Path(input_dir, "staticmaps", "staticmaps.nc"),
             Path(input_dir, "staticgeoms", f"subcatch_{config['gauges']}.geojson")
     default_target: True
 
@@ -133,7 +130,7 @@ rule create_folders:
         graph = rules.create_graph.output.graph
     # params: 
     output:
-        folder_out = directory(expand(Path(inter_dir, "calib_data", "level"+"{level}"), level=range(0, expected_levels)))
+        directory(expand(Path(inter_dir, "calib_data", "level"+"{level}"), level=range(0, expected_levels)))
     run: 
         calib_dir = Path(inter_dir, "calib_data")
         os.makedirs(calib_dir, exist_ok=True)
@@ -149,14 +146,14 @@ rule create_folders:
             if not _p.exists():
                 os.makedirs(_p, exist_ok=True)
 
-
 #requires p drive connection for deltares data catalog
 rule ksat_setup:
     input:
         gridfile_in=Path(inter_dir, "gaugesadded", "staticmaps", "staticmaps.nc"),
     output:
         config_fn_out=Path(inter_dir, "addksathorfrac", "wflow_sbm_addksathorfrac.toml"),
-        finalout = Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc")
+        gridfile_out = Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc"),
+        out_geoms = directory(Path(inter_dir, "addksathorfrac", "staticgeoms"))
     params:
         drive=DRIVE,
         mod_new_root=Path(inter_dir, "addksathorfrac"),
@@ -175,11 +172,24 @@ rule ksat_setup:
             --var {params.var} \
             --config_fn_out {params.config_fn_out}
         """
-
+rule flp_setup:
+    input:
+        gridfile_in=Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc"),
+        config_fn_in=Path(inter_dir, "addksathorfrac", "wflow_sbm_addksathorfrac.toml"),
+        geoms = directory(Path(inter_dir, "addksathorfrac", "staticgeoms"))
+    output:
+        config_fn_out=Path(inter_dir, "addflp", "wflow_sbm_addflp.toml"),
+        gridfile_out = Path(inter_dir, "addflp", "staticmaps", "staticmaps.nc"),
+        geoms_out = directory(Path(inter_dir, "addflp", "staticgeoms"))
+    params:
+        config_fn_in="wflow_sbm_addksathorfrac.toml",
+    script:
+        """src/pre/insert_N_flp_var.py"""
+        
 rule new_model_to_input:
     input:
-        config_fn=rules.ksat_setup.output.config_fn_out,
-        staticmaps=rules.ksat_setup.output.finalout
+        config_fn=rules.flp_setup.output.config_fn_out,
+        staticmaps=rules.flp_setup.output.gridfile_out
     params:
         new_name_toml = Path(input_dir, "wflow_sbm.toml"),
         new_name_nc = Path(input_dir, "staticmaps", "staticmaps.nc")

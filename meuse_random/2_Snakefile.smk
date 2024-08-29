@@ -1,3 +1,7 @@
+# Workflow for the calibration of the wflow model
+# This workflow is used to calibrate the wflow model using the data built in the databuilder subworkflow
+#@michaelohanrahan
+#@jingdeng
 
 import os 
 import platform
@@ -12,16 +16,13 @@ elif platform.system() == "Linux":
     DRIVE = "/p"
     PLATFORM = "Linux"
 
+# configfile: str(Path(config, "calib.yml").as_posix())
 #Base directory
 basin = config["basin"]        # meuse
 base_dir = config["base_dir"]  # RWSOS_Calibration
 base_dir = f"{DRIVE}/{Path(base_dir).as_posix()}" # p: or /p/ ... / RWSOS_Calibration / basin
 workdir: str(Path(base_dir, basin).as_posix())
 
-# Workflow for the calibration of the wflow model
-# This workflow is used to calibrate the wflow model using the data built in the databuilder subworkflow
-#@michaelohanrahan
-#@jingdeng
 
 import json
 import shutil
