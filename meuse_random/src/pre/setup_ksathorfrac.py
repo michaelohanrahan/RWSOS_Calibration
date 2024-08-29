@@ -6,7 +6,10 @@ from hydromt.log import setuplog
 import hydromt_wflow
 import traceback
 from icecream import ic
+<<<<<<< HEAD
 import shutil
+=======
+>>>>>>> 50f0b2a433687946660e04c31a5fc4d5b3a8b94a
 
 def main(DRIVE:str, 
          mod_root:str, 
@@ -43,8 +46,11 @@ def main(DRIVE:str,
     mod.config['input']['lateral']['subsurface']['ksathorfrac'] = f'ksathorfrac_{var}250'
     mod.write_config(config_name=config_fn_out)
     mod.write_grid()
+<<<<<<< HEAD
     if os.path.exists(os.path.join(mod_root, 'staticgeoms')):
         shutil.copytree(os.path.join(mod_root, 'staticgeoms'), os.path.join(mod_new_root, 'staticgeoms'))
+=======
+>>>>>>> 50f0b2a433687946660e04c31a5fc4d5b3a8b94a
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='WflowModel setup script')
