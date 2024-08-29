@@ -14,7 +14,7 @@ vis_dir: "data/5-visualization"
 
 #Observations
 source_forcing_data: "forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
-observed_data: "discharge_hourlyobs_HBV_combined.nc"
+observed_data: "discharge_hourlyobs_smoothed.nc"
 
 #The blueprint files to work with
 base_config: "wflow_sbm_template.toml"
