@@ -1,6 +1,6 @@
 from scipy.stats import qmc
 import json
-from setuplog import setup_logging
+from .setuplog import setup_logging
 import traceback
 import pandas as pd
 from pathlib import Path

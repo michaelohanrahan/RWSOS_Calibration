@@ -161,17 +161,17 @@ rule ksat_setup:
         config_fn_in="wflow_sbm_addgauges.toml",
         var=config['ksathorfrac_map'],
         config_fn_out="wflow_sbm_addksathorfrac.toml"
-    script:
+    shell:
         """
         pixi run python src/pre/setup_ksathorfrac.py \
             --DRIVE {params.drive} \
             --mod_root {params.mod_root} \
             --mod_new_root {params.mod_new_root} \
             --config_fn_in {params.config_fn_in} \
-            --mod_root {params.mod_root} \
             --var {params.var} \
             --config_fn_out {params.config_fn_out}
         """
+        
 rule flp_setup:
     input:
         gridfile_in=Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc"),

@@ -16,12 +16,13 @@ elif platform.system() == "Linux":
     DRIVE = "/p"
     PLATFORM = "Linux"
 
-# configfile: str(Path(config, "calib.yml").as_posix())
+configfile: str(Path("config", "calib.yml").as_posix())
 #Base directory
 basin = config["basin"]        # meuse
 base_dir = config["base_dir"]  # RWSOS_Calibration
 base_dir = f"{DRIVE}/{Path(base_dir).as_posix()}" # p: or /p/ ... / RWSOS_Calibration / basin
 workdir: str(Path(base_dir, basin).as_posix())
+profile: str(Path(base_dir, basin, "config", "slurm").as_posix())
 
 
 import json
@@ -56,7 +57,11 @@ elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["
 
 #parameter set dataframe using LHS method
 #TODO: N_SAMPLES to config
-lnames, methods, all_level_df = create_set_all_levels(last_level=last_level, RECIPE=config["calib_recipe"], N_SAMPLES=1000, OPTIM='random-cd')
+lnames, methods, all_level_df = create_set_all_levels(last_level=last_level, RECIPE=config["calib_recipe"], N_SAMPLES=config["N_SAMPLES"], OPTIM='random-cd')
+
+#0:N_samples for each level
+N_samples = config["N_SAMPLES"]
+
 
 #staticmaps
 staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
@@ -88,9 +93,6 @@ graph_pred = json.load(open(Path(inter_dir, f'{config["gauges"]}_pred_graph.json
 with open(config["calib_recipe"]) as recipe:
     recipe = json.load(recipe)
     # print(recipe)
-    ST_values = list(recipe["SoilThickness_manual_cal"]["values"])
-    ST_str = [str(ST).replace('.', '') for ST in ST_values]
-    ST_dict = {ST_str[i]: ST_values[i] for i in range(len(ST_values))}
 
 ############################
 # DOING the snakey!
@@ -107,8 +109,7 @@ We expect upon successfull completion that all gauges will have been visualized
 rule all:
     input: 
         expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements),
-        expand(Path(input_dir, "instates", "instate_level{level}_ST{_t_str}.nc"), level=range(0, last_level+1), _t_str=ST_str),
-        expand(Path(calib_dir, "level{nlevel}", "done.txt"), nlevel=range(-1, last_level+1)),
+        expand(Path(calib_dir, "level{nlevel}", "level.done"), nlevel=range(-1, last_level+1)),
     default_target: True
 
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
@@ -116,7 +117,7 @@ rule init_done:
     params:
         d = Path(calib_dir, "level-1")
     output: 
-        p = Path(calib_dir, "level-1", "level.done")
+        p = Path(calib_dir, "level-1", "level.done"),
         r = Path(calib_dir, "level-1", "best_params.csv")
     localrule: True
     run:
@@ -134,7 +135,8 @@ for _level in range(0, last_level+1):
     #¿¿Q??: Does this actually work ot build the dag or do we have to slice the wildcards instead??? 
     '''
     # slice the parameter dataframe for the current level
-    df = all_level_df.loc(_level)
+    #slice 0*2999:1*2999, 3000:5999, 6000:8999, etc
+    df = all_level_df.iloc[_level*N_samples-1:(1+_level)*N_samples-1]
     paramspace = Paramspace(df)
     
     '''
@@ -218,7 +220,6 @@ for _level in range(0, last_level+1):
     rule:
         name: f"wflow_L{_level}"
         input: 
-            instates=expand(Path(input_dir, "instates", f"instate_level{_level}"+"_ST"+"{_t_str}"+".nc"), _t_str=ST_str),
             cfg = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
             staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
             lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)

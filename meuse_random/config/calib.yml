@@ -2,6 +2,7 @@
 # Setting data for calibration
 calib_recipe: "config/LHS_calib_recipe.json"
 basin: "meuse_random"
+N_SAMPLES: 3000
 
 base_dir: "/11209265-grade2023/wflow/RWSOS_Calibration"
 log_dir: "data/0-log"
@@ -29,11 +30,11 @@ soilthickness_map: "SoilThickness_manual_cal"
 
 # ========= CALIBRATION =========
 #instate period (needs to run every time there is a new level introduced)
-instate_starttime: "2006-01-01T00:00:00"
-instate_endtime: "2007-12-31T23:00:00"
+# instate_starttime: "2006-01-01T00:00:00"
+# instate_endtime: "2007-12-31T23:00:00"
 
 # Settings the config file
-starttime: "2008-01-01T00:00:00" 
+starttime: "2007-01-01T00:00:00" 
 endtime: "2018-02-22T00:00:00"
 
 #per run evaluate
@@ -55,17 +56,10 @@ dry_months: [6, 7, 8, 9, 10]
 window: 72
 weights: [0.2, 0.25, 0.3, 0.25]
 
-
-
 # Running model
 wflow_cfg_name: "wflow_sbm.toml"
 wflow_project_dir: "../bin/"
 wflow_threads: 4
-
-
-
-# Overal finalizing
-model_threads: 16
 
 # Post processing
 hydro_period_startdate: ["2006-08-01", "2010-08-01", "2016-08-01"]
