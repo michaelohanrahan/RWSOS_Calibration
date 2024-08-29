@@ -5,6 +5,7 @@ from hydromt.log import setuplog
 from hydromt_wflow import WflowModel
 from pathlib import Path
 from icecream import ic
+from hydromt import rasterdataset
 import argparse
 
 def main(root:str, 
@@ -28,7 +29,10 @@ def main(root:str,
     if not Path(gauges).is_absolute():
         gauges = Path(Path.cwd(), gauges)
         
-    gauges = gpd.read_file(gauges, crs=crs, read_geometry=False, columns=[index_col, 'x', 'y'])
+    gauges = gpd.read_file(gauges, 
+                           crs=crs, 
+                           read_geometry=False, 
+                           columns=[index_col, 'x', 'y'])
     
     if ignore_list:
         gauges = gauges[~gauges[index_col].isin(ignore_list)]
@@ -57,7 +61,7 @@ def main(root:str,
         data_libs = ['deltares_data'],
         logger=logger,
         )
-    logger.info(f'WflowModel version: {wflow_sbm.__version__}')
+    
     logger.info(f"Setting CRS to {crs}")
     w.set_crs(crs)
     ic(w.crs)
