@@ -1,16 +1,27 @@
 from pathlib import Path
 from setuplog import setup_logging
+from hydromt.raster import RasterDataset
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 import xarray as xr
-from hydromt.raster import RasterDataset
-import random
 import ast
+import os
+import shutil
+import sys
 
-
+def save_copy(l,level, staticmaps):
+    prev_level = level-1
+    prev_level=f"L{prev_level}"
+    save_old_dir = Path(Path(staticmaps).parent, "intermediate")
+    save_old = f"staticmaps_{prev_level}.nc"
+    os.makedirs(save_old_dir, exist_ok=True)
+    shutil.copy(staticmaps, Path(save_old_dir,save_old))
+    assert os.path.exists(Path(save_old_dir,save_old)), f"Failed to copy {staticmaps} to {Path(save_old_dir,save_old)}"
+    l.info(f"Copied {staticmaps} to {Path(save_old_dir,save_old)}")
+    return Path(save_old_dir,save_old)
 
 def main(
+    l,
     params: Path | str,
     staticmaps: Path| str,
     sub_catch: Path | str,
@@ -18,7 +29,6 @@ def main(
     params_method: tuple | list,
     level: int,
     out: Path | str, #nc
-    txt: Path | str, #txt
 ):
     """
     Apply evaluation parameters to the static maps.
@@ -35,42 +45,36 @@ def main(
         None
     """
     #preseve the precursor gridfiles
-    prev_level = level-1
-    prev_level=f"L{prev_level}"
-    save_old_dir = out.parent / "intermediate"
-    save_old = f"staticmaps_{prev_level}.nc"
-    os.makedirs(save_old_dir, exist_ok=True)
-    shutil.copy(staticmaps, Path(save_old_dir) / save_old)
+    copied = save_copy(l,level, staticmaps)
+    assert os.path.exists(copied), f"Failed to copy {staticmaps} to {copied}"
+    l.info(f"Copied {staticmaps} to {copied}")
     
-    """_summary_"""
     # Get the staticmaps
     with xr.open_dataset(staticmaps) as _r:
         ds = _r.load()
 
     # Load the geometries
     vds = gpd.read_file(sub_catch)
+    
     # Get the relevant sub catchments
     vds = vds.astype({"value": int})
 
     # Read the parameters
-    params_ds = pd.read_csv(params, index_col="gauges")
+    params_ds = pd.read_csv(params, index_col="gauge")
     params_ds.index = params_ds.index.astype(int)
     
     par_da = [
         ds[var] for var in params_lname
     ]
     
-    for gauge, param_set in selected_params.items():
+    for gauge in params_ds.index.values:
         # Select the sub-catchments corresponding to the current gauge
         select_vds = vds[vds.value == gauge]
         mask = ds.raster.geometry_mask(select_vds)
-        
         #param_set
         param_row = params_ds.loc[gauge, "Top_1"]
         param_set = ast.literal_eval(param_row)
-        l.info(f"Applying parameters for gauge {gauge}: {param_set}")
-        #the
-
+        l.info(f"Applying the best parameters for gauge {gauge}: {param_set}")
         for idx, param_value in enumerate(param_set.values()):
             if params_method[idx] == "mult":
                 par_da[idx].values[mask] *= param_value
@@ -78,24 +82,26 @@ def main(
                 par_da[idx].values[mask] = param_value
             elif params_method[idx] == "add":
                 par_da[idx].values[mask] += param_value
-    
 
     for idx, da in enumerate(par_da):
         ds[params_lname[idx]] = da
 
     ds.to_netcdf(staticmaps)
     l.info(f"Updated staticmaps saved to {staticmaps}")
+    
     with open(out, "w") as _w:
         _w.write("Done!\n")
     pass          
 
 
 if __name__ == "__main__":
+    
+    l = setup_logging('data/0-log', f'08-Set_Params.log')
+
     if "snakemake" in globals():
         mod = globals()["snakemake"]
-        l = setup_logging('data/0-log', f'08-initial_instate_tomls_L{snakemake.params.level}.log')
-
         main(
+            l,
             params = mod.input.best_params,
             staticmaps = mod.params.staticmaps,
             sub_catch = mod.params.sub_catch,
@@ -106,12 +112,19 @@ if __name__ == "__main__":
         )
 
     else:
+        if sys.platform == "linux":
+            DRIVE = "/p/"
+        else:
+            DRIVE = "p:/"
+        os.chdir(f"{DRIVE}11209265-grade2023/wflow/RWSOS_Calibration/meuse")
         main(
-            "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/calib_data/level1/best_params.csv",
-            "p:/1000365-002-wflow/tmp/usgs_wflow/models/MODELDATA_KING_CALIB/staticmaps.nc",
-            "p:/1000365-002-wflow/tmp/usgs_wflow/models/TEST_MODEL_KING/staticgeoms/subcatch_obs.geojson",
-            ["KsatHorFrac", "RootingDepth", "SoilThickness"],
-            ["set", "mult", "mult"],
-            "",
+            l,
+            Path(f"{DRIVE}11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/2-interim/calib_data/level0/best_params.csv"),
+            Path(f"{DRIVE}11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/3-input/staticmaps/staticmaps.nc"),
+            Path(f"{DRIVE}11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/3-input/staticgeoms/subcatch_Hall.geojson"),
+            ["ksathorfrac_BRT_250", "f_", "RootingDepth_obs_15", "SoilThickness_manual_cal", "N_River", "MaxLeakage_manual_cal"],
+            ["mult", "mult", "mult", "mult", "mult", "add"],
+            0,
+            Path(f"{DRIVE}11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/2-interim/calib_data/level0/done.txt"),
         )
     pass
