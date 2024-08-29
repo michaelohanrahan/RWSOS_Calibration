@@ -29,7 +29,7 @@ configfile: 'config/calib.yml'
 
 basin = config["basin"]         
 #working directory
-workdir: Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', basin).as_posix()
+os.chdir(Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', basin).as_posix())
 
 #default directories
 base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
