@@ -24,13 +24,11 @@ else:
     COPY = "cp"
 
 #working directory
-os.chdir(Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', "meuse").as_posix())
+workingdir:Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', "meuse").as_posix())
 
 ## Some preparatory actions
 # Ensure the model directory is there
-config: 'config/calib.yml'
-if not os.path.exists("config/calib.yml"):
-    raise FileNotFoundError("config/calib.yml not found. Please create it.")
+configfile: 'config/calib.yml'
 
 # if "TEST" in config["calib_recipe"]:
 #     print("\033[91m" + "WARNING: 'TEST' found in the calib_recipe filepath!" + "\033[0m")
