@@ -5,10 +5,7 @@ from hydromt.log import setuplog
 from hydromt_wflow import WflowModel
 from pathlib import Path
 from icecream import ic
-<<<<<<< HEAD
 from hydromt import rasterdataset
-=======
->>>>>>> 50f0b2a433687946660e04c31a5fc4d5b3a8b94a
 import argparse
 
 def main(root:str, 
@@ -32,26 +29,14 @@ def main(root:str,
     if not Path(gauges).is_absolute():
         gauges = Path(Path.cwd(), gauges)
         
-<<<<<<< HEAD
     gauges = gpd.read_file(gauges, 
                            crs=crs, 
                            read_geometry=False, 
                            columns=[index_col, 'x', 'y'])
-=======
-    gauges = gpd.read_file(gauges, crs=crs, read_geometry=False, columns=[index_col, 'x', 'y'])
-    ic(gauges)
-    ic(index_col)
-    ic(gauges[index_col])
->>>>>>> 50f0b2a433687946660e04c31a5fc4d5b3a8b94a
     
     if ignore_list:
         gauges = gauges[~gauges[index_col].isin(ignore_list)]
         
-<<<<<<< HEAD
-
-=======
-    ic(len(gauges))
->>>>>>> 50f0b2a433687946660e04c31a5fc4d5b3a8b94a
     if 'geometry' not in gauges.columns:
         if 'x' in gauges.columns and 'y' in gauges.columns:
             gauges['geometry'] = gpd.points_from_xy(gauges['x'], gauges['y'])
@@ -72,7 +57,6 @@ def main(root:str,
         root=root,
         mode="r",
         config_fn = config_old,
-<<<<<<< HEAD
         data_libs = ['deltares_data'],
         logger=logger,
         )
@@ -84,27 +68,13 @@ def main(root:str,
     w.read_geoms()
     w.read_grid()
     # ic(w.grid)
-=======
-        data_libs = [],
-        logger=logger,
-        )
-    
-    w.read_config()
-    w.read_geoms()
-    w.read_grid()
-    ic(w.grid)
->>>>>>> 50f0b2a433687946660e04c31a5fc4d5b3a8b94a
     
     w.set_root(
         root=new_root,
         mode=mode
         )
-<<<<<<< HEAD
     ic(w.root)
     ic(w.crs)
-=======
-    
->>>>>>> 50f0b2a433687946660e04c31a5fc4d5b3a8b94a
     
     w.setup_gauges(
         gauges_fn=gauges,
@@ -152,11 +122,7 @@ if __name__ == "__main__":
     os.chdir(args.cwd)
     root = os.getcwd()
     
-<<<<<<< HEAD
     # ic(root)
-=======
-    ic(root)
->>>>>>> 50f0b2a433687946660e04c31a5fc4d5b3a8b94a
     
     if args.new_root:
         new_root = os.path.join(root, args.new_root)
@@ -172,11 +138,7 @@ if __name__ == "__main__":
         ignore_list = None
         
     root = os.path.join(root, args.config_root)
-<<<<<<< HEAD
     # ic(ignore_list)
-=======
-    ic(ignore_list)
->>>>>>> 50f0b2a433687946660e04c31a5fc4d5b3a8b94a
     main(root=root, 
          gauges=args.gauges, 
          new_root=new_root,
