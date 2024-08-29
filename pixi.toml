@@ -22,7 +22,7 @@ snakemake = { git = "https://github.com/michaelohanrahan/snakemake"}
 [dependencies]
 pip = "*"
 matplotlib = "*"
-hydromt_wflow = ">=0.5.0,<0.6"
+hydromt_wflow = "0.6.*"
 hydromt = ">=0.9.4,<0.10"
 graphviz = "*"
 jupyter = "*"
