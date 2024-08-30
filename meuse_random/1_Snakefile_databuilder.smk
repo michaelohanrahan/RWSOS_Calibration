@@ -19,20 +19,22 @@ from glob import glob
 if platform.system() == "Windows":
     DRIVE = "p:/"
     COPY = "copy"
-else:
+elif platform.system() == "Linux":
     DRIVE = "/p"
     COPY = "cp"
+else:
+    raise Exception("Unknown platform")
 
 ## Some preparatory actions
 # Ensure the model directory is there
 configfile: 'config/calib.yml'
 
 basin = config["basin"]         
-#working directory
-os.chdir(Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', basin).as_posix())
+base_dir = Path(str(f'{DRIVE}/{config["base_dir"]}')).as_posix()                         # p: or /p/ ... / RWSOS_Calibration / basin
+os.chdir(os.path.join(base_dir, basin))  # Set the working directory to the base directory
+#setting as workdir with snakemake will look for scripts in the workdir not the executing directory
+# workdir: base_dir
 
-#default directories
-base_dir = Path(DRIVE, config["base_dir"])                         # p: or /p/ ... / RWSOS_Calibration / basin
 source_dir = Path(base_dir, basin, config["source_dir"])    # data/1-external
 inter_dir = Path(base_dir, basin, config["inter_dir"])      # data/2-intermediate
 input_dir = Path(base_dir, basin, config["input_dir"])      # data/3-input
@@ -42,9 +44,9 @@ vis_dir = Path(base_dir, basin, config["vis_dir"])          # data/5-visualisati
 #Expected_levels
 expected_levels = 6
 
-
-for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
-    os.makedirs(dir, exist_ok=True)
+# for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
+#     if not dir.exists():
+#         os.makedirs(dir, exist_ok=True)
 
 gauges = config["gauges"]
 
@@ -75,18 +77,21 @@ create the gaugemap from your preferred geojson file of gauges... best to make t
 adding default target to false to encourage snakemake to run these rules before defining the wildcards
 '''
 
+
 rule create_gaugemap:
     input:
         gauges = Path(inter_dir, "QGIS", "to_wflow", f"{config['gauges']}_gauges_all.geojson")
     output:
         gridfile = Path(inter_dir, "gaugesadded", "staticmaps", "staticmaps.nc"),
-        gaugemap = Path(inter_dir, f"gaugesadded/staticgeoms/subcatch_{config['gauges']}.geojson"),
+        subcatch = Path(inter_dir, f"gaugesadded/staticgeoms/subcatch_{config['gauges']}.geojson"),
+        gauges = Path(inter_dir, f"gaugesadded/staticgeoms/gauges_{config['gauges']}.geojson"),
         toml = Path(inter_dir, "gaugesadded", "wflow_sbm_addgauges.toml")
     params:
         cwd=Path(os.getcwd()).as_posix(),
         config_root=Path(source_dir),
         new_root=Path(inter_dir, "gaugesadded"),
         mode="w+",
+        ignorelist=Path(inter_dir, "ignore_list.txt"),
         basename=config["gauges"],
         index_col="wflow_id",
         max_dist=1000,
@@ -100,6 +105,7 @@ rule create_gaugemap:
             --mode "{params.mode}" \
             --basename "{params.basename}" \
             --index_col "{params.index_col}" \
+            --ignore_list "{params.ignorelist}" \
             --snap_to_river True \
             --max_dist {params.max_dist} \
             --derive_subcatch True \
@@ -117,11 +123,13 @@ subsequent dependencies at each level, saving them in a json file for later use.
 
 rule create_graph:
     input: 
-        gridfile = Path(inter_dir, "gaugesadded", "staticmaps", "staticmaps.nc")
+        gridfile = rules.create_gaugemap.output.gridfile,
+        toml = rules.create_gaugemap.output.toml,
+        gauges = rules.create_gaugemap.output.gauges,
+    params:
+        gaugeset = config["gauges"]
     output: 
         graph = Path(inter_dir, f'{config["gauges"]}_levels_graph.json')
-    params: 
-        gaugeset = gauges
     script: 
         """src/graph/create_dependency_graph.py"""
 
@@ -153,7 +161,8 @@ rule ksat_setup:
     output:
         config_fn_out=Path(inter_dir, "addksathorfrac", "wflow_sbm_addksathorfrac.toml"),
         gridfile_out = Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc"),
-        out_geoms = directory(Path(inter_dir, "addksathorfrac", "staticgeoms"))
+        out_geoms = directory(Path(inter_dir, "addksathorfrac", "staticgeoms")),
+        gauges = touch(Path(inter_dir, "addksathorfrac", "staticgeoms", f"gauges_{config['gauges']}.geojson")),
     params:
         drive=DRIVE,
         mod_new_root=Path(inter_dir, "addksathorfrac"),
@@ -176,7 +185,7 @@ rule flp_setup:
     input:
         gridfile_in=Path(inter_dir, "addksathorfrac", "staticmaps", "staticmaps.nc"),
         config_fn_in=Path(inter_dir, "addksathorfrac", "wflow_sbm_addksathorfrac.toml"),
-        geoms = directory(Path(inter_dir, "addksathorfrac", "staticgeoms"))
+        geoms = Path(inter_dir, "addksathorfrac", "staticgeoms", f"gauges_{config['gauges']}.geojson")
     output:
         config_fn_out=Path(inter_dir, "addflp", "wflow_sbm_addflp.toml"),
         gridfile_out = Path(inter_dir, "addflp", "staticmaps", "staticmaps.nc"),
@@ -212,6 +221,8 @@ rule staticgeoms_to_input:
         sg_g=Path(input_dir, "staticgeoms", f"basins.geojson")
     run:
         # Ensure the destination directory exists
+        if os.path.exists(Path(input_dir, "staticgeoms")):
+            shutil.rmtree(Path(input_dir, "staticgeoms"))
         os.makedirs(Path(input_dir, "staticgeoms"), exist_ok=True)
         
         # Copy all files from the source directory to the destination directory

@@ -46,22 +46,20 @@ for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
 
 gauges = config["gauges"]
 
-
+#=========================================================
 #find last level from the final level directory
 levels = glob.glob(str(Path(inter_dir,'calib_data', "level*")))
 levels_ints = [int(level.split("level")[-1]) for level in levels]
-last_level = 5 #int(levels[-1].split("level")[-1])
+last_level = levels_ints[1] #int(levels[-1].split("level")[-1])
 
 #define elements from the staticgeoms
 elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
 
-#parameter set dataframe using LHS method
-#TODO: N_SAMPLES to config
-lnames, methods, all_level_df = create_set_all_levels(last_level=last_level, RECIPE=config["calib_recipe"], N_SAMPLES=config["N_SAMPLES"], OPTIM='random-cd')
-
 #0:N_samples for each level
 N_samples = config["N_SAMPLES"]
 
+#parameter set dataframe using LHS method
+lnames, methods, all_level_df = create_set_all_levels(last_level=last_level, RECIPE=config["calib_recipe"], N_SAMPLES=N_samples, OPTIM='random-cd')
 
 #staticmaps
 staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
@@ -164,7 +162,6 @@ for _level in range(0, last_level+1):
     rule:
         name: f"config_L{_level}"
         input: 
-            # flag = Path(calib_dir, f"level{_level-1}","done.txt"),
             random_params = Path(calib_dir, f"level{_level-1}","random_params.csv")
         params: 
             level = _level,
