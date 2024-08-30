@@ -4,8 +4,6 @@ import geopandas as gpd
 from hydromt.log import setuplog
 from hydromt_wflow import WflowModel
 from pathlib import Path
-from icecream import ic
-from hydromt import rasterdataset
 import argparse
 
 def main(root:str, 
@@ -25,6 +23,10 @@ def main(root:str,
     """
     SUMMARY:
     """
+    is sys.platform == "win32":
+        DRIVE='p:'
+    else:
+        DRIVE='/p'
     
     if not Path(gauges).is_absolute():
         gauges = Path(Path.cwd(), gauges)
@@ -53,29 +55,33 @@ def main(root:str,
         mode = "w+"
 
     logger = setuplog("build", log_level=20)
-
+    #ic(root)
+    #ic(config_old)
     w = WflowModel(
         root=root,
         mode="r",
         config_fn = config_old,
-        data_libs = ['deltares_data'],
+        data_libs = [f'{DRIVE}/wflow_global/hydromt/deltares_data.yml'],
         logger=logger,
         )
+    logger.info(f"Reading model from {root}")
+    w.read()
+    #ic(w.grid)
     
     logger.info(f"Setting CRS to {crs}")
+    #ic(w.crs)
     w.set_crs(crs)
-    ic(w.crs)
-    w.read_config()
-    w.read_geoms()
-    w.read_grid()
-    # ic(w.grid)
+    #ic(w.crs)
+    
+    # #ic(w.grid)
     
     w.set_root(
         root=new_root,
         mode=mode
         )
-    ic(w.root)
-    ic(w.crs)
+    
+    #ic(w.root)
+    #ic(w.crs)
     
     w.setup_gauges(
         gauges_fn=gauges,
@@ -123,7 +129,7 @@ if __name__ == "__main__":
     os.chdir(args.cwd)
     root = os.getcwd()
     
-    # ic(root)
+    # #ic(root)
     
     if args.new_root:
         new_root = os.path.join(root, args.new_root)
@@ -134,12 +140,12 @@ if __name__ == "__main__":
         
         with open(args.ignore_list, 'r') as file:
             ignore_list = [int(line.strip()) for line in file if line.strip().isdigit()]
-        ic(ignore_list)
+        #ic(ignore_list)
     else:
         ignore_list = None
         
     root = os.path.join(root, args.config_root)
-    # ic(ignore_list)
+    # #ic(ignore_list)
     main(root=root, 
          gauges=args.gauges, 
          new_root=new_root,

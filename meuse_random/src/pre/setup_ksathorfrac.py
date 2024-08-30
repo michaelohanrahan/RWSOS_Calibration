@@ -43,7 +43,9 @@ def main(DRIVE:str,
     mod.config['input']['lateral']['subsurface']['ksathorfrac'] = f'ksathorfrac_{var}250'
     mod.write_config(config_name=config_fn_out)
     mod.write_grid()
+    
     if os.path.exists(os.path.join(mod_root, 'staticgeoms')):
+        shutil.rmtree(os.path.join(mod_new_root, 'staticgeoms'))
         shutil.copytree(os.path.join(mod_root, 'staticgeoms'), os.path.join(mod_new_root, 'staticgeoms'))
 
 if __name__ == "__main__":
