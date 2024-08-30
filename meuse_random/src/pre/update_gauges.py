@@ -23,7 +23,7 @@ def main(root:str,
     """
     SUMMARY:
     """
-    is sys.platform == "win32":
+    if sys.platform == "win32":
         DRIVE='p:'
     else:
         DRIVE='/p'
