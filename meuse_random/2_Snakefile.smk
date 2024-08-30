@@ -97,10 +97,6 @@ with open(config["calib_recipe"]) as recipe:
 ############################
 # DOING the snakey!
 ############################
-# Define the main rule all that expects all the visualization files to have been created for successfull completion
-# rule all:
-# Define the main rule all that expects all the visualization files to have been created for successful completion
-#TODO: Figure out dynamic resources from the slurm availability
 '''
 :: rule all ::
 Defines the overall default target

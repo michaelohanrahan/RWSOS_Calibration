@@ -11,6 +11,8 @@
 cd ..
 echo "Changed to $(pwd)"
 pixi run snakemake -s "2_Snakefile.smk" --configfile "config/calib.yml" --unlock --quiet
+echo "cleanup metadata of previous run"
+pixi run snakemake -s "2_Snakefile.smk" --profile "slurm/" --cleanup-metadata $(cat ./valid_outputs.txt | tr ',' ' ') -n
 echo "Unlocked directory"
 pixi run snakemake -s "2_Snakefile.smk" --profile "$HOME/.config/snakemake/slurm/" -n -R wflow_L5 --quiet
 echo "Running snakemake orchestrator"

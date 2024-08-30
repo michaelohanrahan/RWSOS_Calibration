@@ -117,7 +117,7 @@ rule init_done:
 
 #Had to switch to a looping approach to get instates per level
 #Otherwise they would not wait for the previous level to finish
-for _level in range(0, last_level+1):
+for _level in range(5, last_level+1):
     '''
     :: initial instates ::
     This rule isnt waiting for the output of a previous rule, so it is run first and only once.
