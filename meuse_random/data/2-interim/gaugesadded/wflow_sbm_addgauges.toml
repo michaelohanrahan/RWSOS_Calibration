@@ -166,7 +166,7 @@ bankfull_depth = "RiverDepth_sobek_global_extrapol"
 bankfull_elevation = "hydrodem_subgrid_D4"
 
 [input.lateral.subsurface]
-ksathorfrac = "ksathorfrac_BRT_250"
+ksathorfrac = "ksathorfrac_sub"
 
 [input.lateral.land]
 n = "N"

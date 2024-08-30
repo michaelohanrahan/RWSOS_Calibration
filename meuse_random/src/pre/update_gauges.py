@@ -5,7 +5,7 @@ from hydromt.log import setuplog
 from hydromt_wflow import WflowModel
 from pathlib import Path
 import argparse
-
+from icecream import ic
 def main(root:str, 
          gauges, 
          new_root:str = None, 
@@ -35,10 +35,11 @@ def main(root:str,
                            crs=crs, 
                            read_geometry=False, 
                            columns=[index_col, 'x', 'y'])
-    
+    # ic(gauges)
     if ignore_list:
         gauges = gauges[~gauges[index_col].isin(ignore_list)]
-        
+    # ic(gauges)
+    
     if 'geometry' not in gauges.columns:
         if 'x' in gauges.columns and 'y' in gauges.columns:
             gauges['geometry'] = gpd.points_from_xy(gauges['x'], gauges['y'])
@@ -48,6 +49,7 @@ def main(root:str,
             raise ValueError('Gauges file does not contain geometry, x/y or lon/lat columns')
         
     gauges = gauges.set_geometry(col='geometry')
+    gauges = gauges.set_crs(crs)  # Explicitly set the CRS for the GeoDataFrame
     
     if new_root is None:
         new_root = root
@@ -79,9 +81,9 @@ def main(root:str,
         mode=mode
         )
     
-    #ic(w.root)
-    #ic(w.crs)
     
+    w.set_crs(crs)
+    ic(w.crs)
     w.setup_gauges(
         gauges_fn=gauges,
         snap_to_river=snap_to_river,
