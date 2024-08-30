@@ -63,7 +63,7 @@ if __name__ == "__main__":
             snakemake = globals()["snakemake"]
             best_params_previous = snakemake.input.best_params_previous #"best_n_params"
             level = snakemake.params.level #"leveln"
-            params_df = snakemake.params.params #"params_df"
+            params_df = snakemake.params.params_df #"params_df"
             graph = snakemake.params.graph
             graph_pred = snakemake.params.graph_pred
             graph_node = snakemake.params.graph_node
@@ -107,6 +107,7 @@ if __name__ == "__main__":
             graph=graph,
             graph_pred=graph_pred,
             graph_node=graph_node,
+            out=out,
         )
         
     except Exception as e:

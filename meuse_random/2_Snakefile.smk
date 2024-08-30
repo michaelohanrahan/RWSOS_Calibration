@@ -17,8 +17,11 @@ elif platform.system() == "Linux":
     PLATFORM = "Linux"
 
 configfile: str(Path("config", "calib.yml").as_posix())
+# print(f"Reading config file: {str(Path('config', 'calib.yml').as_posix())}")
 #Base directory
-basin = config["basin"]        # meuse
+basin = config["basin"]    
+#print in bold red
+# print(f"\033[1;31;40mBasin: {basin}\033[0m")    
 base_dir = config["base_dir"]  # RWSOS_Calibration
 base_dir = f"{DRIVE}/{Path(base_dir).as_posix()}" # p: or /p/ ... / RWSOS_Calibration / basin
 workdir: str(Path(base_dir, basin).as_posix())
@@ -50,7 +53,7 @@ gauges = config["gauges"]
 #find last level from the final level directory
 levels = glob.glob(str(Path(inter_dir,'calib_data', "level*")))
 levels_ints = [int(level.split("level")[-1]) for level in levels]
-last_level = levels_ints[1] #int(levels[-1].split("level")[-1])
+last_level = max(levels_ints) #int(levels[-1].split("level")[-1])
 
 #define elements from the staticgeoms
 elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
@@ -103,8 +106,7 @@ We expect upon successfull completion that all gauges will have been visualized
 rule all:
     input: 
         expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements),
-        expand(Path(calib_dir, "level{nlevel}", "level.done"), nlevel=range(-1, last_level+1)),
-    default_target: True
+        expand(Path(calib_dir, "level{nlevel}", "level.done"), nlevel=range(-1, last_level+1))
 
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
 rule init_done:
@@ -119,7 +121,7 @@ rule init_done:
         with open(output.p, "w") as f:
             f.write("done")
         with open(output.r, "w") as f:
-            f.write()
+            f.write("")
 
 for _level in range(0, last_level+1):
     
@@ -131,6 +133,7 @@ for _level in range(0, last_level+1):
     # slice the parameter dataframe for the current level
     #slice 0*2999:1*2999, 3000:5999, 6000:8999, etc
     df = all_level_df.iloc[_level*N_samples-1:(1+_level)*N_samples-1]
+    print(f"at level {_level} the dataframe is {df.shape}")
     paramspace = Paramspace(df)
     
     '''
@@ -162,7 +165,7 @@ for _level in range(0, last_level+1):
     rule:
         name: f"config_L{_level}"
         input: 
-            random_params = Path(calib_dir, f"level{_level-1}","random_params.csv")
+            random_params = Path(calib_dir, f"level{_level}","random_params.csv")
         params: 
             level = _level,
             cfg_template = Path(cfg_template).as_posix(),
