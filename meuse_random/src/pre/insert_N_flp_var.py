@@ -13,9 +13,13 @@ def main(gridfile_in, config_fn_in, geoms, config_fn_out, gridfile_out, geoms_ou
     print(f"config_fn_out: {config_fn_out}")
     print(f"gridfile_out: {gridfile_out}")
     print(f"geoms_out: {geoms_out}")
+    assert os.path.exists(gridfile_in), f"File not found: {gridfile_in}"
+    assert os.path.exists(config_fn_in), f"File not found: {config_fn_in}"
+    assert os.path.exists(geoms), f"File not found: {geoms}"
+    print("Opening dataset...")
     # Open the dataset
     ds = xr.open_dataset(gridfile_in)
-
+    print("Creating constant array...")
     # Create a constant array with the same shape and dimensions as 'wflow_dem'
     constant_value = 0.072
     var = np.full_like(ds['wflow_dem'], constant_value)
@@ -35,15 +39,14 @@ def main(gridfile_in, config_fn_in, geoms, config_fn_out, gridfile_out, geoms_ou
                                 'units': '-'}
     ds.to_netcdf(gridfile_out)
 
+    print(f"Copying config file from {config_fn_in} to {config_fn_out}")
     # Copy the config file
     shutil.copy(config_fn_in, config_fn_out)
 
-    # Create the geoms_out directory if it doesn't exist
-    os.makedirs(geoms_out, exist_ok=True)
+    print(f"Copying geoms file from {geoms} to {geoms_out}")
+    # Copy the geoms file
+    shutil.copy(geoms, os.path.join(geoms_out, os.path.basename(geoms)))
 
-    shutil.copytree(os.path.dirname(geoms), geoms_out)
-    
-    
 if __name__ == "__main__":
     try:
         if "snakemake" in globals():
