@@ -118,8 +118,6 @@ if __name__ == "__main__":
     os.chdir(args.cwd)
     root = os.getcwd()
     
-    ic(root)
-    
     if args.new_root:
         new_root = os.path.join(root, args.new_root)
     else:

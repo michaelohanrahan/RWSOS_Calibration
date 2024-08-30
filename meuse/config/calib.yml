@@ -1,7 +1,7 @@
 ## General
 # Setting data for calibration
 calib_recipe: "config/MINIMAL_calib_recipe.json"
-basin: "meuse_random"
+basin: "meuse"
 
 base_dir: "/11209265-grade2023/wflow/RWSOS_Calibration"
 log_dir: "data/0-log"

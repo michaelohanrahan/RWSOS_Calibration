@@ -14,7 +14,7 @@ def main(
     starttime: str,
     endtime: str,
     forcing_path: Path | str,
-    out: tuple | list,
+    out_file: tuple | list,
     gaugemap: str,
 ):
     """

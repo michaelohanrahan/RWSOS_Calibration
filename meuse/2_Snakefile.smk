@@ -117,7 +117,7 @@ rule init_done:
 
 #Had to switch to a looping approach to get instates per level
 #Otherwise they would not wait for the previous level to finish
-for _level in range(0, last_level+1):
+for _level in range(5, last_level+1):
     '''
     :: initial instates ::
     This rule isnt waiting for the output of a previous rule, so it is run first and only once.
@@ -158,7 +158,6 @@ for _level in range(0, last_level+1):
             sub_catch = subcatch,
             lakes_in = lakes
         localrule: True
-        group: f"instate_L{_level}"
         output:
             ST_grids = Path(input_dir, "instates", "staticmaps_L"+f"{_level}"+"_ST{_t_str}.nc")
         script:
@@ -180,10 +179,11 @@ for _level in range(0, last_level+1):
         output:
             done = Path(input_dir, "instates", f"instate_level{_level}_ST"+"{_t_str}.nc")
         group: f"instate_L{_level}"
-        log:
-            Path(log_dir, f"instate_{_level}", f"instates_level{_level}_ST"+"{_t_str}.txt")
         localrule: False
-        threads: config["wflow_threads"]
+        threads: 1
+        resources: 
+            time = "12:00:00",
+            mem_mb = 8000
         shell:
             f"""julia --project="{{params.project}}" -t {{threads}} -e \
             "using Pkg;\
@@ -261,9 +261,12 @@ for _level in range(0, last_level+1):
             # threads = config["wflow_threads"]
         output: 
             Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc")
-        threads: config["wflow_threads"]
         localrule: False
         group: f"wflow_L{_level}"
+        threads: 1
+        resources: 
+            time = "12:00:00",
+            mem_mb = 8000
         shell: 
             f"""julia --project="{{params.project}}" -t {{threads}} -e \
             "using Pkg;\
@@ -324,12 +327,12 @@ for _level in range(0, last_level+1):
             done = expand(Path(calib_dir, f"level{_level}", '{params}', "evaluate.done"), params=paramspace.instance_patterns),
             performance_files=expand(Path(calib_dir, f"level{_level}", "{params}", "performance.nc"), params=paramspace.instance_patterns)
         output: 
-            performance = Path(calib_dir, f"level{_level}", "performance.nc"),
+            performance = directory(Path(calib_dir, f"level{_level}", "performance.zarr")),
             best_params = Path(calib_dir, f"level{_level}", "best_params.csv") #defaults to best 10
-        localrule: True
+        localrule: False
         threads: 4
         resources:
-            time = "00:03:00",
+            time = "12:00:00",
             mem_mb = 32000
         script:
             "src/calib/combine_evaluated.py"
@@ -364,7 +367,7 @@ Preparing the final stage: This rule prepares the final stage of the calibration
 rule prep_final_stage:
     input: 
         done = Path(calib_dir, "level"+f'{last_level}', "done.txt"),
-        performance = glob.glob(str(Path(calib_dir, "level*", "performance.nc"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
+        performance = glob.glob(str(Path(calib_dir, "level*", "performance.zarr"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
         cfg_args = [config["eval_runstart"], config["eval_runend"], config["timestep"], Path(source_dir, config["source_forcing_data"])],

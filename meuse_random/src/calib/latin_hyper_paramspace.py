@@ -1,6 +1,6 @@
 from scipy.stats import qmc
 import json
-from setuplog import setup_logging
+from .setuplog import setup_logging
 import traceback
 import pandas as pd
 from pathlib import Path
@@ -99,71 +99,71 @@ def create_set_all_levels(last_level,
 
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    # test dev
-    work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA')
+#     # test dev
+#     work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\UNREAL_TEST_DATA')
     
-    # find last level from the final level directory
-    import glob
-    levels = glob.glob(str(Path(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\2-interim','calib_data', "level*")))
-    levels_ints = [int(level.split("level")[-1]) for level in levels]
-    last_level = int(levels[-1].split("level")[-1])
+#     # find last level from the final level directory
+#     import glob
+#     levels = glob.glob(str(Path(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\2-interim','calib_data', "level*")))
+#     levels_ints = [int(level.split("level")[-1]) for level in levels]
+#     last_level = int(levels[-1].split("level")[-1])
     
-    # set up input vars
-    l=setup_logging(work_dir, 'latin_hyper_paramspace.log')
-    RECIPE = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\config\calib_recipe.json')
-    N_SAMPLES = 1000
-    OPTIM = 'random-cd'
-    # OUT = work_dir / 'LHS_df.csv'
+#     # set up input vars
+#     l=setup_logging(work_dir, 'latin_hyper_paramspace.log')
+#     RECIPE = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\meuse\config\calib_recipe.json')
+#     N_SAMPLES = 1000
+#     OPTIM = 'random-cd'
+#     # OUT = work_dir / 'LHS_df.csv'
     
-    l_names, methods, all_params_df = create_set_all_levels(
-                          last_level,
-                          RECIPE,
-                          N_SAMPLES,
-                          OPTIM,
-                          )
+#     l_names, methods, all_params_df = create_set_all_levels(
+#                           last_level,
+#                           RECIPE,
+#                           N_SAMPLES,
+#                           OPTIM,
+#                           )
     
     
     
-    l=setup_logging('data/0-log', 'latin_hyper_paramspace.log')
-    try:
-        LEVEL = 0
-        RECIPE = '../../config/calib_recipe.json'
-        N_SAMPLES = 1000
-        OPTIM = 'random-cd'
-        OUT=Path('../../data/2-interim/calib_data/level0/params.csv')
-        l_names, methods, params_df = generate_samples(l,
-                                    LEVEL=LEVEL, 
-                                    RECIPE=RECIPE, 
-                                    N_SAMPLES=N_SAMPLES, 
-                                    OPTIM=OPTIM,
-                                    OUT=OUT)
+#     l=setup_logging('data/0-log', 'latin_hyper_paramspace.log')
+#     try:
+#         LEVEL = 0
+#         RECIPE = '../../config/calib_recipe.json'
+#         N_SAMPLES = 1000
+#         OPTIM = 'random-cd'
+#         OUT=Path('../../data/2-interim/calib_data/level0/params.csv')
+#         l_names, methods, params_df = generate_samples(l,
+#                                     LEVEL=LEVEL, 
+#                                     RECIPE=RECIPE, 
+#                                     N_SAMPLES=N_SAMPLES, 
+#                                     OPTIM=OPTIM,
+#                                     OUT=OUT)
         
-        plt.figure(figsize=(10, 6))
-        params_df.boxplot()
-        plt.title('Boxplot of the parameters')
-        plt.savefig('../../data/2-interim/calib_data/level0/params_boxplot.png')
+#         plt.figure(figsize=(10, 6))
+#         params_df.boxplot()
+#         plt.title('Boxplot of the parameters')
+#         plt.savefig('../../data/2-interim/calib_data/level0/params_boxplot.png')
         
-        #3d scatter for the first three parameters
-        fig = plt.figure(figsize=(10, 6))
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(params_df.iloc[:,0], params_df.iloc[:,1], params_df.iloc[:,2])
-        ax.set_xlabel(params_df.columns[0])
-        ax.set_ylabel(params_df.columns[1])
-        ax.set_zlabel(params_df.columns[2])
-        plt.title("Scatter of the first three parameters")
-        plt.savefig('../../data/2-interim/calib_data/level0/params_3dscatter.png')
+#         #3d scatter for the first three parameters
+#         fig = plt.figure(figsize=(10, 6))
+#         ax = fig.add_subplot(111, projection='3d')
+#         ax.scatter(params_df.iloc[:,0], params_df.iloc[:,1], params_df.iloc[:,2])
+#         ax.set_xlabel(params_df.columns[0])
+#         ax.set_ylabel(params_df.columns[1])
+#         ax.set_zlabel(params_df.columns[2])
+#         plt.title("Scatter of the first three parameters")
+#         plt.savefig('../../data/2-interim/calib_data/level0/params_3dscatter.png')
         
-        #histogram of the first parameter
-        fig = plt.figure(figsize=(10, 6))
-        plt.hist(params_df.iloc[:,0], bins=20, color='blue', edgecolor='black')
-        plt.title('Histogram of the first parameter')
-        plt.savefig('../../data/2-interim/calib_data/level0/params_hist.png')
+#         #histogram of the first parameter
+#         fig = plt.figure(figsize=(10, 6))
+#         plt.hist(params_df.iloc[:,0], bins=20, color='blue', edgecolor='black')
+#         plt.title('Histogram of the first parameter')
+#         plt.savefig('../../data/2-interim/calib_data/level0/params_hist.png')
         
-    except Exception as e:
-        l.error(f'An error occurred: {e}')
-        l.error(traceback.format_exc())
-        raise e
+#     except Exception as e:
+#         l.error(f'An error occurred: {e}')
+#         l.error(traceback.format_exc())
+#         raise e
         
     

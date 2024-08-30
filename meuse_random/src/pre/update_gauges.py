@@ -39,7 +39,6 @@ def main(root:str,
     if ignore_list:
         gauges = gauges[~gauges[index_col].isin(ignore_list)]
         
-
     if 'geometry' not in gauges.columns:
         if 'x' in gauges.columns and 'y' in gauges.columns:
             gauges['geometry'] = gpd.points_from_xy(gauges['x'], gauges['y'])
