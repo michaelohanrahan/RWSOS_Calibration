@@ -4,8 +4,15 @@ import matplotlib.pyplot as plt
 import argparse
 import traceback
 import shutil
+import os
 
 def main(gridfile_in, config_fn_in, geoms, config_fn_out, gridfile_out, geoms_out):
+    print(f"gridfile_in: {gridfile_in}")
+    print(f"config_fn_in: {config_fn_in}")
+    print(f"geoms: {geoms}")
+    print(f"config_fn_out: {config_fn_out}")
+    print(f"gridfile_out: {gridfile_out}")
+    print(f"geoms_out: {geoms_out}")
     # Open the dataset
     ds = xr.open_dataset(gridfile_in)
 
@@ -28,10 +35,15 @@ def main(gridfile_in, config_fn_in, geoms, config_fn_out, gridfile_out, geoms_ou
                                 'units': '-'}
     ds.to_netcdf(gridfile_out)
 
-    # copy the geoms
-    shutil.copytree(geoms, geoms_out)
+    # Copy the config file
     shutil.copy(config_fn_in, config_fn_out)
 
+    # Create the geoms_out directory if it doesn't exist
+    os.makedirs(geoms_out, exist_ok=True)
+
+    shutil.copytree(os.path.dirname(geoms), geoms_out)
+    
+    
 if __name__ == "__main__":
     try:
         if "snakemake" in globals():
