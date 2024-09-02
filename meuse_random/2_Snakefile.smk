@@ -35,6 +35,7 @@ from snakemake.utils import Paramspace
 import geopandas as gpd
 from src.calib.latin_hyper_paramspace import create_set_all_levels
 import glob
+import pandas as pd 
 
 #=========================================================
 log_dir = Path(base_dir, basin, config["log_dir"]).as_posix()          # data/0-log
@@ -55,14 +56,26 @@ levels = glob.glob(str(Path(inter_dir,'calib_data', "level*")))
 levels_ints = [int(level.split("level")[-1]) for level in levels]
 last_level = max(levels_ints) #int(levels[-1].split("level")[-1])
 
+if last_level < max(levels_ints):
+    print("\033[1;31;40mWARNING: Last level is not currently the max possible level\033[0m")
+
 #define elements from the staticgeoms
 elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
 
 #0:N_samples for each level
 N_samples = config["N_SAMPLES"]
 
+
 #parameter set dataframe using LHS method
 lnames, methods, all_level_df = create_set_all_levels(last_level=last_level, RECIPE=config["calib_recipe"], N_SAMPLES=N_samples, OPTIM='random-cd')
+import pandas as pd
+all_level_df.to_csv(Path(inter_dir, "calib_data", "all_level_paramspace.csv"))
+
+for level in range(0, last_level+1):
+    df = all_level_df[all_level_df.index == level]
+    df.to_csv(Path(inter_dir, "calib_data", f"level{level}", "paramspace.csv"))
+
+target_paramspace = Paramspace(df)
 
 #staticmaps
 staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
@@ -71,6 +84,7 @@ staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
 lakes = glob.glob(str(Path(input_dir, "staticmaps", "lake*.csv")))
 lakes = [Path(lake).as_posix() for lake in lakes]
 lakefiles = [lake.split("/")[-1] for lake in lakes]
+assert len(lakes) > 0, "No lakes found, if this is expected comment out this assert"
 
 #subcatch
 subcatch = Path(input_dir, "staticgeoms", f'subcatch_{config["gauges"]}.geojson')
@@ -93,7 +107,7 @@ graph_pred = json.load(open(Path(inter_dir, f'{config["gauges"]}_pred_graph.json
 #soilthicknesses
 with open(config["calib_recipe"]) as recipe:
     recipe = json.load(recipe)
-    # print(recipe)
+snames = [recipe[key]["short_name"] for key in recipe.keys()]
 
 ############################
 # DOING the snakey!
@@ -106,7 +120,6 @@ We expect upon successfull completion that all gauges will have been visualized
 rule all:
     input: 
         expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements),
-        expand(Path(calib_dir, "level{nlevel}", "level.done"), nlevel=range(-1, last_level+1))
 
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
 rule init_done:
@@ -123,22 +136,24 @@ rule init_done:
         with open(output.r, "w") as f:
             f.write("")
 
+dfs = {level: pd.read_csv(Path(inter_dir, "calib_data", f"level{level}", "paramspace.csv")).drop(columns=["level"], index=None) for level in range(0, last_level+1)}
+
+
 for _level in range(0, last_level+1):
     
     '''
     ** WILDCARDING **
-    -- The wildcarding is done for the level of the calibration
-    #¿¿Q??: Does this actually work ot build the dag or do we have to slice the wildcards instead??? 
+        -- The wildcarding is done for the level of the calibration
+        -- The params are saved in the level directory as paramspace.csv
+        -- The paramspace is then wildcarded in the following rules within this loop
     '''
-    # slice the parameter dataframe for the current level
-    #slice 0*2999:1*2999, 3000:5999, 6000:8999, etc
-    df = all_level_df.iloc[_level*N_samples-1:(1+_level)*N_samples-1]
-    print(f"at level {_level} the dataframe is {df.shape}")
-    paramspace = Paramspace(df)
+
+    level_df = dfs[_level]
+    params_L = Paramspace(level_df)
     
     '''
     :: Random dataframe ::
-        -- In the previous 
+        SUMMARY??
     '''
     rule:
         name: f"random_data_L{_level}"
@@ -156,6 +171,7 @@ for _level in range(0, last_level+1):
             random_params = Path(calib_dir, f"level{_level}", "random_params.csv")
         script:
             """src/calib/random_params.py"""
+    
     """
     ::config::
             This rule modifies a blueprint configuration file for a specific time period and forcing path. 
@@ -173,9 +189,10 @@ for _level in range(0, last_level+1):
             endtime = config["endtime"],
             forcing_path = Path(input_dir, config["source_forcing_data"]),
             gaugemap=f"gauges_{config['gauges']}",
+            wildness = params_L.wildcard_pattern,
         localrule: True
         output: 
-            expand(Path(calib_dir, f"level{_level}", "{params}", config["wflow_cfg_name"]), params=paramspace.wildcard_pattern)
+            out_file=Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, config["wflow_cfg_name"])
         script:
             """src/calib/set_config.py"""
 
@@ -191,11 +208,12 @@ for _level in range(0, last_level+1):
     rule:
         name: f"create_params_L{_level}"
         input: 
-            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),  #TODO: what is this for?
+            Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, config["wflow_cfg_name"]), #wait for the config to be done
             random_params = Path(calib_dir, f"level{_level}", "random_params.csv")
         params:
             dataset = staticmaps,
-            params = paramspace.instance,
+            params = params_L.instance,
+            params_sname = snames,
             params_lname = lnames,
             params_method = methods,
             level = f"level{_level}",
@@ -204,25 +222,25 @@ for _level in range(0, last_level+1):
             lake_in = lakes
         localrule: True
         output: 
-            staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
-            lake_out = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
+            staticmaps = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "staticmaps.nc"),
+            lake_out = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=params_L.wildcard_pattern, lakes=lakefiles)
         script: 
             """src/calib/set_calib_params.py"""
 
     '''
     ::wflow:: 
-            This rule runs the hydrological model. It takes a configuration file and a grid (staticmap) file as input.
+            This rule runs the Wflow model. It takes a configuration file and a grid (staticmap) file as input.
     '''
     rule:
         name: f"wflow_L{_level}"
         input: 
-            cfg = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, config["wflow_cfg_name"]),
-            staticmaps = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "staticmaps.nc"),
-            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=paramspace.wildcard_pattern, lakes=lakefiles)
+            cfg = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, config["wflow_cfg_name"]),
+            staticmaps = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "staticmaps.nc"),
+            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=params_L.wildcard_pattern, lakes=lakefiles)
         params:
             project = Path(base_dir, "bin").as_posix()
         output: 
-            Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc")
+            Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "output_scalar.nc")
         localrule: False
         group: f"wflow_L{_level}"
         threads: 1
@@ -239,9 +257,9 @@ for _level in range(0, last_level+1):
     rule:
         name: f"done_L{_level}"
         input: 
-            output = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc")
+            output = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "output_scalar.nc")
         output:
-            done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done")
+            done = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "run.done")
         localrule: True
         shell:
             """touch {output.done}"""
@@ -255,15 +273,15 @@ for _level in range(0, last_level+1):
     rule:
         name: f"evaluate_L{_level}"
         input: 
-            sim = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "output_scalar.nc"),
-            done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "run.done"),
+            sim = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "output_scalar.nc"),
+            done = expand(Path(calib_dir, f"level{_level}", "{params}", "run.done"), params=params_L.instance_patterns),
         params: 
             observed = Path(source_dir, config["observed_data"]),
             dry_month = config["dry_months"],
             window = config["window"],
             level = f"{_level}",
             graph = graph,
-            params = paramspace.wildcard_pattern, 
+            params = params_L.wildcard_pattern, 
             starttime = config["cal_eval_starttime"],
             endtime = config["cal_eval_endtime"],
             metrics = config["metrics"], #["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
@@ -272,8 +290,8 @@ for _level in range(0, last_level+1):
         localrule: False
         group: f"evaluate_L{_level}"   #TODO: add this group to the config
         output: 
-            performance = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "performance.nc"),
-            eval_done = Path(calib_dir, f"level{_level}", paramspace.wildcard_pattern, "evaluate.done")
+            performance = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "performance.nc"),
+            eval_done = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "evaluate.done")
         threads: 1
         resources: 
             time = "00:30:00",
@@ -281,12 +299,11 @@ for _level in range(0, last_level+1):
         script: 
             """src/calib/evaluate_per_run.py""" # TODO: modify this script to submit multiple grouped jobs
 
-
     rule:
         name: f"combine_performance_L{_level}"
         input:
-            done = expand(Path(calib_dir, f"level{_level}", '{params}', "evaluate.done"), params=paramspace.instance_patterns),
-            performance_files=expand(Path(calib_dir, f"level{_level}", "{params}", "performance.nc"), params=paramspace.instance_patterns)
+            done = expand(Path(calib_dir, f"level{_level}", '{params}', "evaluate.done"), params=params_L.instance_patterns),
+            performance_files=expand(Path(calib_dir, f"level{_level}", "{params}", "performance.nc"), params=params_L.instance_patterns)
         output: 
             performance = Path(calib_dir, f"level{_level}", "performance.nc"),
             best_params = Path(calib_dir, f"level{_level}", "best_params.csv") #defaults to best 10
@@ -326,10 +343,11 @@ for _level in range(0, last_level+1):
 Preparing the final stage: This rule prepares the final stage of the calibration process.
 '''
 
+
 rule prep_final_stage:
     input: 
         done = Path(calib_dir, "level"+f'{last_level}', "level.done"),
-        performance = glob.glob(str(Path(calib_dir, "level*", "performance.nc"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
+        performance = glob.glob(str(Path(calib_dir, "level*", "performance.zarr"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
         cfg_args = [config["eval_runstart"], config["eval_runend"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
