@@ -31,7 +31,7 @@ def change_config(model,
     config["model"]["reinit"] = True
     
     # update the input path_static
-    config["input"]["path_static"] = f"staticmaps.nc"
+    config["input"]["path_static"] = f"../staticmaps.nc"
     
     # update the input path_forcing
     config["input"]["path_forcing"] = "../forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
