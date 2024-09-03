@@ -1,0 +1,85 @@
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = ["flit_core>=3.2,<4"]
+
+[project]
+name = "RWSOS_Meuse_Calib2024"
+version = "0.1.0"
+description = "Snakemake managed cascading calibration chain."
+authors = [{ name = "Michael O'Hanrahan", email = "104068149+michaelohanrahan@users.noreply.github.com" }]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+]
+
+[tool.pixi.dependencies]
+matplotlib = "*"
+hydromt_wflow = "0.6.*"
+hydromt = ">=0.9.4,<0.10"
+graphviz = "*"
+jupyter = "*"
+pulp = "*"
+dvc = "*"
+numpy = "<2.0"
+cookiecutter = "*"
+jinja2-time = "*"
+snakemake-executor-plugin-slurm = ">=0.8.0,<0.9"
+netcdf4 = ">=1.7.1,<2"
+snakemake-executor-plugin-cluster-generic = ">=1.0.9,<2"
+icecream = ">=2.1.3,<3"
+ipykernel = ">=6.29.3,<6.30"
+
+[tool.pixi.project]
+channels = ["conda-forge", "pip", "bioconda"]
+name = "RWSOS_Meuse_Calib2024"
+platforms = ["win-64", "linux-64"]
+
+[tool.flit.module]
+name = "RWSOS_Meuse_Calib2024"
+
+[tool.pixi.feature.dev.pypi-dependencies]
+# Built editable in development mode
+docker-project = { path = ".", editable = true }
+ipykernel = ">=6.29.3,<6.30"
+snakemake = { git = "https://github.com/michaelohanrahan/snakemake"}
+
+[tool.pixi.feature.test.dependencies]
+pytest = "*"
+
+# Used for installing into production, as a post-process step
+# we would like make better integration for this in the future.
+[tool.pixi.feature.prod.host-dependencies]
+pip = "*"
+
+# We use dependencies from conda to use it to build the wheel
+[tool.pixi.feature.build.dependencies]
+build = "*"
+flit-core = ">=3.2,<4"
+
+[tool.pixi.feature.build.tasks]
+# Create a wheel for installation
+build-wheel = "python -m build --no-isolation --wheel ."
+
+[tool.pixi.feature.prod.tasks]
+# Install into the production environment
+postinstall-production = "pip install --no-deps --disable-pip-version-check dist/docker_project-*.whl"
+
+[tool.pixi.tasks]
+dev = "flask --app docker_project:app run"
+start = "gunicorn -w 4 docker_project:app --bind :8000"
+install-kernel = "python -m ipykernel install --user --name rwsos-meuse-calib2024 --display-name rwsos-meuse-calib2024"
+
+[tool.pixi.feature.test.tasks]
+test = "pytest"
+
+[tool.pixi.target.win-64.dependencies]
+datrie = "*"
+graphviz = "*"
+hydromt = "*"
+jupyter = "*"
+matplotlib = "*"
+numba = "*"
+pandas = "*"
+pip = "*"
+python = ">=3.8"
