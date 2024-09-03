@@ -388,14 +388,14 @@ rule final_instate_toml:
         config_fn = cfg_template,
     params: 
         root = Path(input_dir, "instates").as_posix(),
-        level = "final",
         starttime = config["eval_instart"],
         endtime = config["eval_inend"],
         staticmaps = staticmaps
     localrule: True
     output:
-        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
-        
+        cfg = Path(input_dir, "instates", "post_calib_instate.toml")
+    script:
+        """src/calib/create_final_instate_toml.py"""
 
 rule run_instate:
     input:
