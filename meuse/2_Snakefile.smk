@@ -433,21 +433,21 @@ rule run_final_model:
         using Wflow;\
         Wflow.run()" {{input.cfg}}"""
 
-# rule visualize:
-#     input: 
-#         scalar = Path(out_dir, "output_scalar.nc"),
-#         performance = Path(out_dir, "performance.nc")
-#     params:
-#         observed_data = config["observed_data"],
-#         gauges = elements,
-#         starttime = config["eval_starttime"],
-#         endtime = config["eval_endtime"],
-#         period_startdate = config["hydro_period_startdate"],
-#         period_length = config["hydro_period_length"],
-#         period_unit = config["hydro_period_unit"],
-#         output_dir = Path(vis_dir, "figures")
-#     localrule: True
-#     output:
-#         figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
-#     script:
-#         """src/post/plot_final_model.py"""
+rule visualize:
+    input: 
+        scalar = Path(out_dir, "output_scalar.nc"),
+        performance = Path(out_dir, "performance.nc")
+    params:
+        observed_data = config["observed_data"],
+        gauges = elements,
+        starttime = config["eval_starttime"],
+        endtime = config["eval_endtime"],
+        period_startdate = config["hydro_period_startdate"],
+        period_length = config["hydro_period_length"],
+        period_unit = config["hydro_period_unit"],
+        output_dir = Path(vis_dir, "figures")
+    localrule: True
+    output:
+        figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+    script:
+        """src/post/plot_final_model.py"""
