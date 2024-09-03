@@ -17,16 +17,11 @@ elif platform.system() == "Linux":
     PLATFORM = "Linux"
 
 configfile: str(Path("config", "calib.yml").as_posix())
-# print(f"Reading config file: {str(Path('config', 'calib.yml').as_posix())}")
 #Base directory
 basin = config["basin"]    
-#print in bold red
-# print(f"\033[1;31;40mBasin: {basin}\033[0m")    
 base_dir = config["base_dir"]  # RWSOS_Calibration
 base_dir = f"{DRIVE}/{Path(base_dir).as_posix()}" # p: or /p/ ... / RWSOS_Calibration / basin
 workdir: str(Path(base_dir, basin).as_posix())
-# profile: str(Path(base_dir, basin, "config", "slurm").as_posix())
-
 
 import json
 import shutil
@@ -36,6 +31,7 @@ import geopandas as gpd
 from src.calib.latin_hyper_paramspace import create_set_all_levels
 import glob
 import pandas as pd 
+import argparse
 
 #=========================================================
 log_dir = Path(base_dir, basin, config["log_dir"]).as_posix()          # data/0-log
@@ -50,11 +46,12 @@ for dir in [source_dir, inter_dir, out_dir, vis_dir, input_dir]:
 
 gauges = config["gauges"]
 
+
 #=========================================================
 #find last level from the final level directory
 levels = glob.glob(str(Path(inter_dir,'calib_data', "level*")))
 levels_ints = [int(level.split("level")[-1]) for level in levels]
-last_level = max(levels_ints) #int(levels[-1].split("level")[-1])
+last_level = int(config.get("level", max(levels_ints)))
 
 #define elements from the staticgeoms
 elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
@@ -62,10 +59,8 @@ elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["
 #0:N_samples for each level
 N_samples = config["N_SAMPLES"]
 
-
 #parameter set dataframe using LHS method
-lnames, methods, all_level_df = create_set_all_levels(last_level=last_level, RECIPE=config["calib_recipe"], N_SAMPLES=N_samples, OPTIM='random-cd')
-import pandas as pd
+lnames, methods, all_level_df = create_set_all_levels(last_level=max(levels_ints), RECIPE=config["calib_recipe"], N_SAMPLES=N_samples, OPTIM='random-cd')
 all_level_df.to_csv(Path(inter_dir, "calib_data", "all_level_paramspace.csv"), index=False)
 
 for level in range(0, last_level+1):
@@ -114,8 +109,9 @@ We expect upon successfull completion that all gauges will have been visualized
 '''
 rule all:
     input: 
-        expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements),
-        expand(Path(inter_dir, "calib_data", "level{level}", "best_params.csv"), level=range(-1, last_level+1))
+        expand(Path(inter_dir, "calib_data", "level{level}", "best_params.csv"), level=range(-1, last_level+1)),
+        expand(Path(inter_dir, "calib_data", "level{level}", "performance.zarr"), level=range(0, last_level+1)),
+        expand(Path(calib_dir, f"level{level}", "level.done"), level=range(-1, last_level+1))
 
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
 rule init_done:
@@ -133,7 +129,7 @@ rule init_done:
             f.write("")
 
 
-for _level in range(0, last_level+1):
+for _level in range(last_level, last_level+1):
     '''
     ** WILDCARDING **
         -- The wildcarding is done for the level of the calibration

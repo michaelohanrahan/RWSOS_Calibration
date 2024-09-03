@@ -3,6 +3,7 @@
 calib_recipe: "config/LHS_calib_recipe.json"
 basin: "meuse_random"
 N_SAMPLES: 3000
+level: 0
 
 base_dir: "/11209265-grade2023/wflow/RWSOS_Calibration"
 log_dir: "data/0-log"
