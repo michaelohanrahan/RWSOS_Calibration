@@ -3,14 +3,10 @@ from pathlib import Path
 
 import xarray as xr
 
-from set_config import main as create_config
-
-
 def main(
     in_perf: tuple | list,
     in_cfg: Path | str,
     in_maps: Path | str,
-    cfg_args: tuple | list,
     out_cfg: Path | str,
     out_maps: Path | str,
     out_perf: Path | str,
@@ -60,7 +56,6 @@ if __name__ == "__main__":
             mod.input.performance,
             mod.params.cfg_template,
             mod.params.staticmaps,
-            mod.params.cfg_args,
             mod.output.cfg,
             mod.output.staticmaps,
             mod.output.performance,
