@@ -44,7 +44,7 @@ def main(
     out_ds = None
 
     for _ds in in_perf:
-        temp_ds = xr.open_dataset(_ds)
+        temp_ds = xr.open_zarr(_ds)
         if out_ds is None:
             out_ds = temp_ds.copy()
             continue
