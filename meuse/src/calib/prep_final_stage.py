@@ -40,13 +40,6 @@ def main(
         out_maps,
     )
 
-    # Set the config file
-    cfg_args += [[out_cfg],]
-
-    create_config(
-        in_cfg,
-        *cfg_args,
-    )
 
     out_ds = None
 
