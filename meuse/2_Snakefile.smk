@@ -416,10 +416,10 @@ rule run_instate:
 
 rule run_final_model:
     input:
-        done = Path(input_dir, "instates", "done_final_instate.txt"),
-        instate = Path(input_dir, "instates", "instate.nc"),
+        done = Path(out_dir, "instates", "done_final_instate.txt"),
+        instate = Path(out_dir, "instates", "instate.nc"),
         cfg = Path(input_dir, config["wflow_cfg_name"]),
-        staticmaps = Path(input_dir, "staticmaps.nc")
+        staticmaps = Path(out_dir, "staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
     output: Path(out_dir, "output_scalar.nc")
@@ -433,21 +433,21 @@ rule run_final_model:
         using Wflow;\
         Wflow.run()" {{input.cfg}}"""
 
-rule visualize:
-    input: 
-        scalar = Path(out_dir, "output_scalar.nc"),
-        performance = Path(out_dir, "performance.nc")
-    params:
-        observed_data = config["observed_data"],
-        gauges = elements,
-        starttime = config["eval_starttime"],
-        endtime = config["eval_endtime"],
-        period_startdate = config["hydro_period_startdate"],
-        period_length = config["hydro_period_length"],
-        period_unit = config["hydro_period_unit"],
-        output_dir = Path(vis_dir, "figures")
-    localrule: True
-    output:
-        figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
-    script:
-        """src/post/plot_final_model.py"""
+# rule visualize:
+#     input: 
+#         scalar = Path(out_dir, "output_scalar.nc"),
+#         performance = Path(out_dir, "performance.nc")
+#     params:
+#         observed_data = config["observed_data"],
+#         gauges = elements,
+#         starttime = config["eval_starttime"],
+#         endtime = config["eval_endtime"],
+#         period_startdate = config["hydro_period_startdate"],
+#         period_length = config["hydro_period_length"],
+#         period_unit = config["hydro_period_unit"],
+#         output_dir = Path(vis_dir, "figures")
+#     localrule: True
+#     output:
+#         figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+#     script:
+#         """src/post/plot_final_model.py"""
