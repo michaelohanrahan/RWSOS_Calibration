@@ -370,10 +370,8 @@ rule prep_final_stage:
         performance = glob.glob(str(Path(calib_dir, "level*", "performance.zarr"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
-        cfg_args = [config["eval_runstart"], config["eval_runend"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
         staticmaps = staticmaps
     output: 
-        cfg = Path(input_dir, config["wflow_cfg_name"]),
         performance = Path(out_dir, "performance.nc"),
         staticmaps = Path(input_dir, "staticmaps.nc")
     localrule: True
