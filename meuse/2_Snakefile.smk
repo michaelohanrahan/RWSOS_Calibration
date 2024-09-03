@@ -397,13 +397,13 @@ rule final_instate_toml:
 
 rule run_instate:
     input:
-        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
-        staticmaps = Path(input_dir, "staticmaps.nc")
+        cfg = Path(out_dir, "instates", "post_calib_instate.toml"),
+        staticmaps = Path(out_dir, "staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
     output: 
-        outstate=Path(input_dir, "instates", "instate_level_final.nc"),
-        done = touch(Path(input_dir, "instates", "done_final_instate.txt"))
+        outstate=Path(out_dir, "instates", "instate.nc"),
+        done = touch(Path(out_dir, "instates", "done_final_instate.txt"))
     threads: config["wflow_threads"]
     localrule: False
     group: "wflow"
@@ -417,7 +417,7 @@ rule run_instate:
 rule run_final_model:
     input:
         done = Path(input_dir, "instates", "done_final_instate.txt"),
-        instate = Path(input_dir, "instates", "instate_level_final.nc"),
+        instate = Path(input_dir, "instates", "instate.nc"),
         cfg = Path(input_dir, config["wflow_cfg_name"]),
         staticmaps = Path(input_dir, "staticmaps.nc")
     params: 
