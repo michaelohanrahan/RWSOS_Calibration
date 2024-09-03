@@ -34,7 +34,7 @@ def change_config(model,
     config["input"]["path_static"] = f"staticmaps.nc"
     
     # update the input path_forcing
-    config["input"]["path_forcing"] = "forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
+    config["input"]["path_forcing"] = "../forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
     
     # print(config.keys())
     # update the state path_output
@@ -53,7 +53,7 @@ def change_config(model,
     # print(config.keys())
     
     # Write the config to a TOML file
-    output_path = Path(root) / "instates" / f"wflow_sbm_getinstate_final.toml"
+    output_path = Path(root) / '..'/ "instates" / "post_calib_instate.toml"
     with open(output_path, 'w', encoding='utf-8') as toml_file:
         toml.dump(config, toml_file)
 

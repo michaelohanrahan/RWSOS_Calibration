@@ -370,12 +370,10 @@ rule prep_final_stage:
         performance = glob.glob(str(Path(calib_dir, "level*", "performance.zarr"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
-        cfg_args = [config["eval_runstart"], config["eval_runend"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
         staticmaps = staticmaps
     output: 
-        cfg = Path(input_dir, config["wflow_cfg_name"]),
         performance = Path(out_dir, "performance.nc"),
-        staticmaps = Path(input_dir, "staticmaps.nc")
+        staticmaps = Path(out_dir, "staticmaps.nc")
     localrule: True
     script:
         """src/calib/prep_final_stage.py"""
@@ -387,13 +385,13 @@ rule final_instate_toml:
         performance = Path(out_dir, "performance.nc"),
         config_fn = cfg_template,
     params: 
-        root = Path(input_dir, "instates").as_posix(),
+        root = Path(out_dir, "instates").as_posix(),
         starttime = config["eval_instart"],
         endtime = config["eval_inend"],
         staticmaps = staticmaps
     localrule: True
     output:
-        cfg = Path(input_dir, "instates", "post_calib_instate.toml")
+        cfg = Path(out_dir, "instates", "post_calib_instate.toml")
     script:
         """src/calib/create_final_instate_toml.py"""
 
