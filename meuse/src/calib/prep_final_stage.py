@@ -30,7 +30,6 @@ def main(
     """
     # Copy the staticmaps
     out_dir = Path(out_maps).parent
-    in_perf = [Path(p).parent for p in in_perf]
 
     if not out_dir.exists():
         out_dir.mkdir()
