@@ -28,6 +28,6 @@ if __name__ == '__main__':
     
     work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine')
     
-    fn_obs = work_dir / 'data/1-external/discharge_obs_hr_FORMAT_allvars.nc'
+    fn_obs = work_dir / 'data/1-external/discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc'
     
     gauge_geojson(fn_obs)
