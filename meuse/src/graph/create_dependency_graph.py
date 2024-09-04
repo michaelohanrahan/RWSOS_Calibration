@@ -42,9 +42,6 @@ def setup_logger(cwd, name):
 
     return logger
 
-
-
-    
 # Description of how the LDD values translate the indices [x-offset, y-offset]
 # assumes the grid has increasing x and y coordinates
 ldd_direction = {
@@ -165,7 +162,7 @@ if __name__ == "__main__":
             testmode = False
 
             # Set up logger
-            logger = setup_logger()
+            logger = setup_logger(Path.cwd(), 'create_dependency_graph.py')
 
         except:
             ap = AP.ArgumentParser()
@@ -180,12 +177,12 @@ if __name__ == "__main__":
             gaugeset = args.gaugeset
             testmode = args.testmode
 
-            print(f'cwd: {os.getcwd()}')
+            logger.info(f'cwd: {os.getcwd()}')
             logger = setup_logger(os.getcwd(), 'create_dependency_graph.py')
-            print(f'logger: {logger}')
-            print(f'gridfile: {gridfile}')
-            print(f'gaugeset: {gaugeset}')
-            print(f'testmode: {testmode}')
+            logger.info(f'logger: {logger}')
+            logger.info(f'gridfile: {gridfile}')
+            logger.info(f'gaugeset: {gaugeset}')
+            logger.info(f'testmode: {testmode}')
         ds = xr.open_dataset(gridfile)
 
         sub = ds[f"wflow_subcatch_{gaugeset}"]
@@ -205,7 +202,7 @@ if __name__ == "__main__":
         
         #longest path 
         longest_path = find_longest_continuous_chain(graph)
-        print(f"Longest path for {gaugeset} is (len: {len(longest_path)}): {longest_path}")
+        logger.info(f"Longest path for {gaugeset} is (len: {len(longest_path)}): {longest_path}")
 
         fig = plt.figure("graph", figsize=(18,8), clear=True, tight_layout=True)
         ax1 = fig.add_subplot(121)
@@ -244,7 +241,7 @@ if __name__ == "__main__":
             levels_graph[f'level{layer}'] = {'deps': list(deps), 'elements': [node for node, _ in nodes_in_layer]}
 
         if testmode:
-            print(json.dumps(levels_graph, indent=4))
+            logger.info(json.dumps(levels_graph, indent=4))
             plt.show()
             
         else:

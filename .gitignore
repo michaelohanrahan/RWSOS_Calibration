@@ -1,15 +1,14 @@
 # pixi environments
 .pixi
 *.egg-info
-
 *.netcdf
 *.nc
 *.csv
-
 *.log
 *.txt
 *.geojson
-*.toml
 *.pptx
 *.pdf
 *.png
+vanHessel/
+vanJoost/

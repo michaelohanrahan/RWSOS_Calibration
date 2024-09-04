@@ -1,0 +1,6 @@
+instates/
+staticgeoms/
+staticmaps/
+*.nc
+*.log
+*.toml
