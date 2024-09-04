@@ -2,6 +2,10 @@
 This script is used for preparing observation data in a specific format (the same as the obs dataset used in Meuse model)
 The script is created by Jing Deng.
 Date: 2024-08-19
+
+Important modification on Sep 4, 2024:
+In the original observation data, the stations (id) start from 0, which is not allowed in wflow model to be used as wflow_id. 
+Therefore, the id of the stations 0 (b'Livange', [b'HLUX_Livange', [6.1149567, 49.52647733]) was manually changed to 727.
 """
 
 import xarray as xr
@@ -74,6 +78,15 @@ for var in variables:
 # save to file
 fn_ds = work_dir / 'discharge_obs_hr_FORMAT_allvars.nc'
 ds.to_netcdf(fn_ds)
+
+# modify the wflow_id of station 0 to 727
+fn_ds = work_dir / 'discharge_obs_hr_FORMAT_allvars.nc'
+ds = xr.open_dataset(fn_ds)
+
+# Change wflow_id 0 to 727
+ds['wflow_id'] = ds['wflow_id'].where(ds['wflow_id'] != 0, 727)
+# Save the modified dataset
+ds.to_netcdf(work_dir / 'discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc')
 
 
 
