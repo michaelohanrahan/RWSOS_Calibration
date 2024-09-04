@@ -370,12 +370,10 @@ rule prep_final_stage:
         performance = glob.glob(str(Path(calib_dir, "level*", "performance.zarr"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
-        cfg_args = [config["eval_runstart"], config["eval_runend"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
         staticmaps = staticmaps
     output: 
-        cfg = Path(input_dir, config["wflow_cfg_name"]),
         performance = Path(out_dir, "performance.nc"),
-        staticmaps = Path(input_dir, "staticmaps.nc")
+        staticmaps = Path(out_dir, "staticmaps.nc")
     localrule: True
     script:
         """src/calib/prep_final_stage.py"""
@@ -387,25 +385,25 @@ rule final_instate_toml:
         performance = Path(out_dir, "performance.nc"),
         config_fn = cfg_template,
     params: 
-        root = Path(input_dir, "instates").as_posix(),
-        level = "final",
+        root = Path(out_dir, "instates").as_posix(),
         starttime = config["eval_instart"],
         endtime = config["eval_inend"],
         staticmaps = staticmaps
     localrule: True
     output:
-        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
-        
+        cfg = Path(out_dir, "instates", "post_calib_instate.toml")
+    script:
+        """src/calib/create_final_instate_toml.py"""
 
 rule run_instate:
     input:
-        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
-        staticmaps = Path(input_dir, "staticmaps.nc")
+        cfg = Path(out_dir, "instates", "post_calib_instate.toml"),
+        staticmaps = Path(out_dir, "staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
     output: 
-        outstate=Path(input_dir, "instates", "instate_level_final.nc"),
-        done = touch(Path(input_dir, "instates", "done_final_instate.txt"))
+        outstate=Path(out_dir, "instates", "instate.nc"),
+        done = touch(Path(out_dir, "instates", "done_final_instate.txt"))
     threads: config["wflow_threads"]
     localrule: False
     group: "wflow"
@@ -418,10 +416,10 @@ rule run_instate:
 
 rule run_final_model:
     input:
-        done = Path(input_dir, "instates", "done_final_instate.txt"),
-        instate = Path(input_dir, "instates", "instate_level_final.nc"),
+        done = Path(out_dir, "instates", "done_final_instate.txt"),
+        instate = Path(out_dir, "instates", "instate.nc"),
         cfg = Path(input_dir, config["wflow_cfg_name"]),
-        staticmaps = Path(input_dir, "staticmaps.nc")
+        staticmaps = Path(out_dir, "staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
     output: Path(out_dir, "output_scalar.nc")

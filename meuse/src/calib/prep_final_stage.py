@@ -3,14 +3,10 @@ from pathlib import Path
 
 import xarray as xr
 
-from set_config import main as create_config
-
-
 def main(
     in_perf: tuple | list,
     in_cfg: Path | str,
     in_maps: Path | str,
-    cfg_args: tuple | list,
     out_cfg: Path | str,
     out_maps: Path | str,
     out_perf: Path | str,
@@ -30,7 +26,6 @@ def main(
     """
     # Copy the staticmaps
     out_dir = Path(out_maps).parent
-    in_perf Path(in_perf).parent
 
     if not out_dir.exists():
         out_dir.mkdir()
@@ -40,18 +35,11 @@ def main(
         out_maps,
     )
 
-    # Set the config file
-    cfg_args += [[out_cfg],]
-
-    create_config(
-        in_cfg,
-        *cfg_args,
-    )
 
     out_ds = None
 
     for _ds in in_perf:
-        temp_ds = xr.open_dataset(_ds)
+        temp_ds = xr.open_zarr(_ds)
         if out_ds is None:
             out_ds = temp_ds.copy()
             continue
@@ -68,7 +56,6 @@ if __name__ == "__main__":
             mod.input.performance,
             mod.params.cfg_template,
             mod.params.staticmaps,
-            mod.params.cfg_args,
             mod.output.cfg,
             mod.output.staticmaps,
             mod.output.performance,
