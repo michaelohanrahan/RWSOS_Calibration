@@ -67,7 +67,8 @@ def main(
     obs_ds = xr.open_dataset(obs_data)
     
     df_GaugeToPlot = pd.read_csv(GaugeToPlot)
-    gauges = list(df_GaugeToPlot['wflow_id'].values)  # integers
+    # gauges = list(df_GaugeToPlot['wflow_id'].values)  # integers
+    gauges=[16]
     gauges_str = [str(gauge) for gauge in gauges]  # Convert gauges to strings for md_ds
     
     # prepare obs data-array
@@ -198,11 +199,11 @@ if __name__ == "__main__":
     files = glob(str(Path(work_dir, 'best_run_level*_result', 'output_run', 'output_scalar.nc')))
     # files = [file for file in files if 'level0' not in file]
     
-    obs_data = Path(work_dir,'best_run_level-1_result', 'discharge_hourlyobs_HBV_combined.nc')
+    obs_data = Path(r"P:\11209265-grade2023\wflow\RWSOS_Calibration\meuse_random\data\1-external\discharge_hourlyobs_smoothed.nc")
     GaugeToPlot = Path(work_dir, 'best_run_level-1_result','wflow_id_add_HBV_new.csv')
     starttime = '2008-08-01'
     endtime = '2018-02-22'
-    output_dir = Path(r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\5-visualization\best_params").as_posix()
+    output_dir = Path(r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\5-visualization\best_params_smoothed").as_posix()
     
     ds = main(
         md_data=files,

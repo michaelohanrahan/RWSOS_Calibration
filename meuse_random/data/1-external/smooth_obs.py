@@ -2,8 +2,10 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
 import numpy as np
+import os 
 
-
+os.chdir(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse_random\data\1-external')
+print(os.getcwd())
 ds = xr.open_dataset('discharge_hourlyobs_HBV_combined.nc')
 print(ds)
 
@@ -24,6 +26,7 @@ for wflow_id in ds.wflow_id.values:
     print(f"data points before: {count1}, after: {count2}")
     # assert count1 == count2, "Data points before and after smoothing do not match"
     print(f"data matches time dimension: {len(da.time.values) == len(da_smooth)}")
+    
     da_smooth = xr.DataArray(
         np.float64(da_smooth),
         dims=da.dims,
@@ -31,6 +34,10 @@ for wflow_id in ds.wflow_id.values:
         name='Q',
         attrs=da.attrs
         )
+    fig, ax = plt.subplots(1,1, figsize=(10,10))
+    da_smooth.sel(time=slice(t0, t1)).plot(ax=ax)
+    plt.show()
+    a
     # print(da_smooth)
     das.append(da_smooth)
 ds_smooth = xr.Dataset({'Q':xr.concat(das, dim='wflow_id')})

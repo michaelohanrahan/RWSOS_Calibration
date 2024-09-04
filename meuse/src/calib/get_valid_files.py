@@ -24,25 +24,30 @@ def main(basin, level):
     non_valid_outputs = [file for file in output_files if os.path.dirname(file) not in run_done_dirs]
     
     print(f"Number of valid output files: {len(valid_outputs)}")
+    first_file_size = None
     if valid_outputs:
         first_file_size = os.path.getsize(valid_outputs[0])
         print(f"First file size: {first_file_size}")
         valid_outputs = [file for file in valid_outputs if os.path.getsize(file) == first_file_size]
     print(f"Number of valid output files after filtering by size: {len(valid_outputs)}")
     
-    if non_valid_outputs:
+    print(f"Number of non-valid output files: {len(non_valid_outputs)}")
+    
+    invalid_with_size = []
+    if non_valid_outputs and first_file_size is not None:
         invalid_with_size = [file for file in non_valid_outputs if os.path.getsize(file) == first_file_size]
     
-    print(f"Number of non-valid output files: {len(non_valid_outputs)}")
-    print(f"Number of invalid output files with the same size as the first valid file: {len(invalid_with_size)}")
+    if invalid_with_size:
+        print(f"Number of invalid output files with the same size as the first valid file: {len(invalid_with_size)}")
+        valid_outputs.extend(invalid_with_size)
+        non_valid_outputs = [file for file in non_valid_outputs if file not in invalid_with_size]
+    else:
+        print("No invalid output files with the same size as the first valid file found")
     
-    valid_outputs = valid_outputs + invalid_with_size
-    non_valid_outputs = [file for file in non_valid_outputs if file not in invalid_with_size]
-    
-    print(f"newly extended valid outputs: {len(valid_outputs)}")
+    print(f"Newly extended valid outputs: {len(valid_outputs)}")
     
     count = 0
-    for i, file in enumerate(valid_outputs):
+    for file in valid_outputs:
         done = os.path.join(os.path.dirname(file), "run.done")
         if not os.path.exists(done):
             with open(done, "w") as f:
@@ -51,7 +56,7 @@ def main(basin, level):
     print(f"Number of run.done files created: {count}")
     
     #FULL PATH
-    valid_outputs= [f"{os.getcwd()}/{file}" for file in valid_outputs]
+    valid_outputs = [f"{os.getcwd()}/{file}" for file in valid_outputs]
     
     # Write the list to a comma-separated text file
     output_file_path = f"{level}_valid_outputs.txt"
@@ -62,7 +67,6 @@ def main(basin, level):
     with open(non_valid_outputs_file_path, "w") as f:
         f.write(",".join(non_valid_outputs))
     
-
     print(f"List of valid output files written to {output_file_path}")
     print(f"Number of run.done directories: {len(run_done_dirs)}")
     print(f"Number of output files: {len(output_files)}")
