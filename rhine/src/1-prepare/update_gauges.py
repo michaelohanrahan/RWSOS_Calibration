@@ -97,55 +97,87 @@ def main(root:str,
 
 if __name__ == "__main__":
     
-    parser = argparse.ArgumentParser(description="Update wflow gauges configuration.")
-    parser.add_argument("cwd", help="Current working directory", type=str)
-    parser.add_argument("config_root", help="Root directory for configuration", type=str)
-    parser.add_argument("gauges", help="Gauges file", type=str)
-    parser.add_argument("--ignore_list", help="string to return separated list of integers", type=str, default="data/2-interim/ignore_list.txt") 
-    parser.add_argument("--new_root", help="New root directory (optional)", type=str, default=None)
-    parser.add_argument("--mode", help="Mode for opening the model (r, w, w+)", type=str, default="w")
-    parser.add_argument("--basename", help="Basename for the gauges", type=str, default="hourly")
-    parser.add_argument("--index_col", help="Index column for the gauges", type=str, default="wflow_id")
-    parser.add_argument("--snap_to_river", help="Snap gauges to river", type=bool, default=True)
-    parser.add_argument("--max_dist", help="Maximum distance for snapping", type=int, default=1000)
-    parser.add_argument("--derive_subcatch", help="Derive subcatchments", type=bool, default=True)
-    parser.add_argument("--crs", help="Coordinate reference system", type=str, default="epsg:4326")
-    parser.add_argument("--config_old", help="Configuration file", type=str, default="wflow_sbm_template.toml")
-    parser.add_argument("--config_new", help="Configuration file", type=str, default="wflow_sbm_add_gauges.toml")
-    parser.add_argument("--kwargs", help="Additional keyword arguments", type=dict, default={})
-
-
-    args = parser.parse_args()
-    os.chdir(args.cwd)
-    root = os.getcwd()
+    from pathlib import Path
+    work_dir=Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine')
+    cwd = work_dir
+    new_root = work_dir / "data" / "2-interim" / "gaugesadded"
+    config_root = work_dir / "data" / "1-external"
+    gauges = work_dir / "data" / "2-interim" / "gaugesadded" / "all_stations.geojson"
+    mode = "w+"
+    basename = "Hall"
+    index_col = "wflow_id"
+    max_dist = 1000
+    crs = "EPSG:4326"
+    config_old = "wflow_sbm_template.toml"
+    config_new = "wflow_sbm_addgauges.toml"
     
-    if args.new_root:
-        new_root = os.path.join(root, args.new_root)
-    else:
-        raise ValueError("New root directory must be provided.")
-    
-    if args.ignore_list and os.path.exists(args.ignore_list):
-        
-        with open(args.ignore_list, 'r') as file:
-            ignore_list = [int(line.strip()) for line in file if line.strip().isdigit()]
-        ic(ignore_list)
-    else:
-        ignore_list = None
-        
-    root = os.path.join(root, args.config_root)
-    ic(ignore_list)
-    main(root=root, 
-         gauges=args.gauges, 
+    main(root=config_root, 
+         gauges=gauges, 
          new_root=new_root,
-         mode=args.mode,
-         basename=args.basename,
-        index_col=args.index_col,
-        snap_to_river=args.snap_to_river,
-        max_dist=args.max_dist,
-        derive_subcatch=args.derive_subcatch,
-        crs=args.crs,
-        config_old=args.config_old,
-        config_new=args.config_new,
-        ignore_list=ignore_list,
-        kwargs=args.kwargs
+         mode=mode,
+         basename=basename,
+        index_col=index_col,
+        # snap_to_river=snap_to_river,
+        max_dist=max_dist,
+        # derive_subcatch=derive_subcatch,
+        crs=crs,
+        config_old=config_old,
+        config_new=config_new,
+        # ignore_list=ignore_list,
+        # kwargs=args.kwargs
     )
+    
+    #TODO: test using bat file
+    
+    # parser = argparse.ArgumentParser(description="Update wflow gauges configuration.")
+    # parser.add_argument("cwd", help="Current working directory", type=str)
+    # parser.add_argument("config_root", help="Root directory for configuration", type=str)
+    # parser.add_argument("gauges", help="Gauges file", type=str)
+    # parser.add_argument("--ignore_list", help="string to return separated list of integers", type=str, default="data/2-interim/ignore_list.txt") 
+    # parser.add_argument("--new_root", help="New root directory (optional)", type=str, default=None)
+    # parser.add_argument("--mode", help="Mode for opening the model (r, w, w+)", type=str, default="w")
+    # parser.add_argument("--basename", help="Basename for the gauges", type=str, default="hourly")
+    # parser.add_argument("--index_col", help="Index column for the gauges", type=str, default="wflow_id")
+    # parser.add_argument("--snap_to_river", help="Snap gauges to river", type=bool, default=True)
+    # parser.add_argument("--max_dist", help="Maximum distance for snapping", type=int, default=1000)
+    # parser.add_argument("--derive_subcatch", help="Derive subcatchments", type=bool, default=True)
+    # parser.add_argument("--crs", help="Coordinate reference system", type=str, default="epsg:4326")
+    # parser.add_argument("--config_old", help="Configuration file", type=str, default="wflow_sbm_template.toml")
+    # parser.add_argument("--config_new", help="Configuration file", type=str, default="wflow_sbm_add_gauges.toml")
+    # parser.add_argument("--kwargs", help="Additional keyword arguments", type=dict, default={})
+
+
+    # args = parser.parse_args()
+    # os.chdir(args.cwd)
+    # root = os.getcwd()
+    
+    # if args.new_root:
+    #     new_root = os.path.join(root, args.new_root)
+    # else:
+    #     raise ValueError("New root directory must be provided.")
+    
+    # if args.ignore_list and os.path.exists(args.ignore_list):
+        
+    #     with open(args.ignore_list, 'r') as file:
+    #         ignore_list = [int(line.strip()) for line in file if line.strip().isdigit()]
+    #     ic(ignore_list)
+    # else:
+    #     ignore_list = None
+        
+    # root = os.path.join(root, args.config_root)
+    # ic(ignore_list)
+    # main(root=root, 
+    #      gauges=args.gauges, 
+    #      new_root=new_root,
+    #      mode=args.mode,
+    #      basename=args.basename,
+    #     index_col=args.index_col,
+    #     snap_to_river=args.snap_to_river,
+    #     max_dist=args.max_dist,
+    #     derive_subcatch=args.derive_subcatch,
+    #     crs=args.crs,
+    #     config_old=args.config_old,
+    #     config_new=args.config_new,
+    #     ignore_list=ignore_list,
+    #     kwargs=args.kwargs
+    # )
