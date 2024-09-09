@@ -1,5 +1,8 @@
 """
-This script is borrowed from Meuse project, used for sanity check on observation data
+This script is borrowed from Meuse project, used for 
+1) sanity check on observation data
+2) create ignore_list.txt for gauges with high nan percentage
+
 Created by Jing Deng
 Date: 2024-08-19
 """
@@ -21,18 +24,36 @@ import matplotlib.colors as mcolors
 from icecream import ic
 import folium
 
-
-def compute_nan_percentage(obs: xr.Dataset,
-                           time_range: tuple = (None, None),
-                           ):
+def compute_nan_percentage_and_valid_period(obs: xr.Dataset,
+                                            time_range: tuple = (None, None)):
     
     obs_temp = obs.sel(time=slice(*time_range))
-    print(obs_temp)
     nan_percentage_list = []
+    valid_start_list = []
+    valid_end_list = []
+    nan_percentage_within_valid_period_list = []
+
     for id in obs_temp.wflow_id.values:
-        nan_percentage = obs_temp.sel(wflow_id=id, runs='Obs.').Q.isnull().values.mean()*100
+        q_data = obs_temp.sel(wflow_id=id, runs='Obs.').Q
+        
+        # Compute nan percentage
+        nan_percentage = q_data.isnull().values.mean() * 100
         nan_percentage_list.append(nan_percentage)
-    
+        
+        # Find valid data period
+        valid_data = q_data.dropna('time')
+        if not valid_data.isnull().all():
+            valid_start = valid_data.time[0].values
+            valid_end = valid_data.time[-1].values
+            valid_start_list.append(valid_start)
+            valid_end_list.append(valid_end)
+            nan_percentage_within_valid_period = q_data.sel(time=slice(valid_start, valid_end)).isnull().values.mean() * 100
+            nan_percentage_within_valid_period_list.append(nan_percentage_within_valid_period)
+        else:
+            valid_start_list.append(None)
+            valid_end_list.append(None)
+            nan_percentage_within_valid_period_list.append(None)
+
     # Extract latitude and longitude for each wflow_id
     latitudes = obs_temp['lat'].sel(runs='Obs.').values
     longitudes = obs_temp['lon'].sel(runs='Obs.').values
@@ -42,7 +63,10 @@ def compute_nan_percentage(obs: xr.Dataset,
         'wflow_id': obs_temp['wflow_id'].values,
         'nan_percentage': nan_percentage_list,
         'lat': latitudes,
-        'lon': longitudes
+        'lon': longitudes,
+        'valid_start': valid_start_list,
+        'valid_end': valid_end_list,
+        'nan_percentage_within_valid_period': nan_percentage_within_valid_period_list
     })
     
     return data
@@ -136,20 +160,42 @@ def remove_gauge_from_obs(obs: xr.Dataset,
     return obs_filtered
 
 
+def high_nan_gauge_ignore_list(data: pd.DataFrame,
+                               threshold: float,
+                               wflow_id_exception: list, # gauge like Basel (705) has higher than 60% nan percentage, but we still want to keep it
+                               work_dir: Path
+                               ):
+    
+    
+    high_nan_percentage_ids = data[(data['nan_percentage'] > threshold) & (~data['wflow_id'].isin(wflow_id_exception))]['wflow_id']
+    print(f"Number of wflow_id with nan_percentage > {threshold}%: {len(high_nan_percentage_ids)}")
+    print(f'Gauges to be added to ignore_list.txt: {high_nan_percentage_ids}')   
+    
+    with open(work_dir / 'ignore_list.txt', 'w') as f:
+        for id in high_nan_percentage_ids:
+            f.write(f"{id}\n")
+    
+    
 if __name__ == '__main__':
     
     work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\1-external')
-    obs = xr.open_dataset(work_dir / 'discharge_obs_hr_FORMAT_allvars.nc')
+    obs = xr.open_dataset(work_dir / 'discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc')
     
-    # data = compute_nan_percentage(obs, time_range=('1996-01-01', None))
-    # # save to csv
-    # data.to_csv(work_dir / 'nan_percentage_1996_2016.csv', index=False)
+    # 1996-2016
+    data = compute_nan_percentage_and_valid_period(obs, time_range=('1996-01-01', None))
+    data.to_csv(work_dir / 'nan_percentage_1996_2016_valid_period.csv', index=False)
+    
+    # 
+    
+    # add gauges that have nan percentage > 60 to ignore_list.txt
+    work_dir2 = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\2-interim')
+    high_nan_gauge_ignore_list(data, threshold=60, wflow_id_exception=[705], work_dir=work_dir2)
     
     # # plot
     # plot_gauge_map_nan_percentage(data, work_dir, time_range=('1996', '2016'))
     
-    # # Calculate statistics of nan_percentage
-    # nan_percentage_hist = data['nan_percentage'].plot.hist(bins=20)
+    # Calculate statistics of nan_percentage
+    # nan_percentage_hist = data['nan_percentage_within_valid_period'].plot.hist(bins=20)
     # plt.xlabel('NAN Percentage, 100%')
     # plt.ylabel('Frequency')
     # plt.title('Histogram of NaN Percentage')
@@ -161,32 +207,7 @@ if __name__ == '__main__':
     
     
     # modify obs dataset to remove filtered gauges
-    data = pd.read_csv(work_dir / 'nan_percentage_1996_2016.csv')
-    obs_filtered = remove_gauge_from_obs(obs, data, threshold=60)
-    
-    obs_filtered.to_netcdf(work_dir / 'discharge_obs_hr_FORMAT_allvars_filtered60.nc')
-    
-    
-    
-    
-    
-    # parser = AP()
-    # parser.add_argument('--model', type=str, default='meuse')
-    # parser.add_argument('--cwd', type=str, default=r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\1-external")
-    # parser.add_argument('--freq', type=str, default='H')
-    # args = parser.parse_args()
-    
-    # if sys.platform == 'win32':
-    #     plat=''
-    # else:
-    #     plat='_linux'
-        
-    # try:
-    #     get_dc_data(model=args.model, 
-    #                 cwd=args.cwd, 
-    #                 plat=plat, 
-    #                 freq=args.freq)
-    # except Exception as e:
-    #     print(f'Error: {e}')
-    #     traceback.print_exc()
-    
+    # data = pd.read_csv(work_dir / 'nan_percentage_1996_2016.csv')
+    # obs_filtered = remove_gauge_from_obs(obs, data, threshold=60)
+    # obs_filtered.to_netcdf(work_dir / 'discharge_obs_hr_FORMAT_allvars_filtered60.nc')
+
