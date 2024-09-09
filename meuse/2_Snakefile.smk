@@ -98,8 +98,9 @@ We expect upon successfull completion that all gauges will have been visualized
 '''
 rule all:
     input: 
-        expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements),
-        expand(Path(input_dir, "instates", "instate_level{level}_ST{_t_str}.nc"), level=range(0, last_level+1), _t_str=ST_str),
+        Path(out_dir, "output_scalar.nc"),
+        # expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements),
+        # expand(Path(input_dir, "instates", "instate_level{level}_ST{_t_str}.nc"), level=range(0, last_level+1), _t_str=ST_str),
         expand(Path(calib_dir, "level{nlevel}", "done.txt"), nlevel=range(-1, last_level+1)),
     default_target: True
 
@@ -117,7 +118,7 @@ rule init_done:
 
 #Had to switch to a looping approach to get instates per level
 #Otherwise they would not wait for the previous level to finish
-for _level in range(5, last_level+1):
+for _level in range(6, last_level+1):
     '''
     :: initial instates ::
     This rule isnt waiting for the output of a previous rule, so it is run first and only once.
@@ -418,7 +419,7 @@ rule run_final_model:
     input:
         done = Path(out_dir, "instates", "done_final_instate.txt"),
         instate = Path(out_dir, "instates", "instate.nc"),
-        cfg = Path(input_dir, config["wflow_cfg_name"]),
+        cfg = Path(out_dir, "wflow_sbm.toml"),
         staticmaps = Path(out_dir, "staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
@@ -433,21 +434,21 @@ rule run_final_model:
         using Wflow;\
         Wflow.run()" {{input.cfg}}"""
 
-rule visualize:
-    input: 
-        scalar = Path(out_dir, "output_scalar.nc"),
-        performance = Path(out_dir, "performance.nc")
-    params:
-        observed_data = config["observed_data"],
-        gauges = elements,
-        starttime = config["eval_starttime"],
-        endtime = config["eval_endtime"],
-        period_startdate = config["hydro_period_startdate"],
-        period_length = config["hydro_period_length"],
-        period_unit = config["hydro_period_unit"],
-        output_dir = Path(vis_dir, "figures")
-    localrule: True
-    output:
-        figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
-    script:
-        """src/post/plot_final_model.py"""
+# rule visualize:
+#     input: 
+#         scalar = Path(out_dir, "output_scalar.nc"),
+#         performance = Path(out_dir, "performance.nc")
+#     params:
+#         observed_data = config["observed_data"],
+#         gauges = elements,
+#         starttime = config["eval_starttime"],
+#         endtime = config["eval_endtime"],
+#         period_startdate = config["hydro_period_startdate"],
+#         period_length = config["hydro_period_length"],
+#         period_unit = config["hydro_period_unit"],
+#         output_dir = Path(vis_dir, "figures")
+#     localrule: True
+#     output:
+#         figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+#     script:
+#         """src/post/plot_final_model.py"""

@@ -7,7 +7,6 @@ def main(
     in_perf: tuple | list,
     in_cfg: Path | str,
     in_maps: Path | str,
-    out_cfg: Path | str,
     out_maps: Path | str,
     out_perf: Path | str,
 ): 
@@ -56,7 +55,6 @@ if __name__ == "__main__":
             mod.input.performance,
             mod.params.cfg_template,
             mod.params.staticmaps,
-            mod.output.cfg,
             mod.output.staticmaps,
             mod.output.performance,
         )

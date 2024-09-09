@@ -374,6 +374,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/partd-1.4.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pathlib2-2.3.7.post1-py311h38be061_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pathspec-0.12.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/patsy-0.5.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pcre2-10.44-h0f59acf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pexpect-4.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pickleshare-0.7.5-py_1003.tar.bz2
@@ -382,6 +383,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.43.2-h59595ed_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pkgutil-resolve-name-1.3.10-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/platformdirs-4.2.2-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/plotly-5.24.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/ply-3.11-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/poppler-24.07.0-hb0d391f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/poppler-data-0.4.12-hd8ed1ab_0.conda
@@ -448,6 +450,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.5.1-py311hd632256_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scipy-1.14.0-py311h517d4fd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/scmrepo-0.2.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/seaborn-0.13.2-hd8ed1ab_2.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/seaborn-base-0.13.2-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh0d859eb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-71.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/shapely-2.0.5-py311h5925939_0.conda
@@ -470,8 +474,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/sqlite-3.46.0-h6d4b2fc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sqltrie-0.11.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/stack_data-0.6.2-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/statsmodels-0.14.2-py311h18e1886_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tabulate-0.9.0-pyhd8ed1ab_1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/tblib-3.0.0-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/tenacity-9.0.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/terminado-0.18.1-pyh0d859eb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/text-unidecode-1.3-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/threadpoolctl-3.5.0-pyhc1e730c_0.conda
@@ -875,6 +881,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/partd-1.4.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pathlib2-2.3.7.post1-py311h1ea47a8_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pathspec-0.12.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/patsy-0.5.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pcre2-10.44-h3d7b363_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pickleshare-0.7.5-py_1003.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/pillow-10.4.0-py311h5592be9_0.conda
@@ -882,6 +889,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pixman-0.43.4-h63175ca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pkgutil-resolve-name-1.3.10-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/platformdirs-4.2.2-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/plotly-5.24.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/ply-3.11-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/poppler-24.07.0-h686f694_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/poppler-data-0.4.12-hd8ed1ab_0.conda
@@ -947,6 +955,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/scikit-learn-1.5.1-py311hdcb8d17_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/scipy-1.14.0-py311hd4686c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/scmrepo-0.2.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/seaborn-0.13.2-hd8ed1ab_2.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/seaborn-base-0.13.2-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh5737063_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-71.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/shapely-2.0.5-py311hf837ac7_0.conda
@@ -969,9 +979,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/sqlite-3.46.0-h2466b09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sqltrie-0.11.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/stack_data-0.6.2-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/statsmodels-0.14.2-py311h0a17f05_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tabulate-0.9.0-pyhd8ed1ab_1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/tbb-2021.12.0-hc790b64_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tblib-3.0.0-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/tenacity-9.0.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/terminado-0.18.1-pyh5737063_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/text-unidecode-1.3-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/threadpoolctl-3.5.0-pyhc1e730c_0.conda
@@ -11920,6 +11932,25 @@ packages:
   size: 41173
   timestamp: 1702250135032
 - kind: conda
+  name: patsy
+  version: 0.5.6
+  build: pyhd8ed1ab_0
+  subdir: noarch
+  noarch: python
+  url: https://conda.anaconda.org/conda-forge/noarch/patsy-0.5.6-pyhd8ed1ab_0.conda
+  sha256: 35ad5cab1d9c08cf98576044bf28f75e62f8492afe6d1a89c94bbe93dc8d7258
+  md5: a5b55d1cb110cdcedc748b5c3e16e687
+  depends:
+  - numpy >=1.4.0
+  - python >=3.6
+  - six
+  license: BSD-2-Clause AND PSF-2.0
+  license_family: BSD
+  purls:
+  - pkg:pypi/patsy?source=conda-forge-mapping
+  size: 187218
+  timestamp: 1704469432353
+- kind: conda
   name: pcre2
   version: '10.44'
   build: h0f59acf_0
@@ -12135,6 +12166,27 @@ packages:
   - pkg:pypi/platformdirs?source=conda-forge-mapping
   size: 20572
   timestamp: 1715777739019
+- kind: conda
+  name: plotly
+  version: 5.24.0
+  build: pyhd8ed1ab_0
+  subdir: noarch
+  noarch: python
+  url: https://conda.anaconda.org/conda-forge/noarch/plotly-5.24.0-pyhd8ed1ab_0.conda
+  sha256: 5b30a1398cd2f5b748cec9353386a73f2f53027bffb77d18e828c16aab350dfd
+  md5: 80a4a0867ded2a66687e78bca0bc70fc
+  depends:
+  - packaging
+  - python >=3.6
+  - tenacity >=6.2.0
+  constrains:
+  - ipywidgets >=7.6
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/plotly?source=conda-forge-mapping
+  size: 5928034
+  timestamp: 1724987200192
 - kind: conda
   name: ply
   version: '3.11'
@@ -14256,6 +14308,49 @@ packages:
   size: 46734
   timestamp: 1680687602859
 - kind: conda
+  name: seaborn
+  version: 0.13.2
+  build: hd8ed1ab_2
+  build_number: 2
+  subdir: noarch
+  noarch: python
+  url: https://conda.anaconda.org/conda-forge/noarch/seaborn-0.13.2-hd8ed1ab_2.conda
+  sha256: 79943fbbf1fafbf969257989a7d88638c0c3e7b89a81a75c9347c28768dd6141
+  md5: a79d8797f62715255308d92d3a91ef2e
+  depends:
+  - seaborn-base 0.13.2 pyhd8ed1ab_2
+  - statsmodels >=0.12
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/seaborn?source=conda-forge-mapping
+  size: 6996
+  timestamp: 1714494772218
+- kind: conda
+  name: seaborn-base
+  version: 0.13.2
+  build: pyhd8ed1ab_2
+  build_number: 2
+  subdir: noarch
+  noarch: python
+  url: https://conda.anaconda.org/conda-forge/noarch/seaborn-base-0.13.2-pyhd8ed1ab_2.conda
+  sha256: 5de8b9e88a0f2daf58b07e3f144da26f894e9a20071304fa37329664eb2a29a7
+  md5: b713b116feaf98acdba93ad4d7f90ca1
+  depends:
+  - matplotlib-base >=3.4,!=3.6.1
+  - numpy >=1.20,!=1.24.0
+  - pandas >=1.2
+  - python >=3.8
+  - scipy >=1.7
+  constrains:
+  - seaborn =0.13.2=*_2
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/seaborn?source=conda-forge-mapping
+  size: 234550
+  timestamp: 1714494767378
+- kind: conda
   name: send2trash
   version: 1.8.3
   build: pyh0d859eb_0
@@ -14888,6 +14983,54 @@ packages:
   - pkg:pypi/stack-data?source=conda-forge-mapping
   size: 26205
   timestamp: 1669632203115
+- kind: conda
+  name: statsmodels
+  version: 0.14.2
+  build: py311h0a17f05_0
+  subdir: win-64
+  url: https://conda.anaconda.org/conda-forge/win-64/statsmodels-0.14.2-py311h0a17f05_0.conda
+  sha256: 467c62d9380a1643e786f881e3e3860e3903ad7ae38a48b74763fe9215750ee7
+  md5: 78ed821caeb6438c298cdacc69f0b3ea
+  depends:
+  - numpy >=1.19,<3
+  - packaging >=21.3
+  - pandas >=1.4,!=2.1.0
+  - patsy >=0.5.6
+  - python >=3.11,<3.12.0a0
+  - python_abi 3.11.* *_cp311
+  - scipy >=1.8,!=1.9.2
+  - ucrt >=10.0.20348.0
+  - vc >=14.2,<15
+  - vc14_runtime >=14.29.30139
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/statsmodels?source=conda-forge-mapping
+  size: 11829748
+  timestamp: 1715942260708
+- kind: conda
+  name: statsmodels
+  version: 0.14.2
+  build: py311h18e1886_0
+  subdir: linux-64
+  url: https://conda.anaconda.org/conda-forge/linux-64/statsmodels-0.14.2-py311h18e1886_0.conda
+  sha256: c43daa497cd56e918b84952f986106c02b416574529809bce2942145f33b97d8
+  md5: 82c29bf38b3fb66da09736106609b5fe
+  depends:
+  - libgcc-ng >=12
+  - numpy >=1.19,<3
+  - packaging >=21.3
+  - pandas >=1.4,!=2.1.0
+  - patsy >=0.5.6
+  - python >=3.11,<3.12.0a0
+  - python_abi 3.11.* *_cp311
+  - scipy >=1.8,!=1.9.2
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/statsmodels?source=conda-forge-mapping
+  size: 12350218
+  timestamp: 1715941661471
 - kind: pypi
   name: stopit
   version: 1.1.2
@@ -14947,6 +15090,23 @@ packages:
   - pkg:pypi/tblib?source=conda-forge-mapping
   size: 17386
   timestamp: 1702066480361
+- kind: conda
+  name: tenacity
+  version: 9.0.0
+  build: pyhd8ed1ab_0
+  subdir: noarch
+  noarch: python
+  url: https://conda.anaconda.org/conda-forge/noarch/tenacity-9.0.0-pyhd8ed1ab_0.conda
+  sha256: 0d33171e1d303b57867f0cfcffb8a35031700acb3c52b1862064d8f4e1085538
+  md5: 42af51ad3b654ece73572628ad2882ae
+  depends:
+  - python >=3.8
+  license: Apache-2.0
+  license_family: APACHE
+  purls:
+  - pkg:pypi/tenacity?source=conda-forge-mapping
+  size: 24683
+  timestamp: 1722278974784
 - kind: conda
   name: terminado
   version: 0.18.1
