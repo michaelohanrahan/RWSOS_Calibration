@@ -3,6 +3,7 @@ from pathlib import Path
 from setuplog import setup_logging
 import traceback
 import pandas as pd
+import dask
 
 
 def main(
@@ -12,6 +13,7 @@ def main(
     best_n: int = 10,
 ):
     l.info(f"Combining {len(files)} files to {out_nc}")
+    dask.config.set(**{'array.slicing.split_large_chunks': True})
     ds = xr.open_mfdataset(files, combine="by_coords")
     ds.to_netcdf(Path(out_nc))
     
@@ -48,7 +50,7 @@ def main(
     final_df.to_csv(out, index=False)
     # l.info(f"Processed and combined data saved to {out}")
     
-    with open(Path(out_nc).parent / "eval.done", "w") as f:
+    with open(Path(out_nc).parent / "level.done", "w") as f:
         f.write("")
     l.info(f"Saved {out_nc}")
 

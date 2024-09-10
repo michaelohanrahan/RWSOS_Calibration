@@ -292,38 +292,40 @@ for _level in range(last_level, last_level+1):
             performance_files=expand(Path(calib_dir, f"level{_level}", "{params}", "performance.nc"), params=params_L.instance_patterns)
         output: 
             performance = Path(calib_dir, f"level{_level}", "performance.zarr"),
-            best_params = Path(calib_dir, f"level{_level}", "best_params.csv") #defaults to best 10
-        localrule: True
+            best_params = Path(calib_dir, f"level{_level}", "best_params.csv"), #defaults to best 10
+            done = Path(calib_dir, f"level{_level}", "level.done")
+        localrule: False
         threads: 4
+        group: f"combine_performance_L{_level}"
         resources:
-            time = "01:00:00",
+            time = "3:00:00",
             mem_mb = 32000
         script:
             "src/calib/combine_evaluated.py"
 
-    '''
-    :: set params ::
-            This rule inherits the best parameters from the previous level and sets those within the base staticmaps. 
-            The previous level staticmaps is saved for posterity in the intermediate folder. 
-            The output is a set of staticmaps and a level.done file.
-    '''
+    # '''
+    # :: set params ::
+    #         This rule inherits the best parameters from the previous level and sets those within the base staticmaps. 
+    #         The previous level staticmaps is saved for posterity in the intermediate folder. 
+    #         The output is a set of staticmaps and a level.done file.
+    # '''
 
-    rule:
-        name: f"set_params_L{_level}"
-        input: 
-            best_params = Path(calib_dir, f"level{_level}", "best_params.csv"),
-        params:
-            staticmaps = staticmaps,
-            sub_catch = subcatch,
-            params_lname = lnames,
-            params_method = methods,
-            level=_level
-        localrule: True
-        output: 
-            done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
-            done = Path(calib_dir, f"level{_level}", "level.done")
-        script: 
-            """src/calib/set_eval_params.py"""
+    # rule:
+    #     name: f"set_params_L{_level}"
+    #     input: 
+    #         best_params = Path(calib_dir, f"level{_level}", "best_params.csv"),
+    #     params:
+    #         staticmaps = staticmaps,
+    #         sub_catch = subcatch,
+    #         params_lname = lnames,
+    #         params_method = methods,
+    #         level=_level
+    #     localrule: True
+    #     output: 
+    #         done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
+            
+    #     script: 
+    #         """src/calib/set_eval_params.py"""
 
 '''
 Preparing the final stage: This rule prepares the final stage of the calibration process.
