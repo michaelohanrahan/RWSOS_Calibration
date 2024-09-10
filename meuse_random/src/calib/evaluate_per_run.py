@@ -34,9 +34,34 @@ def parse_params_from_path(file_path):
     params_dict = {part.split('~')[0]:np.float64(part.split('~')[1]) for part in path_parts if '~' in part}  # Assuming the parameters are in the third last part of the path
     return params_dict
 
+
+
+def create_index_from_params(params: dict) -> pd.Index:
+    """
+    Create a Pandas Index from a single set of parameters.
+    
+    Args:
+        params (dict): Dictionary containing parameter names as keys and a single set of values.
+
+    Returns:
+        pd.Index: A Pandas Index object representing the single set of parameters.
+    """
+    keys = list(params.keys())
+    params_values = list(params.values())
+    
+    # index = pd.MultiIndex.from_tuples([tuple(params_values)], names=keys)
+    index = pd.Index([tuple(params_values)], name=tuple(keys))
+    return index
+
+def parse_params_from_path(file_path):
+    # Extract the part of the path that contains the parameters
+    path_parts = Path(file_path).parts
+    params_dict = {part.split('~')[0]:np.float64(part.split('~')[1]) for part in path_parts if '~' in part}  # Assuming the parameters are in the third last part of the path
+    return params_dict
+
 def main(
     l,
-    modelled: tuple | list,
+    modelled: Path | str,
     observed: Path | str,
     dry_month: list,
     window: int,
@@ -124,7 +149,13 @@ def main(
         l.info(f"Calculated peaks in {end-start} seconds")
     else:
         peaks = None
-
+    
+    md, obs = xr.align(md,obs, join='inner')
+    
+    l.info(f"sim time: {md.time}")
+    l.info(f"obs time: {obs.time}")
+    
+    
     # Calculate the metric values
     for metric in metrics:
         start = timer()
@@ -215,6 +246,8 @@ if __name__ == "__main__":
     This module is used to evaluate parameters for a model. 
 
     it will evaluate per run returning a netcdf file with the performance metrics for each run.
+    
+    This can be grouped across multiple cpus and thus is much more efficient than the old file loop. 
 
     """
     
@@ -225,7 +258,7 @@ if __name__ == "__main__":
             main(
                 l,
                 modelled=mod.input.sim,
-                observed=mod.params.observed_data,
+                observed=mod.params.observed,
                 dry_month=mod.params.dry_month,
                 window=mod.params.window,
                 gauges=mod.params.graph[f"level{mod.params.level}"]["elements"],
@@ -239,46 +272,37 @@ if __name__ == "__main__":
             )
 
         else:
-            from create_set_params import create_set
             import json
             import yaml            
-            from numpy import random
-            
-            gpath = r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\2-interim\Hall_levels_graph.json"
+            gpath = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/2-interim/Hall_levels_graph.json"
             
             with open(gpath) as f:
                 graph = json.load(f)
             
-            cfg = r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\config\calib.yml"
+            cfg = "/u/ohanrah/documents/RWSoS/RWSOS_Calibration/meuse_random/config/calib.yml"
             
             with open(cfg) as f:
                 cfg = yaml.safe_load(f)
             
-            lnames, methods, ds = create_set(r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\config\MINIMAL_calib_recipe.json")
-            
-            #random integer
-            randint = random.randint(0, len(ds))
-            
-            #random param combo
-            params = "".join([f"{col}~{val}/" for col, val in zip(ds.columns, ds.iloc[randint].values)])
-            
-            modelled = rf"p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/2-interim/calib_data/level0/{params}/output_scalar.nc"
-            print("Modelled file exists: ", Path(modelled).exists())
-            print("Metrics: ", cfg["metrics"][0:2])
-            print("Weights: ", cfg["weights"][0:2])
+            params = "ksat~1.06/f~1.5/rd~0.39/st~0.77/nr~1.0/ml~0.47/nl~1.02/nf~1.02"
+
+            params = {str(p.split("~")[0]):float(p.split("~")[1]) for p in params.split('/')}
+
+            modelled = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0/ksat~1.06/f~1.5/rd~0.39/st~0.77/nr~1.0/ml~0.47/nl~1.02/nf~1.02/output_scalar.nc"
+
             main(l,
                 modelled=modelled,
-                observed=r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\1-external\discharge_hourlyobs_HBV_combined.nc",
+                observed="/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/1-external/discharge_hourlyobs_smoothed.nc",
                 dry_month=[6, 7, 8],
                 window=60,
                 gid='Q_gauges_Hall',
                 gauges=graph["level0"]["elements"],
                 params=params,
-                starttime= "2008-01-01T01:00:00.000000000",
-                endtime="2018-02-22T00:00:00.000000000", 
-                metrics=cfg["metrics"][0:2],
-                weights=[0.5,0.5],
-                out=rf"p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/2-interim/calib_data/level0/{params}/evaluated.nc",
+                starttime= cfg["starttime"],
+                endtime=cfg["endtime"], 
+                metrics=cfg["metrics"],
+                weights=cfg["weights"],
+                out="/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0/ksat~1.06/f~1.5/rd~0.39/st~0.77/nr~1.0/ml~0.47/nl~1.02/nf~1.02/evaluated.nc",
             )
     except Exception as e:
         l.exception(e)

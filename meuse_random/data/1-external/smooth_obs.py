@@ -4,15 +4,15 @@ from scipy.ndimage import gaussian_filter1d
 import numpy as np
 
 
-ds = xr.open_dataset('discharge_hourlyobs_HBV_combined.nc')
-print(ds)
+ds = xr.open_dataset('p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/1-external/discharge_hourlyobs_HBV_combined.nc')
 
-t0='2017-06-25'
-t1='2017-07-30'
+# t0='2017-06-25'
+# t1='2017-07-30'
 sigma=5
 das = []
 for wflow_id in ds.wflow_id.values:
     da = ds.sel(
+        # time=slice(t0,t1),
         wflow_id=wflow_id, 
         runs='Obs.'
         ).Q
@@ -31,12 +31,16 @@ for wflow_id in ds.wflow_id.values:
         name='Q',
         attrs=da.attrs
         )
-    # print(da_smooth)
+    # fig, ax = plt.subplots(1,1, figsize=(10,10))
+    # da_smooth.plot(ax=ax)
+    # da.plot(ax=ax)
+    # plt.show()
     das.append(da_smooth)
+    # a
 ds_smooth = xr.Dataset({'Q':xr.concat(das, dim='wflow_id')})
 print(ds_smooth)
 
 ds_combined = xr.concat([ds.sel(runs='HBV'), ds_smooth], dim='runs')
 print(ds_combined)
 
-ds.to_netcdf('discharge_hourlyobs_smoothed.nc')
+ds_combined.to_netcdf('discharge_hourlyobs_smoothed.nc')

@@ -274,7 +274,7 @@ for _level in range(last_level, last_level+1):
             weights = config["weights"], 
             gaugeset = f"Q_gauges_{config['gauges']}", 
         localrule: False
-        group: f"evaluate_L{_level}"   #TODO: add this group to the config
+        group: f"evaluate_L{_level}"   
         output: 
             performance = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "performance.nc"),
             eval_done = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "evaluate.done")
@@ -283,7 +283,7 @@ for _level in range(last_level, last_level+1):
             time = "00:30:00",
             mem_mb = 8000
         script: 
-            """src/calib/evaluate_per_run.py""" # TODO: modify this script to submit multiple grouped jobs
+            """src/calib/evaluate_per_run.py""" 
 
     rule:
         name: f"combine_performance_L{_level}"
