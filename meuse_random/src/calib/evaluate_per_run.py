@@ -6,9 +6,9 @@ import xarray as xr
 from setuplog import setup_logging
 import traceback
 from timeit import default_timer as timer
-
 from metrics import kge, nselog_mm7q, mae_peak_timing, mape_peak_magnitude, weighted_euclidean
 from metrics import _obs_peaks, _sim_peaks
+from filelock import FileLock
 
 
 def create_index_from_params(params: dict) -> pd.Index:
@@ -117,6 +117,7 @@ def main(
         md = xr.open_dataset(_m)
         
     except Exception as e:
+        l.error(e)
         l.error(f"Failed to open modelled data from {_m}")
         l.error(traceback.format_exc())
     
@@ -189,7 +190,28 @@ def main(
         weights=weights,
         weighted=True,
     )
+    
+    # Extract the level from the modelled file path
+    # allowing easy access to eucldean 
+    level = None
+    for part in Path(_m).parts:
+        if "level" in part:
+            level = part
+            break
+    split = str(out).split(level)[0]
+    results_file = Path(split) / level / f"results_{level}.txt"
+    l.info(f"appending results to: {results_file}")
+     
+    # Append results to the specified results file
+    with open(results_file, 'a') as f:
+        # Write the header if the file is empty
+        if os.stat(results_file).st_size == 0:
+            header = "file_path," + ",".join(map(str, gauges)) + "\n"
+            f.write(header)
 
+        # Write the file path and distances
+        f.write(f"{Path(_m).parent}," + ",".join(map(str, res)) + "\n")
+    
     param_coords = create_index_from_params(params)
     
     ds = None
@@ -237,7 +259,7 @@ def main(
     
     with open(out_dir / "evaluate.done", "w") as f:
         f.write("")
-    
+        
 
 
 if __name__ == "__main__":
@@ -286,9 +308,9 @@ if __name__ == "__main__":
             
             params = "ksat~1.06/f~1.5/rd~0.39/st~0.77/nr~1.0/ml~0.47/nl~1.02/nf~1.02"
 
-            params = {str(p.split("~")[0]):float(p.split("~")[1]) for p in params.split('/')}
+            params_d = {str(p.split("~")[0]):float(p.split("~")[1]) for p in params.split('/')}
 
-            modelled = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0/ksat~1.06/f~1.5/rd~0.39/st~0.77/nr~1.0/ml~0.47/nl~1.02/nf~1.02/output_scalar.nc"
+            modelled = f"/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0/{params}/output_scalar.nc"
 
             main(l,
                 modelled=modelled,
@@ -297,7 +319,7 @@ if __name__ == "__main__":
                 window=60,
                 gid='Q_gauges_Hall',
                 gauges=graph["level0"]["elements"],
-                params=params,
+                params=params_d,
                 starttime= cfg["starttime"],
                 endtime=cfg["endtime"], 
                 metrics=cfg["metrics"],
