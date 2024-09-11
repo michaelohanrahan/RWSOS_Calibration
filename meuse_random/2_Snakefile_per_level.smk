@@ -110,7 +110,6 @@ We expect upon successfull completion that all gauges will have been visualized
 rule all:
     input: 
         expand(Path(inter_dir, "calib_data", "level{level}", "best_params.csv"), level=range(-1, last_level+1)),
-        expand(Path(inter_dir, "calib_data", "level{level}", "performance.zarr"), level=range(0, last_level+1)),
         expand(Path(calib_dir, f"level{level}", "level.done"), level=range(-1, last_level+1))
 
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
@@ -277,7 +276,8 @@ for _level in range(last_level, last_level+1):
         group: f"evaluate_L{_level}"   
         output: 
             performance = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "performance.nc"),
-            eval_done = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "evaluate.done")
+            eval_done = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "evaluate.done"),
+            results_file = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "results.csv")
         threads: 1
         resources: 
             time = "00:30:00",
@@ -289,12 +289,11 @@ for _level in range(last_level, last_level+1):
         name: f"combine_performance_L{_level}"
         input:
             done = expand(Path(calib_dir, f"level{_level}", '{params}', "evaluate.done"), params=params_L.instance_patterns),
-            performance_files=expand(Path(calib_dir, f"level{_level}", "{params}", "performance.nc"), params=params_L.instance_patterns)
+            results_file=Path(calib_dir, f"level{_level}",  f"results_level{_level}.txt")
         output: 
-            performance = Path(calib_dir, f"level{_level}", "performance.zarr"),
             best_params = Path(calib_dir, f"level{_level}", "best_params.csv"), #defaults to best 10
             done = Path(calib_dir, f"level{_level}", "level.done")
-        localrule: False
+        localrule: True
         threads: 4
         group: f"combine_performance_L{_level}"
         resources:
@@ -303,29 +302,6 @@ for _level in range(last_level, last_level+1):
         script:
             "src/calib/combine_evaluated.py"
 
-    # '''
-    # :: set params ::
-    #         This rule inherits the best parameters from the previous level and sets those within the base staticmaps. 
-    #         The previous level staticmaps is saved for posterity in the intermediate folder. 
-    #         The output is a set of staticmaps and a level.done file.
-    # '''
-
-    # rule:
-    #     name: f"set_params_L{_level}"
-    #     input: 
-    #         best_params = Path(calib_dir, f"level{_level}", "best_params.csv"),
-    #     params:
-    #         staticmaps = staticmaps,
-    #         sub_catch = subcatch,
-    #         params_lname = lnames,
-    #         params_method = methods,
-    #         level=_level
-    #     localrule: True
-    #     output: 
-    #         done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
-            
-    #     script: 
-    #         """src/calib/set_eval_params.py"""
 
 '''
 Preparing the final stage: This rule prepares the final stage of the calibration process.

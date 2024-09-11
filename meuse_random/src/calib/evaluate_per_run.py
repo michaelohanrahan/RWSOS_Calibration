@@ -34,8 +34,6 @@ def parse_params_from_path(file_path):
     params_dict = {part.split('~')[0]:np.float64(part.split('~')[1]) for part in path_parts if '~' in part}  # Assuming the parameters are in the third last part of the path
     return params_dict
 
-
-
 def create_index_from_params(params: dict) -> pd.Index:
     """
     Create a Pandas Index from a single set of parameters.
@@ -202,16 +200,8 @@ def main(
     results_file = Path(split) / level / f"results_{level}.txt"
     l.info(f"appending results to: {results_file}")
      
-    # Append results to the specified results file
-    with open(results_file, 'a') as f:
-        # Write the header if the file is empty
-        if os.stat(results_file).st_size == 0:
-            header = "file_path," + ",".join(map(str, gauges)) + "\n"
-            f.write(header)
+    append_results_to_file(results_file, gauges, _m, res, l)  # Call the new function
 
-        # Write the file path and distances
-        f.write(f"{Path(_m).parent}," + ",".join(map(str, res)) + "\n")
-    
     param_coords = create_index_from_params(params)
     
     ds = None
@@ -259,7 +249,22 @@ def main(
     
     with open(out_dir / "evaluate.done", "w") as f:
         f.write("")
-        
+
+
+def append_results_to_file(results_file: Path, gauges: list, _m: Path, res: np.ndarray, l) -> None:
+    """Append results to the specified results file with file locking."""
+    # Use FileLock to ensure safe file access
+    lock_path = results_file.with_suffix('.lock')
+    with FileLock(str(lock_path)):
+        # Append results to the specified results file
+        with open(results_file, 'a') as f:
+            # Write the header if the file is empty
+            if os.stat(results_file).st_size == 0:
+                header = "file_path," + ",".join(map(str, gauges)) + "\n"
+                f.write(header)
+
+            # Write the file path and distances
+            f.write(f"{parse_params_from_path(Path(_m))}," + ",".join(map(str, res)) + "\n")
 
 
 if __name__ == "__main__":
@@ -330,4 +335,3 @@ if __name__ == "__main__":
         l.exception(e)
         l.error(traceback.format_exc())
         raise e
-    
