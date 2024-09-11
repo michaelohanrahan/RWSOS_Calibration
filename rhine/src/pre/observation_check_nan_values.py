@@ -185,21 +185,22 @@ if __name__ == '__main__':
     data = compute_nan_percentage_and_valid_period(obs, time_range=('1996-01-01', None))
     data.to_csv(work_dir / 'nan_percentage_1996_2016_valid_period.csv', index=False)
     
-    # 
+    # test
+    data = pd.read_csv(work_dir / 'nan_percentage_1996_2016_valid_period.csv')
     
     # add gauges that have nan percentage > 60 to ignore_list.txt
     work_dir2 = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\2-interim')
     high_nan_gauge_ignore_list(data, threshold=60, wflow_id_exception=[705], work_dir=work_dir2)
     
-    # # plot
-    # plot_gauge_map_nan_percentage(data, work_dir, time_range=('1996', '2016'))
+    # plot
+    plot_gauge_map_nan_percentage(data, work_dir, time_range=('2005', '2016'))
     
     # Calculate statistics of nan_percentage
-    # nan_percentage_hist = data['nan_percentage_within_valid_period'].plot.hist(bins=20)
-    # plt.xlabel('NAN Percentage, 100%')
-    # plt.ylabel('Frequency')
-    # plt.title('Histogram of NaN Percentage')
-    # plt.show()
+    nan_percentage_hist = data['nan_percentage_within_valid_period'].plot.hist(bins=20)
+    plt.xlabel('NAN Percentage, 100%')
+    plt.ylabel('Frequency')
+    plt.title('Histogram of NaN Percentage')
+    plt.show()
     
     # # filter out high nan percentage data
     # data_filtered = data[data['nan_percentage'] <= 60]
@@ -210,4 +211,20 @@ if __name__ == '__main__':
     # data = pd.read_csv(work_dir / 'nan_percentage_1996_2016.csv')
     # obs_filtered = remove_gauge_from_obs(obs, data, threshold=60)
     # obs_filtered.to_netcdf(work_dir / 'discharge_obs_hr_FORMAT_allvars_filtered60.nc')
-
+    
+    # check the nan value in Main
+    # gauges selected
+    temp = pd.read_csv(r'c:\Users\deng_jg\work\temp.csv')
+    numbers = temp.values.flatten()
+    numbers = [int(num) for num in numbers if pd.notna(num)]
+    
+    # Check for missing data in obs xarray dataset for wflow_id = 172
+    missing_year = np.unique(obs.sel(wflow_id=172).Q.isnull().time.dt.year.values)
+    
+    for year in [1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 
+                 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 
+                 2014, 2015]:
+        percent = obs.sel(wflow_id=172, time=slice(year, year+1)).Q.isnull().values.mean()*100
+        print(f'year {year}: {percent}% missing')
+   
+     
