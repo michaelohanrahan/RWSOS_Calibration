@@ -221,10 +221,13 @@ if __name__ == '__main__':
     # Check for missing data in obs xarray dataset for wflow_id = 172
     missing_year = np.unique(obs.sel(wflow_id=172).Q.isnull().time.dt.year.values)
     
-    for year in [1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 
+    for gauge in numbers:
+        for year in [1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 
                  2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 
                  2014, 2015]:
-        percent = obs.sel(wflow_id=172, time=slice(year, year+1)).Q.isnull().values.mean()*100
-        print(f'year {year}: {percent}% missing')
+            percent = obs.sel(wflow_id=gauge, time=slice(str(year),str(year+1))).Q.isnull().values.mean()*100
+            print(f'gauge {gauge} year {year}: {percent}% missing')
+        
+    
    
      

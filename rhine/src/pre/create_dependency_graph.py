@@ -156,44 +156,44 @@ def find_longest_continuous_chain(graph):
 
 if __name__ == "__main__":
     
-    # work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine')
-    # cwd = work_dir
-    # new_root = work_dir / "data" / "2-interim" / "gaugesadded"
-    # basename = "Hall"
-    # gridfile = new_root / 'staticmaps' / 'staticmaps.nc'
-    # gaugeset = basename
-    # testmode = True
+    work_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine')
+    cwd = work_dir
+    new_root = work_dir / "data" / "2-interim" / "gaugesadded"
+    basename = "Hall"
+    gridfile = new_root / 'staticmaps' / 'staticmaps.nc'
+    gaugeset = basename
+    testmode = True
     
+    # # try:
     # try:
-    try:
-        gridfile = snakemake.input.gridfile
-        gaugeset = snakemake.params.gaugeset
-        testmode = False
+    #     gridfile = snakemake.input.gridfile
+    #     gaugeset = snakemake.params.gaugeset
+    #     testmode = False
 
-        # Set up logger
-        logger = setup_logger(Path.cwd(), 'create_dependency_graph.py')
+    #     # Set up logger
+    #     logger = setup_logger(Path.cwd(), 'create_dependency_graph.py')
 
-    except:
-        # Set up logger
-        logger = setup_logger(Path.cwd(), 'create_dependency_graph.py')
-        ap = AP.ArgumentParser()
-        ap.add_argument("cwd", type=str)
-        ap.add_argument("--gridfile", type=str, required=True)
-        ap.add_argument("--gaugeset", type=str, required=True)
-        ap.add_argument("--testmode", type=bool, default=True)
-        args = ap.parse_args()
+    # except:
+    #     # Set up logger
+    #     logger = setup_logger(Path.cwd(), 'create_dependency_graph.py')
+    #     ap = AP.ArgumentParser()
+    #     ap.add_argument("cwd", type=str)
+    #     ap.add_argument("--gridfile", type=str, required=True)
+    #     ap.add_argument("--gaugeset", type=str, required=True)
+    #     ap.add_argument("--testmode", type=bool, default=True)
+    #     args = ap.parse_args()
 
-        os.chdir(args.cwd)
-        gridfile = args.gridfile
-        gaugeset = args.gaugeset
-        testmode = args.testmode
+    #     os.chdir(args.cwd)
+    #     gridfile = args.gridfile
+    #     gaugeset = args.gaugeset
+    #     testmode = args.testmode
         
-        logger.info(f'cwd: {os.getcwd()}')
-        logger = setup_logger(os.getcwd(), 'create_dependency_graph.py')
-        logger.info(f'logger: {logger}')
-        logger.info(f'gridfile: {gridfile}')
-        logger.info(f'gaugeset: {gaugeset}')
-        logger.info(f'testmode: {testmode}')
+    #     logger.info(f'cwd: {os.getcwd()}')
+    #     logger = setup_logger(os.getcwd(), 'create_dependency_graph.py')
+    #     logger.info(f'logger: {logger}')
+    #     logger.info(f'gridfile: {gridfile}')
+    #     logger.info(f'gaugeset: {gaugeset}')
+    #     logger.info(f'testmode: {testmode}')
         
     ds = xr.open_dataset(gridfile)
 
@@ -207,10 +207,32 @@ if __name__ == "__main__":
         gauge_map=gauge,
         ldd_map=ldd,
     )
-    # # save levels_dict to json
-    # with open(work_dir / f'data/2-interim/{gaugeset}_levels_graph.json', "w") as f:
-    #     json.dump(levels_dict, f, indent=4)
-            
+    # save levels_dict to json
+    with open(work_dir / f'data/2-interim/{gaugeset}_levels_graph.json', "w") as f:
+        json.dump(levels_dict, f, indent=4)
+        
+    # read file
+    with open(work_dir / f'data/2-interim/Hall_levels_graph.json', "r") as f:
+        levels_dict = json.load(f)
+
+    # Create a pandas dataframe to store level information for each wflow_id
+    import pandas as pd
+    level_info_df = pd.DataFrame(columns=['wflow_id', 'level'])
+    for level, wflow_ids in levels_dict.items():
+        for wflow_id in wflow_ids:
+            level_info_df = pd.concat([level_info_df, pd.DataFrame({'wflow_id': [int(wflow_id)], 'level': [level]})], ignore_index=True)
+
+    level_info_df.to_csv(work_dir / f'data/2-interim/Hall_level_info.csv', index=False)
+
+
+
+
+
+
+    
+    # Count the number of gauges in each level
+    gauge_count_per_level = {level: len(gauges) for level, gauges in levels_dict.items()}
+
     
     logger.info(f"Graph for {gaugeset} has {len(graph.nodes)} nodes and {len(graph.edges)} edges")
     logger.info(f"Levels for {gaugeset} are: {levels_dict}")
