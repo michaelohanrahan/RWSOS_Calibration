@@ -56,8 +56,6 @@ def main(
     df = read_results_to_dataframe(results_file)
     # ic(df)
     
-    #conver level into its own int
-    level = int(level.split("level")[1])
     best_params = []
     for gauge in df.columns:
         #gauge is a float column
@@ -93,6 +91,7 @@ if __name__ == "__main__":
                 l,
                 snakemake.input.results_file,
                 snakemake.output.best_params,
+                snakemake.params.level,
             )
         else:
             base_dir = r"/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0"
@@ -101,7 +100,7 @@ if __name__ == "__main__":
             results_file = Path(base_dir) / "results_level0.txt"
             main(l,
                 results_file,
-                out="/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0/best_params_test.csv",
+                out="/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0/best_params.csv",
                 level="level0",
             )
     except Exception as e:

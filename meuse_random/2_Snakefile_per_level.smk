@@ -147,7 +147,7 @@ for _level in range(last_level, last_level+1):
             best_params_previous = Path(calib_dir, f"level{_level-1}", "best_params.csv")
         params:
             level = f"level{_level}",
-            params_df = df,
+            params_df = Path(calib_dir, f"level{_level}", "paramspace.csv"),
             graph = graph,                      # Hall_levels_graph.json
             graph_pred = graph_pred,            # Hall_pred_graph.json
             graph_node = graph_node,            # Hall_nodes_graph.json
@@ -277,22 +277,27 @@ for _level in range(last_level, last_level+1):
         output: 
             performance = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "performance.nc"),
             eval_done = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "evaluate.done"),
-            results_file = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "results.csv")
         threads: 1
         resources: 
             time = "00:30:00",
             mem_mb = 8000
         script: 
             """src/calib/evaluate_per_run.py""" 
+    
+    rule:
+        name: f"results_level{_level}"
+        output: touch(Path(calib_dir, f"level{_level}", f"results_level{_level}.txt"))
 
     rule:
         name: f"combine_performance_L{_level}"
         input:
             done = expand(Path(calib_dir, f"level{_level}", '{params}', "evaluate.done"), params=params_L.instance_patterns),
-            results_file=Path(calib_dir, f"level{_level}",  f"results_level{_level}.txt")
+            results_file=Path(calib_dir, f"level{_level}",  f"results_level{_level}.txt"),
+        params:
+            level = f"level{_level}"
         output: 
             best_params = Path(calib_dir, f"level{_level}", "best_params.csv"), #defaults to best 10
-            done = Path(calib_dir, f"level{_level}", "level.done")
+            done = Path(calib_dir, f"level{_level}", "level.done"),
         localrule: True
         threads: 4
         group: f"combine_performance_L{_level}"

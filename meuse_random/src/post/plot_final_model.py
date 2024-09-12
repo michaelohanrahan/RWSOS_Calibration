@@ -194,16 +194,16 @@ def main(
 
 if __name__ == "__main__":
     
-    work_dir = Path(r'p:\11209265-grade2023\wflow\wflow_meuse_julia').as_posix()
-    # files = glob(str(Path(work_dir, 'best_run_level*_result', 'output_run', 'output_scalar.nc')))
-    files = [r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\4-output\output_scalar_recovered.nc"]
+    work_dir = Path('/p/11209265-grade2023/wflow/wflow_meuse_julia').as_posix()
+    files = glob(str(Path(work_dir, 'best_run_level*_result', 'output_run', 'output_scalar.nc')))
+    # files = [r"p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/4-output/output_scalar_recovered.nc"]
     # files = [file for file in files if 'level0' not in file]
     
-    obs_data = Path(work_dir,'best_run_level-1_result', 'discharge_hourlyobs_HBV_combined.nc')
+    obs_data = Path('/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/1-external/discharge_hourlyobs_smoothed.nc').as_posix()
     GaugeToPlot = Path(work_dir, 'best_run_level-1_result','wflow_id_add_HBV_new.csv')
-    starttime = '2005-08-01'
-    endtime = '2007-12-31'
-    output_dir = Path(r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\5-visualization\best_params_eval").as_posix()
+    starttime = '2008-08-01'
+    endtime = '2018-02-01'
+    output_dir = Path("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/5-visualization/best_params_smoothed").as_posix()
     
     ds = main(
         md_data=files,

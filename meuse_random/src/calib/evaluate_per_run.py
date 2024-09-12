@@ -260,7 +260,7 @@ def append_results_to_file(results_file: Path, gauges: list, _m: Path, res: np.n
         with open(results_file, 'a') as f:
             # Write the header if the file is empty
             if os.stat(results_file).st_size == 0:
-                header = "file_path," + ",".join(map(str, gauges)) + "\n"
+                header = "params," + ",".join(map(str, gauges)) + "\n"
                 f.write(header)
 
             # Write the file path and distances

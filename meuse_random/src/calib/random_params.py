@@ -4,8 +4,10 @@ from pathlib import Path
 import random
 import xarray as xr
 from setuplog import setup_logging
+from latin_hyper_paramspace import create_set_all_levels
 import traceback
 import os 
+from icecream import ic
 
 def main(
     l,
@@ -19,8 +21,8 @@ def main(
 ):
     if level != 'level0':
         # load best_params_previous
-        best_params_previous = pd.read_csv(best_params_previous, index_col=[0, 1])
-        random_params = params_df
+        best_params_previous = pd.read_csv(best_params_previous, index_col=['level', 'gauge'])
+        random_params = pd.read_csv(params_df)
         
         # current level gauges
         gauges = graph[level]['elements']  # list of float
@@ -70,27 +72,17 @@ if __name__ == "__main__":
             out = snakemake.output.random_params
         else:
             try:
-                cwd = Path(r"c:\Users\deng_jg\work\05wflowRWS")
-                os.chdir(cwd)
-                data_dir = Path('UNREAL_TEST_DATA')
-                p = data_dir / 'staticmaps/staticmaps.nc'
                 
-                with open(data_dir/'create_set_params.pkl', 'rb') as f:
-                    d = pk.load(f)
+                # p = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/3-input/staticmaps/staticmaps.nc"
                 
-                params_lname = d['lnames']
-                params_method = d['methods']
-                params_df = d['ds']
-                graph = json.load(open(Path(data_dir, 'Hall_levels_graph.json')))
-                level = 'level0'
-                gauges = graph[level]['elements']
-                data = {
-                    'gauges': list(gauges),
-                    **{'Top_{}'.format(i): str(dict(params_df.iloc[random.randint(0, len(params_df)-1)])) for i in range(10+1)},
-                }
-                best_params_previous = pd.DataFrame(data)
-                best_params_previous = best_params_previous.set_index('gauges')
-                out = Path('data/2-interim', level, 'random_params.csv')
+                lnames, methods, all_level_df = create_set_all_levels(last_level=5, RECIPE="config/LHS_calib_recipe.json", N_SAMPLES=10, OPTIM='random-cd')
+                graph = json.load(open("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/Hall_levels_graph.json"))
+                graph_pred = json.load(open("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/Hall_pred_graph.json"))
+                graph_node = json.load(open("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/Hall_nodes_graph.json"))
+                level = 'level1'
+                best_params_previous = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0/best_params.csv"
+                params_df = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level1/paramspace.csv"
+                out = Path('data/2-interim','calib_data', level, 'random_params.csv')
                 
                 
             except Exception as e:

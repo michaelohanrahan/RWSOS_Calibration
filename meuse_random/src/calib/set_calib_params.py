@@ -8,8 +8,10 @@ from setuplog import setup_logging
 import shutil
 import traceback
 import os
+from latin_hyper_paramspace import create_set_all_levels
 import random
 import numpy as np
+import json
 
 def handle_cs(params_sname, params_lname, params_method):
     '''
@@ -63,8 +65,6 @@ def main(
     # Load original staticmaps
     ds = xr.open_dataset(p)
     
-   
-
     # Load the geometries
     vds = gpd.read_file(sub_catch)
     vds = vds.astype({"value": int})
@@ -77,8 +77,8 @@ def main(
     vds_current = vds[vds.value.isin(gauge_int)]
     mask = ds.raster.geometry_mask(vds_current)
     
+    # Go through all params and set the gauges
     for key, value in params.items():
-        # vds[key] = value   # what is this line used for?
         da = ds[params_sname_to_lname[key]]
         
         if params_sname_to_method[key] == "mult":
@@ -106,7 +106,7 @@ def main(
         
         # select matching row from random_params
         # masking matches exact param values, rather than indexing
-        _mask = pd.Series([True] * len(random_params))
+        _mask = pd.Series([True] * len(random_params), index=random_params.index)
         
         for key, value in params.items():
             _mask = _mask & (random_params[key] == value)
@@ -174,48 +174,23 @@ if __name__ == "__main__":
             )
 
         else:
-            from snakemake.utils import Paramspace
-            import json
-            import pickle as pk
+            p = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/3-input/staticmaps/staticmaps.nc"
             
-            work_dir = Path(r'p:\11209265-grade2023\wflow\UNREAL_TEST_DATA')
-            csv = pd.read_csv(work_dir / 'best_10params.csv', index_col='gauges')
-            csv.index=csv.index.astype(int)
-            
-            p = work_dir / 'staticmaps/staticmaps.nc'
-            
-            with open(work_dir/'create_set_params.pkl', 'rb') as f:
-                d = pk.load(f)
-            params_lname = d['lnames']
-            params_method = d['methods']
-            df = d['ds']
-            
-            paramspace = Paramspace(df)
-            params = paramspace.instance
-            
-            level = 'level0'
-            graph = json.load(open(Path(work_dir / 'Hall_levels_graph.json')))
-            nodes = json.load(open(Path(work_dir / 'Hall_nodes_graph.json')))
-            sub_catch = work_dir / 'subcatch_Hall.geojson'
-            
-            gauges = graph[level]['elements']
-            pprint(gauges)
-            csv['level'] = level
-            # print(csv.head(1))
-            def create_param(df):
-                param = {col:round(random.uniform(0, 2), 2) for col in df.columns}
-                return param
-            
-            data = {
-                'gauges': list(gauges),
-                **{'Top_{}'.format(i): str(create_param(df)) for i in range(10+1)},
-            }
-            
-            best_params = pd.DataFrame(data)
-
+            lnames, methods, all_level_df = create_set_all_levels(last_level=5, RECIPE="config/LHS_calib_recipe.json", N_SAMPLES=10, OPTIM='random-cd')
+            graph = json.load(open("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/Hall_levels_graph.json"))
+            graph_pred = json.load(open("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/Hall_pred_graph.json"))
+            graph_node = json.load(open("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/Hall_nodes_graph.json"))
+            level = 'level1'
+            best_params_previous = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0/best_params.csv"
+            params_df = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level1/paramspace.csv"
+            out = Path('data/2-interim','calib_data', level, 'random_params.csv')
+            params_dict = pd.read_csv(params_df, index_col=0)
+            params = params_dict.iloc[0].index
+            ic(params)
+            a
             main(
                 l,
-                p=r"p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse\data\3-input\staticmaps\staticmaps.nc",
+                p=p,
                 params=params,
                 params_lname=params_lname,
                 params_method=params_method,
