@@ -176,6 +176,7 @@ for _level in range(last_level, last_level+1):
             gaugemap=f"gauges_{config['gauges']}",
             wildness = params_L.wildcard_pattern,
         localrule: True
+        threads: 1
         output: 
             out_file=Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, config["wflow_cfg_name"])
         script:
@@ -206,6 +207,7 @@ for _level in range(last_level, last_level+1):
             sub_catch = subcatch,
             lake_in = lakes
         localrule: True
+        threads: 1
         output: 
             staticmaps = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "staticmaps.nc"),
             lake_out = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=params_L.wildcard_pattern, lakes=lakefiles)

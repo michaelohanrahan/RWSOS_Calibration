@@ -12,6 +12,8 @@ from latin_hyper_paramspace import create_set_all_levels
 import random
 import numpy as np
 import json
+from icecream import ic 
+import ast
 
 def handle_cs(params_sname, params_lname, params_method):
     '''
@@ -23,6 +25,7 @@ def handle_cs(params_sname, params_lname, params_method):
     new_method = []
 
     for sname, lname, method in zip(params_sname, params_lname, params_method):
+        # #ic(sname, lname, method)
         if ',' in lname:
             lnames = lname.split(',')
             snames = sname.split(',')
@@ -61,7 +64,8 @@ def main(
     params_sname_to_method = {sname: method for sname, method in zip(params_sname, params_method)}
     #dict of sname to lname
     params_sname_to_lname = {sname: lname for sname, lname in zip(params_sname, params_lname)}
-    
+    #ic(params_sname_to_method)
+    #ic(params_sname_to_lname)
     # Load original staticmaps
     ds = xr.open_dataset(p)
     
@@ -122,8 +126,12 @@ def main(
             vds_upgauge = vds[vds.value == upgauge]
             mask_up = ds.raster.geometry_mask(vds_upgauge)
             
+            #ic(random_params_sel[str(float(upgauge))])
+            #ic(random_params_sel[str(float(upgauge))].apply(eval))
+            #ic(random_params_sel[str(float(upgauge))].iloc[0])
+            #ic(ast.literal_eval(random_params_sel[str(float(upgauge))].iloc[0]))
             # select random paramset
-            random_paramset = random_params_sel[str(float(upgauge))].apply(eval)[0]
+            random_paramset = ast.literal_eval(random_params_sel[str(float(upgauge))].iloc[0])
             
             # modify staticmap based on the random paramset
             for key, value in random_paramset.items():
@@ -147,7 +155,7 @@ def main(
     for lin, lout in zip(lakes_in, lakes_out):
         if not os.path.exists(lout):
             shutil.copy(lin, lout)
-            l.info(f"Copying {lin} to {lout}")
+            # l.info(f"Copying {lin} to {lout}")
 
 
 if __name__ == "__main__":
@@ -175,32 +183,48 @@ if __name__ == "__main__":
 
         else:
             p = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/3-input/staticmaps/staticmaps.nc"
-            
-            lnames, methods, all_level_df = create_set_all_levels(last_level=5, RECIPE="config/LHS_calib_recipe.json", N_SAMPLES=10, OPTIM='random-cd')
+            p_out = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level1/staticmaps_test.nc"
+            params_lname, params_method, all_level_df = create_set_all_levels(last_level=5, RECIPE="config/LHS_calib_recipe.json", N_SAMPLES=10, OPTIM='random-cd')
+            sub_catch = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/3-input/staticgeoms/subcatch_Hall.geojson"
+            lakes_in = ["/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/3-input/staticmaps/lake_hq_1.csv",
+                        "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/3-input/staticmaps/lake_hq_2.csv",
+                        "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/3-input/staticmaps/lake_hq_3.csv"]
             graph = json.load(open("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/Hall_levels_graph.json"))
             graph_pred = json.load(open("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/Hall_pred_graph.json"))
             graph_node = json.load(open("/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/Hall_nodes_graph.json"))
             level = 'level1'
             best_params_previous = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level0/best_params.csv"
             params_df = "/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level1/paramspace.csv"
-            out = Path('data/2-interim','calib_data', level, 'random_params.csv')
-            params_dict = pd.read_csv(params_df, index_col=0)
-            params = params_dict.iloc[0].index
-            ic(params)
-            a
+            random_params = Path('data/2-interim','calib_data', level, 'random_params.csv')
+            params_df = pd.read_csv(params_df, index_col=0)
+            # ic(params_df)
+            # ic(params_df.iloc[0])
+            params_cols = params_df.columns
+            params_values = params_df.iloc[0].values
+            params = dict(zip(params_cols, params_values))
+            
+            params_sname = list(all_level_df.columns)
+            #replace 'nl' with 'nl,nf'
+            params_sname = [param.replace('nl', 'nl,nf') for param in params_sname]
+            params_sname = tuple(params_sname)
+            lakes_out = [f"/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level1/ksat~{params['ksat']}/f~{params['f']}/rd~{params['rd']}/st~{params['st']}/nr~{params['nr']}/ml~{params['ml']}/nl~{params['nl']}/nf~{params['nf']}/lake_hq_1.csv",
+                        f"/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level1/ksat~{params['ksat']}/f~{params['f']}/rd~{params['rd']}/st~{params['st']}/nr~{params['nr']}/ml~{params['ml']}/nl~{params['nl']}/nf~{params['nf']}/lake_hq_2.csv",
+                        f"/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/2-interim/calib_data/level1/ksat~{params['ksat']}/f~{params['f']}/rd~{params['rd']}/st~{params['st']}/nr~{params['nr']}/ml~{params['ml']}/nl~{params['nl']}/nf~{params['nf']}/lake_hq_3.csv"]
+            
             main(
                 l,
                 p=p,
                 params=params,
+                params_sname=params_sname,
                 params_lname=params_lname,
                 params_method=params_method,
                 random_params=random_params,
-                level=mod.params.level,
-                graph=mod.params.graph,
-                sub_catch=mod.params.sub_catch,
-                lakes_in=mod.params.lake_in,
-                lakes_out=mod.output.lake_out, 
-                out=mod.output.staticmaps,
+                level=level,
+                graph=graph,
+                sub_catch=sub_catch,
+                lakes_in=lakes_in,
+                lakes_out=lakes_out, 
+                out=p_out,
             )
     except Exception as e:
         l.error(traceback.format_exc())
