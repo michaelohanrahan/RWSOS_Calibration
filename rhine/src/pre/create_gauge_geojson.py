@@ -7,19 +7,23 @@ from shapely.geometry import Point
 
 def main(root: str,
          observations: str,
-         selected_gauge: str,
+         selected_gauge: str | None,
          outdir: str):
     # Create a geojson file for the gauges
     work_dir = Path(root)
     fn_obs = work_dir / observations
-    fn_selected_gauge = work_dir / selected_gauge
     
     obs = xr.open_dataset(fn_obs)
-    df = pd.read_csv(fn_selected_gauge)
     
-    # extract numbers (gauge wflow_id from dataframe)
-    _temp = df.values.flatten()
-    sel_gauges = [int(num) for num in _temp if pd.notna(num)]
+    if selected_gauge is None:
+        # If no path for selected_gauge, select all wflow_id from obs
+        sel_gauges = obs['wflow_id'].values.tolist()
+    else:
+        fn_selected_gauge = work_dir / selected_gauge
+        df = pd.read_csv(fn_selected_gauge)
+        # extract numbers (gauge wflow_id from dataframe)
+        _temp = df.values.flatten()
+        sel_gauges = [int(num) for num in _temp if pd.notna(num)]
     
     stations_data = []
     
@@ -47,11 +51,11 @@ if __name__ == '__main__':
     
     root = r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine'
     observations = r'data/1-external/discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc'
-    selected_gauge = r'data/2-interim/manually_selected_gauges.csv'
-    outdir = r"data/2-interim/gaugesadded/all_stations.geojson"
+    # selected_gauge = r'data/2-interim/manually_selected_gauges.csv'
+    outdir = r"data/2-interim/gaugesadded/obs_stations.geojson"
     
-    main(root,
-         observations,
-         selected_gauge,
-         outdir)
+    main(root=root,
+         observations=observations,
+         selected_gauge=None,
+         outdir=outdir)
     
