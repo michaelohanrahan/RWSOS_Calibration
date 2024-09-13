@@ -1,0 +1,68 @@
+## General
+# Setting data for calibration
+calib_recipe: "config/LHS_calib_recipe.json"
+basin: "meuse_random"
+N_SAMPLES: 30
+level: 0
+
+base_dir: "/afrijnmaas/Data/RWSOS_Calibration"
+log_dir: "data/0-log"
+source_dir: "data/1-external"
+inter_dir: "data/2-interim"
+input_dir: "data/3-input"
+output_dir: "data/4-output"
+vis_dir: "data/5-visualization"
+
+#Observations
+source_forcing_data: "forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
+observed_data: "discharge_hourlyobs_smoothed.nc"
+
+#The blueprint files to work with
+base_config: "wflow_sbm_template.toml"
+base_staticmaps: "staticmaps/staticmaps.nc"
+
+# Which gauges (subcatchments) to calibrate over (needs matching observed data)
+gauges: "Hall"
+
+#ksathorfrac ML map model
+ksathorfrac_map: "BRT_"
+soilthickness_map: "SoilThickness_manual_cal"
+
+
+# ========= CALIBRATION =========
+#instate period (needs to run every time there is a new level introduced)
+# instate_starttime: "2006-01-01T00:00:00"
+# instate_endtime: "2007-12-31T23:00:00"
+
+# Settings the config file
+starttime: "2007-01-01T00:00:00"
+endtime: "2018-02-22T00:00:00"
+
+#per run evaluate
+cal_eval_starttime: "2008-08-01T00:00:00"
+cal_eval_endtime: "2018-02-22T00:00:00"
+
+
+#========= EVALUATION =========
+eval_instart: "2005-01-01T00:00:00"
+eval_inend: "2006-12-31T23:00:00"
+eval_runstart: "2005-01-01T00:00:00"
+eval_runend: "2018-02-22T00:00:00"
+eval_starttime: "2005-08-01T00:00:00" #Start after some time where instates have stabilized
+eval_endtime: "2007-12-31T23:00:00" #End before the calibration period
+timestep: 3600
+# Evaluation and finalizing per level
+metrics: ["kge", "nselog_mm7q", "mae_peak_timing", "mape_peak_magnitude"]
+dry_months: [6, 7, 8, 9, 10]
+window: 72
+weights: [0.2, 0.25, 0.3, 0.25]
+
+# Running model
+wflow_cfg_name: "wflow_sbm.toml"
+wflow_project_dir: "../bin/"
+wflow_threads: 4
+
+# Post processing
+hydro_period_startdate: ["2006-08-01", "2010-08-01", "2016-08-01"]
+hydro_period_length: [500, 500, 500]
+hydro_period_unit: "D"
