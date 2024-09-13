@@ -1,8 +1,17 @@
 import numpy as np
+from scipy import stats
+
+# ------------ Calculate NSE and NSE log and KGE--------------
+def _kge(obs, sim):
+    r, _ = stats.pearsonr(obs, sim)
+    alpha = sim.std() / obs.std()
+    beta = sim.mean() / obs.mean()
+    value = (1 * (r - 1)**2 + 1 * (alpha - 1)**2 + 1 * (beta - 1)**2)
+    return 1 - np.sqrt(float(value))
 
 
-# ------------ Calculate NSE and NSE log --------------
-def calculate_nse_and_log_nse(observed, modelled):
+
+def calculate_nse_and_log_nse_kge(observed, modelled):
     """
     Calculates the Nash-Sutcliffe Efficiency (NSE) and Log-Nash-Sutcliffe Efficiency (NSE_log) 
     between observed and modelled data.
@@ -29,6 +38,8 @@ def calculate_nse_and_log_nse(observed, modelled):
     log_numerator = np.sum((np.log(observed + 1) - np.log(modelled + 1)) ** 2)
     log_denominator = np.sum((np.log(observed + 1) - np.log(obs_mean + 1)) ** 2)
     nse_log = 1 - (log_numerator / log_denominator)
+    
+    kge = _kge(observed, modelled)  
 
-    return nse, nse_log
-
+    return nse, nse_log, kge
+    

@@ -5,7 +5,7 @@ import xarray as xr
 import plotly.graph_objects as go
 from datetime import datetime
 # from hydromt_wflow import WflowModel
-from metrics.objective_fn import calculate_nse_and_log_nse
+from metrics.objective_fn import calculate_nse_and_log_nse_kge
 import traceback
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -58,12 +58,12 @@ def plot_peaks_ts(ds:xr.Dataset,
             sim_filtered = sim.Q[mask]
             
             
-            if len(obs_filtered) == len(sim_filtered):
-                nse, nse_log = calculate_nse_and_log_nse(obs_filtered, sim_filtered)
+            if len(obs_filtered) == len(sim_filtered) and len(obs_filtered) >= 2 and len(sim_filtered) >= 2:
+                nse, nse_log, kge = calculate_nse_and_log_nse_kge(obs_filtered, sim_filtered)
                 # print('nse, nse_log', (nse, nse_log))
                 
             else:
-                nse, nse_log = np.nan, np.nan
+                nse, nse_log, kge = np.nan, np.nan, np.nan
                 # print('nse, nse_log = np.nan, np.nan')    
                 # print(f'len(obs_filtered) {len(obs_filtered)} != len(sim_filtered) {len(sim_filtered)}')
             
@@ -91,7 +91,7 @@ def plot_peaks_ts(ds:xr.Dataset,
                         
             else:
                 try:
-                    label = f"{run}: {np.mean(peak_dict[station_id][run]['timing_errors']):.2f} +/- {np.std(peak_dict[station_id][run]['timing_errors']):.2f}h" + "\nNSE:" + f"{nse:.3f}" + " NSE<sub>log</sub>:" + f"{nse_log:.3f}"
+                    label = f"{run}: {np.mean(peak_dict[station_id][run]['timing_errors']):.2f} +/- {np.std(peak_dict[station_id][run]['timing_errors']):.2f}h" + "\nNSE:" + f"{nse:.3f}" + " NSE<sub>log</sub>:" + f"{nse_log:.3f}" +" KGE:" + f"{kge:.3f}"
                     
                     fig.add_trace(go.Scatter(
                         x=sim.time.values,
