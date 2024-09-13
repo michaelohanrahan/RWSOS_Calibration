@@ -7,60 +7,53 @@ printshellcmds: True
 scheduler: greedy
 restart-times: 2
 forceall: False
-max-jobs-per-second: 4
+max-jobs-per-second: 600
 max-status-checks-per-second: 1
-jobs: 60
+jobs: 600
 rerun-triggers: mtime
 
 #successor to --cluster must be installed with pip snakemake-executor-plugin-cluster-generic  (1.0.9)
 #TODO: make appropriate for SPIDER
 #-N
 #-c
-#-t 
+#-t
 cluster-generic-submit-cmd:
-  mkdir -p /u/ohanrah/documents/RWSoS/RWSOS_Calibration/meuse_random/data/0-log/{name} &&
+  mkdir -p /project/afrijnmaas/Data/RWSOS_Calibration/meuse_random/data/0-log/spider/{name} &&
   sbatch
     --time={resources.time}
     --get-user-env
     --qos={resources.qos}sacct
     --cpus-per-task={threads}
     --job-name={name}_{jobid}
-    --output=home/username/RWSOS_Calibration/meuse_random/data/0-log/{name}/{jobid}.log
-    
+    --output=/project/afrijnmaas/Data/RWSOS_Calibration/meuse_random/data/0-log/spider/{name}/{jobid}.log
+
 #scontrol show partition 4pcpu shows unlimited mem
 default-resources:
-  - partition="4pcpu"
+  - partition="normal"
   - qos="sbatch"
-  - time="15-12:00:00"
+  - time="00-12:00:00"
   - mem_mb=32768 #32gb
 
-cores: 4
-local-cores: 4
+# cores: 4
+# local-cores: 4
 
-group-components:
-  - evaluate_L0=4
-  - evaluate_L1=4
-  - evaluate_L2=4
-  - evaluate_L3=4
-  - evaluate_L4=4
-  - evaluate_L5=4
-  - instate_L0=4
-  - instate_L1=4
-  - instate_L2=4
-  - instate_L3=4
-  - instate_L4=4
-  - instate_L5=4
-  - wflow_L0=4
-  - wflow_L1=4
-  - wflow_L2=4
-  - wflow_L3=4
-  - wflow_L4=4
-  - wflow_L5=4
-
-
-
-
-
-
-
+# group-components:
+#   - evaluate_L0=4
+#   - evaluate_L1=4
+#   - evaluate_L2=4
+#   - evaluate_L3=4
+#   - evaluate_L4=4
+#   - evaluate_L5=4
+#   - instate_L0=4
+#   - instate_L1=4
+#   - instate_L2=4
+#   - instate_L3=4
+#   - instate_L4=4
+#   - instate_L5=4
+#   - wflow_L0=4
+#   - wflow_L1=4
+#   - wflow_L2=4
+#   - wflow_L3=4
+#   - wflow_L4=4
+#   - wflow_L5=4
 
