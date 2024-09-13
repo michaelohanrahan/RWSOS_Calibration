@@ -72,8 +72,18 @@ def main(
     
     #TODO: Add the level column to best_params csv
     # Convert the results to a DataFrame and save as CSV
-    final_df = pd.DataFrame(best_params)
-    final_df['level'] = level
+    if level == 0:
+        final_df = pd.DataFrame(best_params)
+        final_df['level'] = level
+    else:
+        inter_df = pd.DataFrame(best_params)
+        inter_df['level'] = level
+        prev_df = pd.read_csv(Path(out).parent.parent / f"level{level-1}" / "best_params.csv")
+        # append the new rows, there will be an extension of gauges and level, 
+        # but the columns will be the same Top_1 ... Top_n
+        final_df = pd.concat([prev_df, inter_df], ignore_index=True)
+        # this way the next phase has access to the best 10 of all levels
+    
     # ic(final_df)
     final_df.to_csv(out, index=False)
     
