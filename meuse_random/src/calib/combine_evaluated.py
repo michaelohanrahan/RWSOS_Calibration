@@ -72,6 +72,7 @@ def main(
 
     #TODO: Add the level column to best_params csv
     # Convert the results to a DataFrame and save as CSV
+    level = int(level)
     if level == 0:
         final_df = pd.DataFrame(best_params)
         final_df['level'] = level
