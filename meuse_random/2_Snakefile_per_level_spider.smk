@@ -235,7 +235,7 @@ for _level in range(last_level, last_level+1):
         # localrule: False
         # group: f"wflow_L{_level}"
         resources:
-            time = "12:00:00",
+            time = "18:00:00",
             mem_mb = 8000
         run:
             shell(
@@ -244,9 +244,13 @@ for _level in range(last_level, last_level+1):
                     --bind {tmp_model_dir}:/data \
                     --bind {tmp_base_toml}:/data/wflow_sbm.toml \
                     --bind {tmp_forcing_fn}:/data/inmaps.nc \
-                    --writable-tmpfs \
                     {wflow_container} "using Wflow; Wflow.run()" "/data/wflow_sbm.toml"
-                """.format(tmp_base_toml = base_toml, tmp_forcing_fn=forcing_fn, tmp_model_dir=Path(input.staticmaps).parent, wflow_container=wflow_container)
+                """.format(
+                    tmp_base_toml = base_toml,
+                    tmp_forcing_fn=forcing_fn,
+                    tmp_model_dir=Path(input.staticmaps).parent,
+                    wflow_container=wflow_container,
+                    )
             )
     rule:
         name: f"done_L{_level}"
