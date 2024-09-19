@@ -2,7 +2,7 @@
 # Setting data for calibration
 calib_recipe: "config/LHS_calib_recipe.json"
 basin: "meuse_random"
-N_SAMPLES: 30
+N_SAMPLES: 3000
 level: 0
 
 base_dir: "/afrijnmaas/Data/RWSOS_Calibration"

@@ -114,7 +114,6 @@ We expect upon successfull completion that all gauges will have been visualized
 rule all:
     input:
         expand(Path(inter_dir, "calib_data", "level{level}", "best_params.csv"), level=range(-1, last_level+1)),
-        expand(Path(inter_dir, "calib_data", "level{level}", "performance.zarr"), level=range(0, last_level+1)),
         expand(Path(calib_dir, f"level{level}", "level.done"), level=range(-1, last_level+1))
 
 #THIS RULE ALLOWS RECURSIVE DEPENDENCY
@@ -152,7 +151,7 @@ for _level in range(last_level, last_level+1):
             best_params_previous = Path(calib_dir, f"level{_level-1}", "best_params.csv")
         params:
             level = f"level{_level}",
-            params_df = df,
+            params_df = Path(calib_dir, f"level{_level}", "paramspace.csv"),
             graph = graph,                      # Hall_levels_graph.json
             graph_pred = graph_pred,            # Hall_pred_graph.json
             graph_node = graph_node,            # Hall_nodes_graph.json
@@ -181,6 +180,7 @@ for _level in range(last_level, last_level+1):
             gaugemap=f"gauges_{config['gauges']}",
             wildness = params_L.wildcard_pattern,
         # localrule: True
+        # threads: 1
         output:
             out_file=Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, config["wflow_cfg_name"])
         script:
@@ -198,8 +198,8 @@ for _level in range(last_level, last_level+1):
     rule:
         name: f"create_params_L{_level}"
         input:
-            config_fn = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, config["wflow_cfg_name"]), #wait for the config to be done
-            random_params = Path(calib_dir, f"level{_level}", "random_params.csv"),
+            Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, config["wflow_cfg_name"]), #wait for the config to be done
+            random_params = Path(calib_dir, f"level{_level}", "random_params.csv")
         params:
             dataset = staticmaps,
             params = params_L.instance,
@@ -211,10 +211,10 @@ for _level in range(last_level, last_level+1):
             sub_catch = subcatch,
             lake_in = lakes
         # localrule: True
+        # threads: 1
         output:
             staticmaps = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "staticmaps.nc"),
-            # model_dir = directory(Path(calib_dir, f"level{_level}", params_L.wildcard_pattern)),
-            lake_out = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=params_L.wildcard_pattern, lakes=lakefiles),
+            lake_out = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=params_L.wildcard_pattern, lakes=lakefiles)
         script:
             """src/calib/set_calib_params.py"""
 
@@ -227,16 +227,15 @@ for _level in range(last_level, last_level+1):
         input:
             cfg = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, config["wflow_cfg_name"]),
             staticmaps = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "staticmaps.nc"),
-            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=params_L.wildcard_pattern, lakes=lakefiles),
-            # model_dir = directory(Path(calib_dir, f"level{_level}", params_L.wildcard_pattern))
+            lake_hqs = expand(Path(calib_dir, f"level{_level}", "{params}", "{lakes}"), params=params_L.wildcard_pattern, lakes=lakefiles)
         params:
-            project = Path(base_dir, "bin").as_posix(),
+            project = Path(base_dir, "bin").as_posix()
         output:
-            Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "output_scalar.nc"),
+            Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "output_scalar.nc")
         # localrule: False
         # group: f"wflow_L{_level}"
         resources:
-            time = "12:00:00",
+            time = "18:00:00",
             mem_mb = 8000
         run:
             shell(
@@ -245,9 +244,13 @@ for _level in range(last_level, last_level+1):
                     --bind {tmp_model_dir}:/data \
                     --bind {tmp_base_toml}:/data/wflow_sbm.toml \
                     --bind {tmp_forcing_fn}:/data/inmaps.nc \
-                    --writable-tmpfs \
                     {wflow_container} "using Wflow; Wflow.run()" "/data/wflow_sbm.toml"
-                """.format(tmp_base_toml = base_toml, tmp_forcing_fn=forcing_fn, tmp_model_dir=Path(input.staticmaps).parent, wflow_container=wflow_container)
+                """.format(
+                    tmp_base_toml = base_toml,
+                    tmp_forcing_fn=forcing_fn,
+                    tmp_model_dir=Path(input.staticmaps).parent,
+                    wflow_container=wflow_container,
+                    )
             )
     rule:
         name: f"done_L{_level}"
@@ -283,53 +286,63 @@ for _level in range(last_level, last_level+1):
             weights = config["weights"],
             gaugeset = f"Q_gauges_{config['gauges']}",
         # localrule: False
-        # group: f"evaluate_L{_level}"   #TODO: add this group to the config
+        # group: f"evaluate_L{_level}"
         output:
             performance = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "performance.nc"),
             eval_done = Path(calib_dir, f"level{_level}", params_L.wildcard_pattern, "evaluate.done"),
+        # threads: 1
         resources:
             time = "00:30:00",
             mem_mb = 8000
         script:
-            """src/calib/evaluate_per_run.py""" # TODO: modify this script to submit multiple grouped jobs
+            """src/calib/evaluate_per_run.py"""
+
+    rule:
+        name: f"results_level{_level}"
+        output: touch(Path(calib_dir, f"level{_level}", f"results_level{_level}.txt"))
 
     rule:
         name: f"combine_performance_L{_level}"
         input:
             done = expand(Path(calib_dir, f"level{_level}", '{params}', "evaluate.done"), params=params_L.instance_patterns),
-            performance_files=expand(Path(calib_dir, f"level{_level}", "{params}", "performance.nc"), params=params_L.instance_patterns)
+            results_file=Path(calib_dir, f"level{_level}",  f"results_level{_level}.txt"),
+        params:
+            level = f"level{_level}"
         output:
-            performance = Path(calib_dir, f"level{_level}", "performance.zarr"),
-            best_params = Path(calib_dir, f"level{_level}", "best_params.csv") #defaults to best 10
+            best_params = Path(calib_dir, f"level{_level}", "best_params.csv"), #defaults to best 10
+            done = Path(calib_dir, f"level{_level}", "level.done"),
+        # localrule: True
+        # threads: 4
+        # group: f"combine_performance_L{_level}"
         resources:
-            time = "01:00:00",
+            time = "3:00:00",
             mem_mb = 32000
         script:
             "src/calib/combine_evaluated.py"
 
-    '''
-    :: set params ::
-            This rule inherits the best parameters from the previous level and sets those within the base staticmaps.
-            The previous level staticmaps is saved for posterity in the intermediate folder.
-            The output is a set of staticmaps and a level.done file.
-    '''
+    # '''
+    # :: set params ::
+    #         This rule inherits the best parameters from the previous level and sets those within the base staticmaps.
+    #         The previous level staticmaps is saved for posterity in the intermediate folder.
+    #         The output is a set of staticmaps and a level.done file.
+    # '''
 
-    rule:
-        name: f"set_params_L{_level}"
-        input:
-            best_params = Path(calib_dir, f"level{_level}", "best_params.csv"),
-        params:
-            staticmaps = staticmaps,
-            sub_catch = subcatch,
-            params_lname = lnames,
-            params_method = methods,
-            level=_level
-        # localrule: True
-        output:
-            done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
-            done = Path(calib_dir, f"level{_level}", "level.done")
-        script:
-            """src/calib/set_eval_params.py"""
+    # rule:
+    #     name: f"set_params_L{_level}"
+    #     input:
+    #         best_params = Path(calib_dir, f"level{_level}", "best_params.csv"),
+    #     params:
+    #         staticmaps = staticmaps,
+    #         sub_catch = subcatch,
+    #         params_lname = lnames,
+    #         params_method = methods,
+    #         level=_level
+    #     # localrule: True
+    #     output:
+    #         done_nc = Path(input_dir, "staticmaps", "intermediate", f"staticmaps_L{_level-1}.nc"),
+    #         done = Path(calib_dir, f"level{_level}", "level.done")
+    #     script:
+    #         """src/calib/set_eval_params.py"""
 
 '''
 Preparing the final stage: This rule prepares the final stage of the calibration process.
