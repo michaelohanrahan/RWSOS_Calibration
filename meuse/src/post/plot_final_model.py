@@ -214,7 +214,7 @@ if __name__ == "__main__":
     files = [rf'{DRIVE}/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/4-output/output_scalar.nc']
     # files = [file for file in files if 'level0' not in file]
     
-    obs_data = Path(work_dir,'best_run_level-1_result', 'discharge_hourlyobs_HBV_combined.nc')
+    obs_data = Path(work_dir, '..', "RWSOS_Calibration", "meuse_random", "data", "1-external", 'discharge_hourlyobs_smoothed.nc')
     GaugeToPlot = Path(work_dir, 'best_run_level-1_result','wflow_id_add_HBV_new.csv')
     starttime = '2005-08-01'
     endtime = '2007-12-31'
