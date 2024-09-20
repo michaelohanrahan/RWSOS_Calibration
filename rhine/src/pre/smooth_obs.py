@@ -1,79 +1,148 @@
-import xarray as xr
-import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter1d
-import numpy as np
 from pathlib import Path
-
-root_dir = Path(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine')
-observations_path = root_dir / 'data/1-external/discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc'
-ds = xr.open_dataset(observations_path)
-time_range=('1996', None)
-
-sigma=5
-wflow_ids = [425, 576, 539, 704, 423, 476]
-
-da = ds.sel(wflow_id=425, runs='Obs.', time=slice(*time_range)).Q
-count1 = np.count_nonzero(~np.isnan(da.values))
-da_smooth = xr.DataArray(
-    gaussian_filter1d(da.values, sigma=sigma, mode='nearest'),
-    dims=da.dims,
-    coords=da.coords,
-    name='Q',
-    attrs=da.attrs
-)
-count2 = np.count_nonzero(~np.isnan(da_smooth.values))
-print(f"{'*'*10} {425} {'*'*10}")
-print(f"data points before: {count1}, after: {count2}")
-print(f"data matches time dimension: {len(da.time.values) == len(da_smooth.time.values)}")
-
-# Plotting da and da_smooth
+import numpy as np
+import xarray as xr
+import pandas as pd
+from scipy.ndimage import gaussian_filter1d
+from scipy.stats import pearsonr
+import seaborn as sns
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=da.time, y=da, mode='lines', name='Original Data'))
-fig.add_trace(go.Scatter(x=da_smooth.time, y=da_smooth, mode='lines', name='Smoothed Data'))
-fig.update_layout(title='Original vs Smoothed Data', xaxis_title='Time', yaxis_title='Discharge (m3/s)')
-fig.show()
+import dask
+from dask import delayed
 
 
-
-
-
-
-
-# t0='2017-06-25'
-# t1='2017-07-30'
-sigma=5
-das = []
-for wflow_id in ds.wflow_id.values:
-    da = ds.sel(
-        # time=slice(t0,t1),
-        wflow_id=wflow_id, 
-        runs='Obs.'
-        ).Q
-    #count non nan values
-    count1 = np.count_nonzero(~np.isnan(da.values))
-    da_smooth = gaussian_filter1d(da, sigma=sigma, mode='nearest')
-    count2 = np.count_nonzero(~np.isnan(da_smooth))
-    print(f"{'*'*10} {wflow_id} {'*'*10}")
-    print(f"data points before: {count1}, after: {count2}")
-    # assert count1 == count2, "Data points before and after smoothing do not match"
-    print(f"data matches time dimension: {len(da.time.values) == len(da_smooth)}")
+def smooth_observation_data(root_dir: str, 
+                           observations_path: str, 
+                           selected_gauge_path: str,
+                           fig_dir: str,
+                           plot_fig: list | None,
+                           time_range: tuple = (None, None),
+                           sigma: int = 5,
+                           ):
     
-    da_smooth = xr.DataArray(
-        np.float64(da_smooth),
-        dims=da.dims,
-        coords=da.coords,
-        name='Q',
-        attrs=da.attrs
+    root = Path(root_dir)
+    observations = root / observations_path
+    selected_gauge = root / selected_gauge_path
+    fig_path = Path(fig_dir)
+    
+    obs = xr.open_dataset(observations)
+    df = pd.read_csv(selected_gauge)
+    _temp = df.values.flatten()
+    gauges = [int(num) for num in _temp if pd.notna(num)]
+    
+    # Extract the Q data for the selected gauges
+    q_data = obs.sel(wflow_id=gauges, time=slice(*time_range))
+
+    @delayed
+    def process_gauge(gauge):
+        da = q_data.sel(wflow_id=gauge).Q
+        
+        # interpolate/extrapolate the data to fill nan values maximun 3 hours
+        da = da.interpolate_na(dim='time', method='linear', limit=3)
+        
+        _da_smooth = gaussian_filter1d(da, sigma=sigma, mode='nearest')
+        
+        da_smooth = xr.DataArray(
+            np.float64(_da_smooth),
+            dims=da.dims,
+            coords=da.coords,
+            name='Q',
+            attrs=da.attrs
         )
-    # print(da_smooth)
-    das.append(da_smooth)
-    # a
-ds_smooth = xr.Dataset({'Q':xr.concat(das, dim='wflow_id')})
-print(ds_smooth)
+        
+        # plot to check the difference between da and da_smooth
+        if plot_fig is not None and gauge in plot_fig:
+            # get gauge name
+            try:
+                gauge_name = q_data.sel(wflow_id=gauge).station_names.item().decode('utf-8', errors='ignore')
+            except:
+                gauge_name = q_data.sel(wflow_id=gauge).station_names.item()
+            # hydrograph check
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=da.time, y=da, mode='lines', name='Original Data'))
+            fig.add_trace(go.Scatter(x=da_smooth.time, y=da_smooth, mode='lines', name='Smoothed Data'))
+            fig.update_layout(title=f'{gauge_name}_{gauge}', xaxis_title='Time', yaxis_title='Discharge (m3/s)')
+            fig.write_html(fig_path / f'hydrograph_compare/{gauge_name}_{gauge}.html')
+            
+            # Statistical measures
+            mask = np.isfinite(da.values) & np.isfinite(da_smooth.values)
+            da_clean = da.values[mask]
+            da_smooth_clean = da_smooth.values[mask]
+            correlation = pearsonr(da_clean, da_smooth_clean)[0]
+            rmse = np.sqrt(np.mean((da_clean - da_smooth_clean)**2))
 
-ds_combined = xr.concat([ds.sel(runs='HBV'), ds_smooth], dim='runs')
-print(ds_combined)
+            # Plotting the density distribution of da and da_smooth
+            fig, ax = plt.subplots()
+            sns.kdeplot(da, ax=ax, label='Original Data')
+            sns.kdeplot(da_smooth, ax=ax, label='Smoothed Data')
+            ax.set_title(f'Density Distribution of Original vs Smoothed Data for {gauge_name}_{gauge}\nCorrelation: {correlation:.4f}, RMSE: {rmse:.4f}')
+            ax.set_xlabel('Discharge (m3/s)')
+            ax.set_ylabel('Density')
+            plt.legend()
+            plt.savefig(fig_path / f'density_distribution/{gauge_name}_{gauge}.png')
+            plt.close()
+            
+        else:
+            pass
+        
+        return da_smooth
+        
+    # Use Dask to process gauges in parallel
+    delayed_results = [process_gauge(gauge) for gauge in gauges]
+    das = dask.compute(*delayed_results)
 
-ds_combined.to_netcdf('discharge_hourlyobs_smoothed.nc')
+    ds_smooth = xr.Dataset({'Q': xr.concat(das, dim='wflow_id')})
+
+    # Initialize other vars in ds_smooth before assigning their values from q_data
+    for var in ['x', 'y', 'z', 'lon', 'lat', 'station_id', 'station_names']:
+        ds_smooth[var] = q_data[var]
+    
+    return ds_smooth
+
+
+
+if __name__ == '__main__':
+    
+    root_dir = r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine'
+    observations_path = 'data/1-external/discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc'
+    selected_gauge_path = 'data/2-interim/manually_selected_gauges_v2.csv'
+    fig_dir = r'p:\11209265-grade2023\wflow\RWSOS_Calibration\rhine\data\5-visualization\smooth_obs'
+    plot_fig = [696]
+    time_range=('1996', None)
+    sigma = 5
+    
+    import time
+    start_time = time.time()
+    ds_smooth = smooth_observation_data(root_dir, 
+                                        observations_path, 
+                                        selected_gauge_path, 
+                                        fig_dir, 
+                                        plot_fig, 
+                                        time_range, 
+                                        sigma)
+    print(f"Time taken: {time.time() - start_time} seconds")
+    
+    ds_smooth.to_netcdf(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\1-external\discharge_hourlyobs_smoothed.nc')
+    
+    
+    
+    # # check if obs vars are correctly copied to ds vars
+    # obs = xr.open_dataset(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\1-external\discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc')
+    # time_range=('1996', None)
+    # obs = obs.sel(time=slice(*time_range))
+    
+    # ds_smooth = xr.open_dataset(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\1-external\discharge_hourlyobs_smoothed.nc')
+    
+    # obs_lob = obs.sel(wflow_id=709).Q
+    # smooth_lob = ds_smooth.sel(wflow_id=709).Q
+    
+    # plt.figure(figsize=(10, 6))
+    # # plt.plot(obs_lob.time, obs_lob, label='Original Data')
+    # plt.plot(smooth_lob.time, smooth_lob, label='Smoothed Data')
+    # plt.title('Lobith Discharge Comparison')
+    # plt.xlabel('Time')
+    # plt.ylabel('Discharge (m3/s)')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.show()
