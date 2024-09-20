@@ -50,9 +50,9 @@ def main(root: str,
 if __name__ == '__main__':
     
     root = r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine'
-    observations = r'data/1-external/discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc'
-    # selected_gauge = r'data/2-interim/manually_selected_gauges.csv'
-    outdir = r"data/2-interim/gaugesadded/obs_stations.geojson"
+    observations = r'data/1-external/discharge_hourlyobs_smoothed.nc'
+    # selected_gauge = r'data/2-interim/manually_selected_gauges_v2.csv'
+    outdir = r"data/2-interim/gaugesadded/gauges_Hall.geojson"
     
     main(root=root,
          observations=observations,
