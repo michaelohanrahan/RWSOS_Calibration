@@ -105,10 +105,10 @@ def smooth_observation_data(root_dir: str,
 if __name__ == '__main__':
     
     root_dir = r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine'
-    observations_path = 'data/1-external/discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc'
+    observations_path = 'data/1-external/discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727_with_new_data.nc'
     selected_gauge_path = 'data/2-interim/manually_selected_gauges_v2.csv'
     fig_dir = r'p:\11209265-grade2023\wflow\RWSOS_Calibration\rhine\data\5-visualization\smooth_obs'
-    plot_fig = [696]
+    plot_fig = [688]
     time_range=('1996', None)
     sigma = 5
     
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     
     
     # # check if obs vars are correctly copied to ds vars
-    # obs = xr.open_dataset(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\1-external\discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727.nc')
+    # obs = xr.open_dataset(r'c:\Users\deng_jg\work\05wflowRWS\RWSOS_Calibration\rhine\data\1-external\discharge_obs_hr_FORMAT_allvars_wflowid_0_to_727_with_new_data.nc')
     # time_range=('1996', None)
     # obs = obs.sel(time=slice(*time_range))
     
@@ -139,7 +139,10 @@ if __name__ == '__main__':
     
     # plt.figure(figsize=(10, 6))
     # # plt.plot(obs_lob.time, obs_lob, label='Original Data')
-    # plt.plot(smooth_lob.time, smooth_lob, label='Smoothed Data')
+    # # plt.plot(smooth_lob.time, smooth_lob, label='Smoothed Data')
+    # # plot the difference between obs and smooth
+    # diff = obs_lob - smooth_lob
+    # plt.plot(smooth_lob.time, diff, label='Difference')
     # plt.title('Lobith Discharge Comparison')
     # plt.xlabel('Time')
     # plt.ylabel('Discharge (m3/s)')
