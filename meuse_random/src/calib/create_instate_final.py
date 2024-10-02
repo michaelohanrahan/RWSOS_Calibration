@@ -16,19 +16,19 @@ def read_model(config_fn, log):
 
 def change_config(model, 
                   root,
-                  level, 
+                  topx,
                   start,
                   end,
                   log,
                   outcfg):
     # this is a toml file
     config = model.config
-    l.info(F"setting up instate for level {level}")
+    l.info(F"setting up instate for level {topx}")
     # update the log 
-    config["log"] = f"../../0-log/instate_L{level}/instates_level{level}.txt"
+    config["log"] = f"../../0-log/instate_L{topx}/instates_level{topx}.txt"
     
     # casename
-    config["casename"] = f"instates_level{level}"
+    config["casename"] = f"instates_level{topx}"
     
     # update the reinit
     config["model"]["reinit"] = True
@@ -40,7 +40,7 @@ def change_config(model,
     config["input"]["path_forcing"] = "../forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
     
     # update the state path_output
-    config["state"]["path_output"] = f'instate_level_{level}.nc'
+    config["state"]["path_output"] = f'instate_level_{topx}.nc'
     config["state"]["path_input"] = None
 
     # Update the starttime

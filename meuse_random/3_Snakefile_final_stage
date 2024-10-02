@@ -26,7 +26,7 @@ workdir: str(Path(base_dir, basin).as_posix())
 import json
 import shutil
 import os
-from snakemake.utils import Paramspace
+from snakemake
 import geopandas as gpd
 from src.calib.latin_hyper_paramspace import create_set_all_levels
 import glob
@@ -102,71 +102,75 @@ snames = [recipe[key]["short_name"] for key in recipe.keys()]
 ############################
 # DOING the snakey!
 ############################
-
-rule slice_best_params:
-    input:
-        best_params = Path(calib_dir, "level"+f'{last_level}', "best_params.csv")
-    params:
-
-    output:
-        sliced level 5 one column per file
-    
-    script:
-        """src/calib/slice_best_params.py"""
-
-rule create SM:
-    in:
-        one file 
-
-
 '''
 Preparing the final stage: This rule prepares the final stage of the calibration process.
 '''
 
-   
+# # temporary
+# yaml_path = Path(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse_random_spider\config\calib.yml')
+# with open(yaml_path, 'r') as file:
+#     config = yaml.safe_load(file)
+    
+
+best_params_fn = Path(inter_dir, "calib_data", "level5", "best_params.csv")
+best_params = pd.read_csv(best_params_fn, index_col=['level', 'gauge'])
+TOP_ENS = best_params.columns.values
+
+
+rule all:
+    # input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+    input: expand(Path(out_dir, "output_{Topx}", "output_scaler.nc"), Topx=TOP_ENS)
+
+
+"""Prepare final stage: set staticmaps using the best params"""
 rule prep_final_stage: # get parameter sets from Top_x, set parameter values to the staticmaps, prepare toml file
     input:
-        one output from slice_best_params
-        # done = Path(calib_dir, "level"+f'{last_level}', "level.done"),
-        # performance = glob.glob(str(Path(calib_dir, "level*", "performance.zarr"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
+        best_params_fn = Path(inter_dir, "calib_data", "level5", "best_params.csv")
     params:
-        cfg_template = cfg_template,
-        cfg_args = [config["eval_runstart"], config["eval_runend"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
-        staticmaps = staticmaps
+        dataset = staticmaps,
+        best_params = best_params,
+        topx = lambda wildcards: wildcards.Topx,
+        params_sname = snames,
+        params_lname = lnames,
+        params_method = methods,
+        sub_catch = subcatch,
+        lake_in = lakes
     output: 
-        cfg = Path(input_dir, config["wflow_cfg_name"]),
-        performance = Path(out_dir, "performance.nc"),
-        staticmaps = Path(input_dir, "staticmaps.nc")
+        staticmaps = Path(input_dir, "input_{Topx}", "staticmaps.nc")
+        lake_out = expand(Path(input_dir, "input_{Topx}", "{lakes}"), lakes=lakefiles)
     localrule: True
     script:
         """src/calib/prep_final_stage.py"""
+
 
 '''Final instate: This rule creates the final instate for the model evaluation.'''
 
 rule final_instate_toml:
     input: 
-        performance = Path(out_dir, "performance.nc"),
         config_fn = cfg_template,
     params: 
         root = Path(input_dir, "instates").as_posix(),
-        level = "final",
         starttime = config["eval_instart"],
         endtime = config["eval_inend"],
-        staticmaps = staticmaps
+        staticmaps = staticmaps,
+        topx = lambda wildcards: wildcards.Topx
     localrule: True
     output:
-        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
+        cfg = Path(input_dir, "input_{Topx}", "instates", "post_calib_instate.toml")
+    script:
+        """src/calib/create_instate_final.py"""
         
 
 rule run_instate:
     input:
-        cfg = Path(input_dir, "instates", "post_calib_instate.toml"),
-        staticmaps = Path(input_dir, "staticmaps.nc")
+        cfg = Path(input_dir, "input_{Topx}", "instates", "post_calib_instate.toml"),
+        staticmaps = Path(input_dir, "input_{Topx}", "staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
+        topx = lambda wildcards: wildcards.Topx
     output: 
-        outstate=Path(input_dir, "instates", "instate_level_final.nc"),
-        done = touch(Path(input_dir, "instates", "done_final_instate.txt"))
+        outstate=Path(input_dir, "input_{Topx}","instates", "instate_level_final.nc"),
+        done = touch(Path(input_dir, "input_{Topx}","instates", "done_final_instate.txt"))
     threads: config["wflow_threads"]
     localrule: False
     group: "wflow"
@@ -176,16 +180,18 @@ rule run_instate:
         Pkg.instantiate();\
         using Wflow;\
         Wflow.run()" {{input.cfg}}"""
+
 
 rule run_final_model:
     input:
-        done = Path(input_dir, "instates", "done_final_instate.txt"),
-        instate = Path(input_dir, "instates", "instate_level_final.nc"),
-        cfg = Path(input_dir, config["wflow_cfg_name"]),
-        staticmaps = Path(input_dir, "staticmaps.nc")
+        done = Path(input_dir, "input_{Topx}","instates", "done_final_instate.txt"),
+        instate = Path(input_dir, "input_{Topx}","instates", "instate_level_final.nc"),
+        cfg = Path(input_dir, "input_{Topx}", config["wflow_cfg_name"]),
+        staticmaps = Path(input_dir, "input_{Topx}","staticmaps.nc")
     params: 
         project = Path(base_dir, "bin").as_posix(),
-    output: Path(out_dir, "output_scalar.nc")
+        topx = lambda wildcards: wildcards.Topx
+    output: Path(out_dir, "output_{Topx}", "output_scalar.nc")
     threads: config["wflow_threads"]
     localrule: False
     group: "wflow"
@@ -196,6 +202,8 @@ rule run_final_model:
         using Wflow;\
         Wflow.run()" {{input.cfg}}"""
 
+
+#TODO: to be modified: add eval metrics+signatures
 rule visualize:
     input: 
         scalar = Path(out_dir, "output_scalar.nc"),
