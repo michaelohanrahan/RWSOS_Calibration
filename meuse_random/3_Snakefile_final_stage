@@ -103,13 +103,32 @@ snames = [recipe[key]["short_name"] for key in recipe.keys()]
 # DOING the snakey!
 ############################
 
+rule slice_best_params:
+    input:
+        best_params = Path(calib_dir, "level"+f'{last_level}', "best_params.csv")
+    params:
+
+    output:
+        sliced level 5 one column per file
+    
+    script:
+        """src/calib/slice_best_params.py"""
+
+rule create SM:
+    in:
+        one file 
+
+
 '''
 Preparing the final stage: This rule prepares the final stage of the calibration process.
 '''
-rule prep_final_stage:
-    input: 
-        done = Path(calib_dir, "level"+f'{last_level}', "level.done"),
-        performance = glob.glob(str(Path(calib_dir, "level*", "performance.zarr"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
+
+   
+rule prep_final_stage: # get parameter sets from Top_x, set parameter values to the staticmaps, prepare toml file
+    input:
+        one output from slice_best_params
+        # done = Path(calib_dir, "level"+f'{last_level}', "level.done"),
+        # performance = glob.glob(str(Path(calib_dir, "level*", "performance.zarr"))) #expand(Path(calib_dir, "{level}", "performance.nc"), level=list(graph.keys()))
     params:
         cfg_template = cfg_template,
         cfg_args = [config["eval_runstart"], config["eval_runend"], config["timestep"], Path(source_dir, config["source_forcing_data"])],
