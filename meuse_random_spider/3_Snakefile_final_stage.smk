@@ -26,7 +26,7 @@ workdir: str(Path(base_dir, basin).as_posix())
 import json
 import shutil
 import os
-from snakemake
+import snakemake
 import geopandas as gpd
 from src.calib.latin_hyper_paramspace import create_set_all_levels
 import glob
@@ -54,18 +54,18 @@ levels_ints = [int(level.split("level")[-1]) for level in levels]
 last_level = int(config.get("level", max(levels_ints)))
 
 #define elements from the staticgeoms
-elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
+# elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
 
 #0:N_samples for each level
 N_samples = config["N_SAMPLES"]
 
 #parameter set dataframe using LHS method
 lnames, methods, all_level_df = create_set_all_levels(last_level=max(levels_ints), RECIPE=config["calib_recipe"], N_SAMPLES=N_samples, OPTIM='random-cd')
-all_level_df.to_csv(Path(inter_dir, "calib_data", "all_level_paramspace.csv"), index=False)
+# all_level_df.to_csv(Path(inter_dir, "calib_data", "all_level_paramspace.csv"), index=False)
 
-for level in range(0, last_level+1):
-    df = all_level_df[all_level_df.index == level]
-    df.to_csv(Path(inter_dir, "calib_data", f"level{level}", "paramspace.csv"))
+# for level in range(0, last_level+1):
+#     df = all_level_df[all_level_df.index == level]
+#     df.to_csv(Path(inter_dir, "calib_data", f"level{level}", "paramspace.csv"))
 
 #staticmaps
 staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
@@ -74,7 +74,7 @@ staticmaps = Path(input_dir, "staticmaps", "staticmaps.nc")
 lakes = glob.glob(str(Path(input_dir, "staticmaps", "lake*.csv")))
 lakes = [Path(lake).as_posix() for lake in lakes]
 lakefiles = [lake.split("/")[-1] for lake in lakes]
-assert len(lakes) > 0, "No lakes found, if this is expected comment out this assert"
+# assert len(lakes) > 0, "No lakes found, if this is expected comment out this assert"
 
 #subcatch
 subcatch = Path(input_dir, "staticgeoms", f'subcatch_{config["gauges"]}.geojson')
@@ -85,14 +85,14 @@ cfg_template = Path(input_dir, "wflow_sbm.toml")
 #calib_dir
 calib_dir = Path(inter_dir, "calib_data")
 
-#graph level
-graph = json.load(open(Path(inter_dir, f'{config["gauges"]}_levels_graph.json')))
+# #graph level
+# graph = json.load(open(Path(inter_dir, f'{config["gauges"]}_levels_graph.json')))
 
-#graph node
-graph_node = json.load(open(Path(inter_dir, f'{config["gauges"]}_nodes_graph.json')))
+# #graph node
+# graph_node = json.load(open(Path(inter_dir, f'{config["gauges"]}_nodes_graph.json')))
 
-#graph pred
-graph_pred = json.load(open(Path(inter_dir, f'{config["gauges"]}_pred_graph.json')))
+# #graph pred
+# graph_pred = json.load(open(Path(inter_dir, f'{config["gauges"]}_pred_graph.json')))
 
 #recipe
 with open(config["calib_recipe"]) as recipe:
@@ -116,14 +116,14 @@ best_params_fn = Path(inter_dir, "calib_data", "level5", "best_params.csv")
 best_params = pd.read_csv(best_params_fn, index_col=['level', 'gauge'])
 TOP_ENS = best_params.columns.values
 
-
 rule all:
     # input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
-    input: expand(Path(out_dir, "output_{Topx}", "output_scaler.nc"), Topx=TOP_ENS)
+    input:
+        expand(Path(out_dir, "output_{Topx}", "output_scalar.nc"), Topx=TOP_ENS)
 
 
 """Prepare final stage: set staticmaps using the best params"""
-rule prep_final_stage: # get parameter sets from Top_x, set parameter values to the staticmaps, prepare toml file
+rule final_staticmaps: # get parameter sets from Top_x, set parameter values to the staticmaps, prepare toml file
     input:
         best_params_fn = Path(inter_dir, "calib_data", "level5", "best_params.csv")
     params:
@@ -136,11 +136,11 @@ rule prep_final_stage: # get parameter sets from Top_x, set parameter values to 
         sub_catch = subcatch,
         lake_in = lakes
     output: 
-        staticmaps = Path(input_dir, "input_{Topx}", "staticmaps.nc")
-        lake_out = expand(Path(input_dir, "input_{Topx}", "{lakes}"), lakes=lakefiles)
+        staticmaps = Path(input_dir, "input_{Topx}", "staticmaps.nc"),
+        lake_out = expand(Path(input_dir, "input_{Topx}", "{lakes}"), Topx="{Topx}", lakes=lakefiles)
     localrule: True
     script:
-        """src/calib/prep_final_stage.py"""
+        """src/calib/set_staticmaps_final.py"""
 
 
 '''Final instate: This rule creates the final instate for the model evaluation.'''
@@ -148,11 +148,11 @@ rule prep_final_stage: # get parameter sets from Top_x, set parameter values to 
 rule final_instate_toml:
     input: 
         config_fn = cfg_template,
-    params: 
-        root = Path(input_dir, "instates").as_posix(),
+    params:
+        root = Path(input_dir, "input_{Topx}", "instates").as_posix(), 
         starttime = config["eval_instart"],
         endtime = config["eval_inend"],
-        staticmaps = staticmaps,
+        forcing_path = Path(input_dir, config["source_forcing_data"]),
         topx = lambda wildcards: wildcards.Topx
     localrule: True
     output:
@@ -169,7 +169,7 @@ rule run_instate:
         project = Path(base_dir, "bin").as_posix(),
         topx = lambda wildcards: wildcards.Topx
     output: 
-        outstate=Path(input_dir, "input_{Topx}","instates", "instate_level_final.nc"),
+        outstate=Path(input_dir, "input_{Topx}","instates", "instate_final.nc"),
         done = touch(Path(input_dir, "input_{Topx}","instates", "done_final_instate.txt"))
     threads: config["wflow_threads"]
     localrule: False
@@ -182,10 +182,27 @@ rule run_instate:
         Wflow.run()" {{input.cfg}}"""
 
 
+rule final_config_toml:
+    input:
+        config_fn = cfg_template,
+        instate = Path(input_dir, "input_{Topx}","instates", "instate_final.nc")
+    params:
+        root = Path(input_dir, "input_{Topx}").as_posix(), 
+        starttime = config["eval_runstart"],
+        endtime = config["eval_runend"],
+        forcing_path = Path(input_dir, config["source_forcing_data"]),
+        topx = lambda wildcards: wildcards.Topx,
+        gaugemap = f"gauges_{config['gauges']}"
+    localrule: True
+    output:
+        cfg = Path(input_dir, "input_{Topx}", config["wflow_cfg_name"])
+    script:
+        """src/calib/create_config_final.py"""
+
+
 rule run_final_model:
     input:
         done = Path(input_dir, "input_{Topx}","instates", "done_final_instate.txt"),
-        instate = Path(input_dir, "input_{Topx}","instates", "instate_level_final.nc"),
         cfg = Path(input_dir, "input_{Topx}", config["wflow_cfg_name"]),
         staticmaps = Path(input_dir, "input_{Topx}","staticmaps.nc")
     params: 
@@ -204,21 +221,21 @@ rule run_final_model:
 
 
 #TODO: to be modified: add eval metrics+signatures
-rule visualize:
-    input: 
-        scalar = Path(out_dir, "output_scalar.nc"),
-        performance = Path(out_dir, "performance.nc")
-    params:
-        observed_data = config["observed_data"],
-        gauges = elements,
-        starttime = config["eval_starttime"],
-        endtime = config["eval_endtime"],
-        period_startdate = config["hydro_period_startdate"],
-        period_length = config["hydro_period_length"],
-        period_unit = config["hydro_period_unit"],
-        output_dir = Path(vis_dir, "figures")
-    localrule: True
-    output:
-        figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
-    script:
-        """src/post/plot_final_model.py"""
+# rule visualize:
+#     input: 
+#         scalar = Path(out_dir, "output_scalar.nc"),
+#         performance = Path(out_dir, "performance.nc")
+#     params:
+#         observed_data = config["observed_data"],
+#         gauges = elements,
+#         starttime = config["eval_starttime"],
+#         endtime = config["eval_endtime"],
+#         period_startdate = config["hydro_period_startdate"],
+#         period_length = config["hydro_period_length"],
+#         period_unit = config["hydro_period_unit"],
+#         output_dir = Path(vis_dir, "figures")
+#     localrule: True
+#     output:
+#         figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+#     script:
+#         """src/post/plot_final_model.py"""

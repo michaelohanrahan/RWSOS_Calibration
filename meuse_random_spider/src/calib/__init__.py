@@ -1,0 +1,1 @@
+from .setuplog import setup_logging
