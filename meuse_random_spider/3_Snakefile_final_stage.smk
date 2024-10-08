@@ -199,9 +199,11 @@ rule run_instate:
     output: 
         outstate=Path(input_dir, "input_{Topx}","instates", "instate_final.nc"),
         done = touch(Path(input_dir, "input_{Topx}","instates", "done_final_instate.txt"))
-    threads: config["wflow_threads"]
     localrule: False
-    group: "wflow"
+    threads: 4
+    resources:
+        mem_mb = 32000,
+        time = "5:00:00"
     shell:
         f"""julia --project="{{params.project}}" -t {{threads}} -e \
         "using Pkg;\
@@ -237,9 +239,11 @@ rule run_final_model:
         project = Path(base_dir, "bin").as_posix(),
         topx = lambda wildcards: wildcards.Topx
     output: Path(out_dir, "output_{Topx}", "output_scalar.nc")
-    threads: config["wflow_threads"]
     localrule: False
-    group: "wflow"
+    threads: 4
+    resources:
+        mem_mb = 32000,
+        time = "10:00:00"
     shell:
         f"""julia --project="{{params.project}}" -t {{threads}} -e \
         "using Pkg;\

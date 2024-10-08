@@ -1,1 +1,1 @@
-pixi run snakemake -s "meuse_random_spider/3_Snakefile_final_stage.smk" --dry-run --quiet rules --forceall --rerun-triggers mtime --rerun-incomplete
+pixi run snakemake -s "3_Snakefile_final_stage.smk" --dry-run --quiet rules --forceall --profile "./config/slurm/"
