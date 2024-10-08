@@ -7,6 +7,38 @@ from setuplog import setup_logging
 import os
 import toml
 
+def add_nc_variable(wflow_string, var_name, out_cfg):
+    """
+    Add a nested structure for netCDF variables in the TOML config.
+    """
+    keys = wflow_string.split('.')
+    current = out_cfg
+    for key in keys[:-1]:
+        if key not in current:
+            current[key] = {}
+        current = current[key]
+    
+    if keys[-1] not in current:
+        current[keys[-1]] = {"name": var_name}
+    return out_cfg
+
+
+def add_scale_offset(nc_wflow_string, out_cfg, scale=1.0, offset=0.0):
+    """
+    Add scale and offset to a nested structure in the TOML config.
+    """
+    keys = nc_wflow_string.split('.')
+    current = out_cfg
+    for key in keys:
+        if key not in current:
+            current[key] = {}
+        current = current[key]
+    
+    current["scale"] = scale
+    current["offset"] = offset
+    return out_cfg
+
+
 def read_model(root, config_fn):
     # read the model configuration
     model = WflowModel(root=root, mode="r", config_fn=config_fn)
@@ -72,6 +104,16 @@ def change_config(model,
         }
     ]
     
+    # look for the input.lateral.river.floodplain.n.netcdf.variable
+    # ... if not add it "N_Floodplain"
+    config = add_nc_variable("input.lateral.river.flooplain.n.netcdf.variable", 
+                              "N_Floodplain",
+                              out_cfg=config)
+    
+    config = add_scale_offset("input.lateral.river.flooplain.n", 
+                               scale=1.0,
+                               offset=0.0,
+                               out_cfg=config)
     
     # Write the config to a TOML file
     output_path = outcfg

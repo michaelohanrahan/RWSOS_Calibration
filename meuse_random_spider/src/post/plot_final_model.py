@@ -56,7 +56,7 @@ def main(
     for file in md_data:
         try:
             md_ds.append(xr.open_dataset(file))
-            model_list.append(Path(Path(file).parent).parent.name.split('_')[-2])
+            model_list.append(Path(Path(file).parent).name.split('_')[-2])
         except:
             print(f'{file} is not a valid file')
             continue
@@ -198,6 +198,9 @@ if __name__ == "__main__":
     files = glob(str(Path(work_dir, 'data', '4-output', 'output_Top_*', 'output_scalar.nc')))
     # add base model
     files.append(str(Path(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\best_run_level-1_result\output_run\output_scalar.nc')))
+    
+    # 
+    
     
     obs_data = Path(r'p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/1-external/discharge_hourlyobs_smoothed.nc')
     GaugeToPlot = work_dir / 'wflow_id_add_HBV_new.csv'

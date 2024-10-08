@@ -120,11 +120,10 @@ TOP_ENS = best_params.columns.values
 
 rule all:
     input:
+        # staticmaps = Path(input_dir, "input_{Topx}", "staticmaps.nc"),
         wflow=expand(Path(out_dir, "output_{Topx}", "output_scalar.nc"), Topx=TOP_ENS), #expect wflow output
         figures=expand(Path(vis_dir, "per_run", "Topx_{Topx}", f"hydro_{elements[0]}.png"), Topx=TOP_ENS), #expect per run gauge pngs
         all_figures=expand(Path(vis_dir, "all_runs", "hydro_{gauge}.png"), gauge=elements) #expect combined run gauge png
-
-        
 
 
 """Prepare final stage: set staticmaps using the best params"""
@@ -147,26 +146,27 @@ rule final_staticmaps: # get parameter sets from Top_x, set parameter values to 
         import ast
         import os
 
-        df = pd.read_csv(input.best_params_fn)
+        # df = pd.read_csv(input.best_params_fn)
         #mask level col = 5 wflow_id col = outlet
-        df = df[df['level'] == 5]
-        df = df[df['wflow_id'] == input.outlet]
-        params = df.loc[params.topx] #string repr of dict
+        # df = df[df['level'] == 5]
+        # df = df[df['gauge'] == float(input.outlet)]
+        # params = df.loc[params.topx] #string repr of dict
+        params = best_params.loc[('level5', float(params.outlet)), params.topx]
         params = ast.literal_eval(params) #convert this to /key~value/... path srring
         path_snippet = "/".join([f"{key}~{value}" for key, value in params.items()])
-        model_path = Path(calib_dir, path_snippet)
+        model_path = Path(calib_dir, 'level5', path_snippet)
         gridfile = model_path / "staticmaps.nc"
         
         #copy gridfile to input_topx
-        if os.path.exists(gridfile):
-            os.remove(gridfile)
+        if os.path.exists("{output.staticmaps}"):
+            os.remove("{output.staticmaps}")
 
         sh.copy(gridfile, "{output.staticmaps}")
         
         #copy lakefiles to input_topx
         lakefiles = model_path.glob("lake*.csv")
         for lakefile in lakefiles:
-            lakepath = Path(input_dir, "input_{input.topx}", lakefile.name)
+            lakepath = Path(Path("{output.staticmaps}").parent, lakefile.name)
             if os.path.exists(lakepath):
                 os.remove(lakepath)
             sh.copy(lakefile, lakepath)
