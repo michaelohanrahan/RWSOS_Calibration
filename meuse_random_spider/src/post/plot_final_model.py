@@ -1,5 +1,4 @@
-#TODO: add benchmarks to main function
-
+# TODO: plot hydro signature
 from pathlib import Path
 from typing import List
 from icecream import ic
@@ -52,17 +51,17 @@ def main(
     
     
     md_ds = []
-    level_list = []
+    model_list = []
     
     for file in md_data:
         try:
             md_ds.append(xr.open_dataset(file))
-            level_list.append(Path(Path(file).parent).parent.name.split('_')[-2])
+            model_list.append(Path(Path(file).parent).parent.name.split('_')[-2])
         except:
             print(f'{file} is not a valid file')
             continue
     
-    level_list = [level.replace('level-1', 'base') for level in level_list]
+    model_list = [level.replace('level-1', 'base') for level in model_list]
     
     obs_ds = xr.open_dataset(obs_data)
     
@@ -117,7 +116,7 @@ def main(
                             "time", 
                             "wflow_id", 
                             "runs"]
-            ) for file, level in zip(md_ds, level_list)
+            ) for file, level in zip(md_ds, model_list)
                     }
     da = xr.concat(
         [
@@ -194,16 +193,17 @@ def main(
 
 if __name__ == "__main__":
     
-    work_dir = Path('p:/11209265-grade2023/wflow/wflow_meuse_julia').as_posix()
-    files = glob(str(Path(work_dir, 'best_run_level*_result', 'output_run', 'output_scalar.nc')))
-    # files = [r"p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/4-output/output_scalar_recovered.nc"]
-    # files = [file for file in files if 'level0' not in file]
+    work_dir = Path(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse_random_spider')
+    # Top 10 models
+    files = glob(str(Path(work_dir, 'data', '4-output', 'output_Top_*', 'output_scalar.nc')))
+    # add base model
+    files.append(str(Path(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\best_run_level-1_result\output_run\output_scalar.nc')))
     
-    obs_data = Path('p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/1-external/discharge_hourlyobs_smoothed.nc').as_posix()
-    GaugeToPlot = Path(work_dir, 'best_run_level-1_result','wflow_id_add_HBV_new.csv')
-    starttime = '2008-08-01'
-    endtime = '2018-02-01'
-    output_dir = Path("p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse/data/5-visualization/best_params_smoothed").as_posix()
+    obs_data = Path(r'p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/1-external/discharge_hourlyobs_smoothed.nc')
+    GaugeToPlot = work_dir / 'wflow_id_add_HBV_new.csv'
+    starttime = '2005-08-01'  # from config eval_starttime
+    endtime = '2007-12-31'   # from config eval_endtime. But we can also evaluate the whole period from 2005-08-01 to 2018-02-22
+    output_dir = work_dir / "data/5-visualization/final_model_peaks"
     
     ds = main(
         md_data=files,

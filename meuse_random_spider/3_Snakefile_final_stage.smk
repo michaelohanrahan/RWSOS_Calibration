@@ -220,22 +220,28 @@ rule run_final_model:
         Wflow.run()" {{input.cfg}}"""
 
 
-#TODO: to be modified: add eval metrics+signatures
-# rule visualize:
-#     input: 
-#         scalar = Path(out_dir, "output_scalar.nc"),
-#         performance = Path(out_dir, "performance.nc")
-#     params:
-#         observed_data = config["observed_data"],
-#         gauges = elements,
-#         starttime = config["eval_starttime"],
-#         endtime = config["eval_endtime"],
-#         period_startdate = config["hydro_period_startdate"],
-#         period_length = config["hydro_period_length"],
-#         period_unit = config["hydro_period_unit"],
-#         output_dir = Path(vis_dir, "figures")
-#     localrule: True
-#     output:
-#         figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
-#     script:
-#         """src/post/plot_final_model.py"""
+# TODO: to be modified: add eval metrics+signatures
+rule final_eval_metrics:
+"""dataset of all eval metrics for final models: kge, nse, nse_log, nse_mm7q, mae_pt, mape_pm
+dim: runs (obs, hbv, Topx), wflow_id
+"""
+
+
+rule visualize:
+    input: 
+        scalar = Path(out_dir, "output_scalar.nc"),
+        performance = Path(out_dir, "performance.nc")
+    params:
+        observed_data = config["observed_data"],
+        gauges = elements,
+        starttime = config["eval_starttime"],
+        endtime = config["eval_endtime"],
+        period_startdate = config["hydro_period_startdate"],
+        period_length = config["hydro_period_length"],
+        period_unit = config["hydro_period_unit"],
+        output_dir = Path(vis_dir, "figures")
+    localrule: True
+    output:
+        figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
+    script:
+        """src/post/plot_final_model.py"""
