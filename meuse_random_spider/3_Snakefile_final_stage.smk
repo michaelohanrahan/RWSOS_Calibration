@@ -16,6 +16,8 @@ elif platform.system() == "Linux":
     DRIVE = "/p"
     PLATFORM = "Linux"
 
+os.chdir(Path(DRIVE, "11209265-grade2023", "wflow", "RWSOS_Calibration", "meuse_random_spider"))
+
 configfile: str(Path("config", "calib.yml").as_posix())
 #Base directory
 basin = config["basin"]    
@@ -54,7 +56,7 @@ levels_ints = [int(level.split("level")[-1]) for level in levels]
 last_level = int(config.get("level", max(levels_ints)))
 
 #define elements from the staticgeoms
-# elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
+elements = list(gpd.read_file(Path(input_dir,"staticgeoms", f'subcatch_{config["gauges"]}.geojson'))["value"].values)
 
 #0:N_samples for each level
 N_samples = config["N_SAMPLES"]
@@ -117,9 +119,12 @@ best_params = pd.read_csv(best_params_fn, index_col=['level', 'gauge'])
 TOP_ENS = best_params.columns.values
 
 rule all:
-    # input: expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
     input:
-        expand(Path(out_dir, "output_{Topx}", "output_scalar.nc"), Topx=TOP_ENS)
+        wflow=expand(Path(out_dir, "output_{Topx}", "output_scalar.nc"), Topx=TOP_ENS), #expect wflow output
+        figures=expand(Path(vis_dir, "per_run", "Topx_{Topx}", f"hydro_{elements[0]}.png"), Topx=TOP_ENS), #expect per run gauge pngs
+        all_figures=expand(Path(vis_dir, "all_runs", "hydro_{gauge}.png"), gauge=elements) #expect combined run gauge png
+
+        
 
 
 """Prepare final stage: set staticmaps using the best params"""
@@ -129,19 +134,42 @@ rule final_staticmaps: # get parameter sets from Top_x, set parameter values to 
     params:
         dataset = staticmaps,
         best_params = best_params,
-        topx = lambda wildcards: wildcards.Topx,
-        params_sname = snames,
-        params_lname = lnames,
-        params_method = methods,
-        sub_catch = subcatch,
-        lake_in = lakes
+        topx = "{Topx}",
+        outlet = '16',
     output: 
         staticmaps = Path(input_dir, "input_{Topx}", "staticmaps.nc"),
-        lake_out = expand(Path(input_dir, "input_{Topx}", "{lakes}"), Topx="{Topx}", lakes=lakefiles)
+        lake_out = expand(Path(input_dir, "input_{Topx}", "{lakes}"), lakes=lakefiles, Topx="{Topx}")
     localrule: True
-    script:
-        """src/calib/set_staticmaps_final.py"""
+    run:
+        import pandas as pd
+        import shutil as sh
+        from pathlib import Path
+        import ast
+        import os
 
+        df = pd.read_csv(input.best_params_fn)
+        #mask level col = 5 wflow_id col = outlet
+        df = df[df['level'] == 5]
+        df = df[df['wflow_id'] == input.outlet]
+        params = df.loc[params.topx] #string repr of dict
+        params = ast.literal_eval(params) #convert this to /key~value/... path srring
+        path_snippet = "/".join([f"{key}~{value}" for key, value in params.items()])
+        model_path = Path(calib_dir, path_snippet)
+        gridfile = model_path / "staticmaps.nc"
+        
+        #copy gridfile to input_topx
+        if os.path.exists(gridfile):
+            os.remove(gridfile)
+
+        sh.copy(gridfile, "{output.staticmaps}")
+        
+        #copy lakefiles to input_topx
+        lakefiles = model_path.glob("lake*.csv")
+        for lakefile in lakefiles:
+            lakepath = Path(input_dir, "input_{input.topx}", lakefile.name)
+            if os.path.exists(lakepath):
+                os.remove(lakepath)
+            sh.copy(lakefile, lakepath)
 
 '''Final instate: This rule creates the final instate for the model evaluation.'''
 
@@ -221,16 +249,38 @@ rule run_final_model:
 
 
 # TODO: to be modified: add eval metrics+signatures
-rule final_eval_metrics:
-"""dataset of all eval metrics for final models: kge, nse, nse_log, nse_mm7q, mae_pt, mape_pm
-dim: runs (obs, hbv, Topx), wflow_id
-"""
+# rule final_eval_metrics:
+# """dataset of all eval metrics for final models: kge, nse, nse_log, nse_mm7q, mae_pt, mape_pm
+# dim: runs (obs, hbv, Topx), wflow_id
+# """
 
 
-rule visualize:
+rule visualize_one:
     input: 
-        scalar = Path(out_dir, "output_scalar.nc"),
-        performance = Path(out_dir, "performance.nc")
+        scalar = Path(out_dir, "output_{Topx}", "output_scalar.nc")
+        # performance = Path(out_dir, "performance.nc")
+    params:
+        observed_data = config["observed_data"],
+        gauges = elements,
+        starttime = config["eval_starttime"],
+        endtime = config["eval_endtime"],
+        topx = lambda wildcards: wildcards.Topx,
+        run_list = ["{Topx}"], #This is relatively new 
+        period_startdate = config["hydro_period_startdate"],
+        period_length = config["hydro_period_length"],
+        period_unit = config["hydro_period_unit"],
+        output_dir = Path(vis_dir, "figures", "Topx_{Topx}")
+    localrule: True
+    output:
+        figures = Path(vis_dir, "per_run", "Topx_{Topx}", f"hydro_{elements[0]}.png") #cant expand just one wildcard but will create all gauge plots
+    script:
+        """src/post/plot_final_model.py"""
+
+
+rule visualize_all:
+    input:
+        scalar = expand(Path(out_dir, "output_{Topx}", "output_scalar.nc"), Topx=TOP_ENS)
+        # performance = Path(out_dir, "performance.nc")
     params:
         observed_data = config["observed_data"],
         gauges = elements,
@@ -239,9 +289,8 @@ rule visualize:
         period_startdate = config["hydro_period_startdate"],
         period_length = config["hydro_period_length"],
         period_unit = config["hydro_period_unit"],
-        output_dir = Path(vis_dir, "figures")
+        output_dir = Path(vis_dir, "all_runs")
     localrule: True
     output:
-        figures = expand(Path(vis_dir, "hydro_gauge", "hydro_{gauge}.png"), gauge=elements)
-    script:
-        """src/post/plot_final_model.py"""
+        figures = expand(Path(vis_dir, "all_runs", "hydro_{gauge}.png"), gauge=elements)
+        
