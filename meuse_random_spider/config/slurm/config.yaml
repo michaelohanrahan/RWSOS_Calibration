@@ -14,7 +14,7 @@ rerun-triggers: mtime
 
 #successor to --cluster must be installed with pip snakemake-executor-plugin-cluster-generic  (1.0.9)
 cluster-generic-submit-cmd:
-  mkdir -p /u/ohanrah/documents/RWSoS/RWSOS_Calibration/rhine/data/0-log/{name} &&
+  #mkdir -p /u/ohanrah/documents/RWSoS/RWSOS_Calibration/rhine/data/0-log/{name} &&
   sbatch
     --partition={resources.partition}
     --account=hyd
@@ -23,7 +23,7 @@ cluster-generic-submit-cmd:
     --qos={resources.qos}sacct
     --cpus-per-task={threads}
     --job-name={name}_{jobid}
-    --output=/u/ohanrah/documents/RWSoS/RWSOS_Calibration/meuse_random/data/0-log/{name}/{jobid}.log
+    --output=/p/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random_spider/meuse_final_stage.log
     
 #scontrol show partition 4pcpu shows unlimited mem
 default-resources:
