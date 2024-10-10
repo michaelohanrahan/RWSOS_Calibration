@@ -1,0 +1,37 @@
+{   
+    "ksathorfrac_BRT_250": { 
+        "short_name": "ksat", 
+        "values": [0.2,2.0],
+        "method": "mult"
+    },
+    "f_":{
+        "short_name": "f",
+        "values": [0.5,1.5],
+        "method": "mult"
+    },
+    "RootingDepth": {
+        "short_name": "rd",
+        "values": [0.25,2.0],
+        "method": "mult"
+    },
+    "SoilThickness": {
+        "short_name": "st",
+        "values": [0.5,1.5],
+        "method": "mult"
+    },
+    "N_River": {
+        "short_name": "nr",
+        "values": [0.5,1.5],
+        "method": "mult"
+    }, 
+    "MaxLeakage": {
+        "short_name": "ml",
+        "values": [0, 0.6],
+        "method": "add"
+    }, 
+    "N,N_Floodplain": {
+        "short_name": "nl,nf",
+        "values": [0.5, 1.5],
+        "method": "mult"
+    }
+}

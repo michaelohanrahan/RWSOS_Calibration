@@ -1,0 +1,159 @@
+casename = "/project/afrijnmaas/Data/RWSOS_Calibration/rhine/data/2-interim/calib_data/level0/ksat~1.93/f~0.91/rd~0.55/st~1.48/nr~0.55/ml~0.03/nl~0.97/nf~0.97/wflow_sbm.toml"
+silent = false
+calendar = "proleptic_gregorian"
+loglevel = "debug"
+path_log = "L0_calib_2024-10-04_14-48-53.log"
+fews_run = false
+timestepsecs = 3600
+starttime = "2005-01-01T00:00:00"
+endtime = "2015-12-29T23:00:00"
+
+[model]
+type = "sbm"
+masswasting = true
+snow = true
+reinit = true
+reservoirs = true
+lakes = true
+glacier = true
+kin_wave_iteration = true
+kw_river_tstep = 900
+kw_land_tstep = 3600
+thicknesslayers = [
+    100,
+    300,
+    800,
+]
+river_routing = "local-inertial"
+land_routing = "kinematic-wave"
+floodplain_1d = true
+min_streamorder = 4
+
+[input]
+path_forcing = "/project/afrijnmaas/Data/RWSOS_Calibration/rhine/data/3-input/inmaps/FINAL_forcing-genRE_hourly_*.nc"
+path_static = "staticmaps.nc"
+gauges = "wflow_gauges"
+ldd = "wflow_ldd"
+river_location = "wflow_river"
+subcatchment = "wflow_subcatch"
+forcing = [
+    "vertical.precipitation",
+    "vertical.temperature",
+    "vertical.potential_evaporation",
+]
+cyclic = [
+    "vertical.leaf_area_index",
+]
+gauges_fews = "wflow_gauges_fews"
+gauges_hbv_mainsub = "wflow_gauges_hbv_mainsub"
+sub_fews = "wflow_subcatch_fews"
+sub_hbv_mainsub = "wflow_subcatch_hbv_mainsub"
+sub_hbv_smallsub = "wflow_subcatch_hbv_smallsub"
+gauges_SOBEK = "wflow_gauges_SOBEK"
+gauges_Hall = "wflow_gauges_Hall"
+
+[input.vertical]
+altitude = "wflow_dem"
+c = "c"
+cf_soil = "cf_soil"
+cfmax = "snow_cfmax"
+e_r = "EoverR"
+f = "f_"
+infiltcappath = "InfiltCapPath"
+infiltcapsoil = "InfiltCapSoil"
+kext = "Kext"
+"kv₀" = "KsatVer"
+leaf_area_index = "LAI"
+m = "M_"
+maxleakage = "MaxLeakage"
+pathfrac = "PathFrac"
+potential_evaporation = "pet"
+precipitation = "pr"
+rootdistpar = "rootdistpar"
+rootingdepth = "RootingDepth"
+soilminthickness = "SoilMinThickness"
+soilthickness = "SoilThickness"
+specific_leaf = "Sl"
+storage_wood = "Swood"
+temperature = "t2m"
+tt = "snow_tt"
+tti = "TTI"
+ttm = "snow_ttm"
+water_holding_capacity = "WHC"
+waterfrac = "WaterFrac"
+"θᵣ" = "thetaR"
+"θₛ" = "thetaS"
+glacierstore = "wflow_glacierstore"
+glacierfrac = "wflow_glacierfrac"
+g_cfmax = "G_Cfmax"
+g_tt = "G_TT"
+g_sifrac = "G_SIfrac"
+
+[input.lateral.river]
+length = "wflow_riverlength"
+n = "N_River"
+slope = "RiverSlope"
+width = "wflow_riverwidth_sobek_global_extrapol"
+bankfull_depth = "RiverDepth_sobek_global_extrapol"
+bankfull_elevation = "hydrodem_avg"
+
+[input.lateral.river.floodplain]
+volume = "floodplain_volume"
+
+[input.lateral.river.reservoir]
+area = "ResSimpleArea"
+areas = "wflow_reservoirareas"
+demand = "ResDemand"
+locs = "wflow_reservoirlocs"
+maxrelease = "ResMaxRelease"
+maxvolume = "ResMaxVolume"
+targetfullfrac = "ResTargetFullFrac"
+targetminfrac = "ResTargetMinFrac"
+
+[input.lateral.river.lake]
+area = "LakeArea"
+areas = "wflow_lakeareas"
+b = "Lake_b"
+e = "Lake_e"
+locs = "wflow_lakelocs"
+outflowfunc = "LakeOutflowFunc"
+storfunc = "LakeStorFunc"
+threshold = "LakeThreshold"
+linkedlakelocs = "LinkedLakeLocs"
+waterlevel = "LakeAvgLevel"
+
+[input.lateral.river.flooplain.n]
+scale = 1.0
+offset = 0.0
+
+[input.lateral.river.flooplain.n.netcdf.variable]
+name = "N_Floodplain"
+
+[input.lateral.subsurface]
+ksathorfrac = "ksathorfrac_BRT_250"
+
+[input.lateral.land]
+n = "N"
+slope = "Slope"
+elevation = "hydrodem_subgrid_D4"
+
+[netcdf]
+path = "output_scalar.nc"
+variable = [
+    { name = "Q", map = "gauges_Hall", parameter = "lateral.river.q_av" },
+]
+
+[output.vertical]
+interception = "interception"
+ustoredepth = "ustoredepth"
+satwaterdepth = "satwaterdepth"
+snow = "snow"
+rootstore = "rootstore"
+
+[output.lateral.river]
+q_av = "q_river"
+h_av = "h_river"
+
+[output.lateral.land]
+
+[output.lateral.subsurface]
