@@ -7,9 +7,9 @@ printshellcmds: True
 scheduler: greedy
 restart-times: 2
 forceall: False
-max-jobs-per-second: 1000
+max-jobs-per-second: 1500
 max-status-checks-per-second: 1
-jobs: 1000
+jobs: 1500
 rerun-triggers: mtime
 
 #successor to --cluster must be installed with pip snakemake-executor-plugin-cluster-generic  (1.0.9)

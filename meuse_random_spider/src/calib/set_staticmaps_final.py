@@ -1,11 +1,16 @@
 #TODO: to be tested!
 
 from pathlib import Path
+import numpy as np
 import pandas as pd
 import geopandas as gpd
 import xarray as xr
+from hydromt.raster import RasterDataset
+from setuplog import setup_logging
 import shutil
+import traceback
 import os
+import json
 import ast
 
     
@@ -107,7 +112,7 @@ if __name__ == "__main__":
         main(
             p=mod.params.dataset,
             best_params=mod.params.best_params,
-            topx = lambda wildcards: wildcards.Topx,
+            topx = mod.params.topx,
             params_sname=mod.params.params_sname,
             params_lname=mod.params.params_lname,
             params_method=mod.params.params_method,

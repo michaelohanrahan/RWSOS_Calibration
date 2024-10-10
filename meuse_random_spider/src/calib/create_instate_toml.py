@@ -16,31 +16,33 @@ def read_model(config_fn, log):
 
 def change_config(model, 
                   root,
-                  topx,
+                  level, 
+                  ST_key,
+                  soilthickness,
                   start,
                   end,
-                  log,
-                  outcfg):
+                  log):
+    
     # this is a toml file
     config = model.config
-    l.info(F"setting up instate for level {topx}")
     # update the log 
-    config["log"] = f"../../0-log/instate_L{topx}/instates_level{topx}.txt"
+    config["log"] = f"../../0-log/instate_L{level}/instates_level{level}_ST{str(soilthickness).replace('.', '')}.txt"
     
     # casename
-    config["casename"] = f"instates_level{topx}"
+    config["casename"] = f"instates_level{level}_ST{str(soilthickness).replace('.', '')}"
     
     # update the reinit
     config["model"]["reinit"] = True
     
     # update the input path_static
-    config["input"]["path_static"] = f"../staticmaps.nc"
+    config["input"]["path_static"] = f"staticmaps_L{level}_ST{str(soilthickness).replace('.', '')}.nc"
     
     # update the input path_forcing
     config["input"]["path_forcing"] = "../forcing_Meuse_20050101_20180222_v2_wgs2_remapbil_semisstonn.nc"
     
+    # print(config.keys())
     # update the state path_output
-    config["state"]["path_output"] = f'instate_level_{topx}.nc'
+    config["state"]["path_output"] = f'instate_level{level}_ST{str(soilthickness).replace(".", "")}.nc'
     config["state"]["path_input"] = None
 
     # Update the starttime
@@ -51,14 +53,15 @@ def change_config(model,
     
     #we dont need the output from this period, csv outputs of generic name compete 
     #stopping them from running in parallel
-    if "csv" in config:
-        config.pop("csv", None)
+    config.pop("csv", None)
+    # print(config.keys())
     
     # Write the config to a TOML file
-    output_path = outcfg
+    output_path = Path(root) / "instates" / f"wflow_sbm_getinstate_level{level}_ST{str(soilthickness).replace('.', '')}.toml"
     with open(output_path, 'w', encoding='utf-8') as toml_file:
         toml.dump(config, toml_file)
-    l.info(f"Updated config saved to {output_path}")
+
+    l.info(f"Writing instate file for soil thickness: {soilthickness} to {output_path}")
     return model
 
 
@@ -69,11 +72,26 @@ if __name__ == "__main__":
     try:
         config_fn = snakemake.input.config_fn
         root= snakemake.params.root
+        ST_values = list(snakemake.params.ST_values)
+        ST_key = snakemake.params.ST_key
         level = snakemake.params.level
         start = snakemake.params.starttime
         end = snakemake.params.endtime
         os.makedirs("instates", exist_ok=True)
-        
+        l.info(f"Params:\n config_fn: {config_fn}\n root: {root}\n ST_values: {ST_values}\n ST_key: {ST_key}\n level: {level}\n start: {start}\n end: {end}")
+        l.info(f"Creating instate files for soil thickness values: {ST_values}")
+    
+    except NameError:
+        os.chdir(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse')
+        l.info("Running script in test mode")
+        config_fn= Path("wflow_sbm.toml")   
+        root= Path("data/3-input")
+        ST_values =[999, 9999]
+        ST_key = "wrongsoilthicknesskey"
+        level = 0
+        start = "2005-01-01T00:00:00"
+        end = "2005-03-01T00:00:00"
+        os.makedirs("instates", exist_ok=True)
     
     except Exception as e:
         l.error(f"An error occurred importing params: {e}")
@@ -81,14 +99,17 @@ if __name__ == "__main__":
         raise e
 
     try:
-        mod = read_model(config_fn, l)
-        change_config(model=mod,
-                    root=root, 
-                    level=level, 
-                    start=start, 
-                    end=end,
-                    log=l,
-                    outcfg=snakemake.output.cfg)
+        for st in ST_values:
+            mod = read_model(config_fn, l)
+            l.info(f'original mod.config.input: {mod.config["input"]}')
+            change_config(model=mod,
+                        root=root, 
+                        level=level, 
+                        ST_key=ST_key,
+                        soilthickness=st, 
+                        start=start, 
+                        end=end,
+                        log=l)
     except Exception as e:
         l.error(f"An error occurred: {e}")
         l.error(traceback.format_exc())

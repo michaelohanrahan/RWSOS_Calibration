@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Django stuff:
+*.log
+
+# DotEnv configuration
+.env
+
+# exclude data from source control by default
+data/0-log
+#data/1-external
+data/2-interim/calib_data
+#data/3-input
+#data/4-output
+#data/5-visualization
+
+# exclude figures
+visualisation/figures
+
+# temporary snakemake files
+.snakemake
+
+# pixi environment
+.pixi
+
+# VSCode
+.vscode
+
+#QGIS
+.qgz
+.qmz

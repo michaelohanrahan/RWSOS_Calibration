@@ -1,0 +1,9 @@
+Bootstrap: docker
+From: julia:1.10.0
+
+%post
+    export JULIA_DEPOT_PATH="/usr/local/julia/local/share/julia"
+    julia --project="/opt/." -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name="Wflow", version="0.7.3"))'
+
+%runscript
+    julia --project="/opt/." -e "$@"
