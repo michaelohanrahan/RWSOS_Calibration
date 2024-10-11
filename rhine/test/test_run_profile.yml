@@ -1,0 +1,47 @@
+executor: cluster-generic
+# configfile: $HOME/documents/RWSoS/RWSOS_Calibration/meuse/config/calib.yml
+latency-wait: 60
+keep-going: True
+rerun-incomplete: False
+printshellcmds: True
+scheduler: greedy
+restart-times: 2
+forceall: True
+max-jobs-per-second: 4
+max-status-checks-per-second: 1
+jobs: 4
+rerun-triggers: mtime
+
+#successor to --cluster must be installed with pip snakemake-executor-plugin-cluster-generic  (1.0.9)
+cluster-generic-submit-cmd:
+  mkdir -p /u/ohanrah/documents/RWSoS/RWSOS_Calibration/rhine/data/0-log/{name} &&
+  sbatch
+    --partition={resources.partition}
+    --account=hyd
+    --time={resources.time}
+    --get-user-env
+    --qos={resources.qos}sacct
+    --cpus-per-task={threads}
+    --job-name={name}_{jobid}
+    --output=/u/ohanrah/documents/RWSoS/RWSOS_Calibration/meuse_random/data/0-log/{name}/{jobid}.log
+    
+#scontrol show partition 4pcpu shows unlimited mem
+default-resources:
+  - partition="4pcpu"
+  - qos="sbatch"
+  - time="06:00:00"
+  - mem_mb=32768 #32gb
+
+cores: 4
+local-cores: 4
+
+group-components:
+  - wflow=4
+
+
+
+
+
+
+
+

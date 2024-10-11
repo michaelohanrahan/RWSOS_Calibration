@@ -10,5 +10,13 @@
 *.pptx
 *.pdf
 *.png
+**/calib_data/
+**/5-visualization/
+**/level*/
+**/3-input/
+**/.snakemake/
+**/metadata/
+*.sif
+*.zip
 vanHessel/
 vanJoost/

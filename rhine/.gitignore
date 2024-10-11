@@ -1,7 +1,7 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-
+.snakemake/
 # C and Fortran extensions
 *.so
 *.dylib

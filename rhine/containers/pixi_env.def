@@ -1,0 +1,21 @@
+Bootstrap: docker
+From: python:3.9-slim
+
+%files
+    pixi.toml /app/pixi.toml
+    pixi.lock /app/pixi.lock
+
+%post
+    apt-get update && apt-get install -y curl git build-essential  # Added build-essential installation
+    curl -fsSL https://pixi.sh/install.sh | bash
+    export PATH="/root/.pixi/bin:$PATH"
+    cd /app
+    /root/.pixi/bin/pixi clean
+    /root/.pixi/bin/pixi install
+    echo 'export PATH="/root/.pixi/bin:$PATH"' >> $SINGULARITY_ENVIRONMENT
+    
+%environment
+    export LC_ALL=C
+
+%runscript
+    /root/.pixi/bin/pixi run python "$@"
