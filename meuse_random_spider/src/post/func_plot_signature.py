@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from datetime import datetime
 
 import hydromt
@@ -6,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 import xarray as xr
+import pandas as pd
 
 
 def rsquared(x, y):
@@ -13,6 +15,24 @@ def rsquared(x, y):
 
     slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x, y)
     return r_value**2
+
+def mm7q(
+    ds: xr.Dataset | xr.DataArray,
+    dry_month: list,
+    window: int,
+):  
+    # calculate the MM7Q for each month
+    _mm7q = ds.rolling(time=window).mean().resample(time='M').min('time').compute()
+    
+    # select out the MM7Q for selected dry months
+    dry_month_start = dry_month[0]
+    dry_month_end = dry_month[-1]
+    months = _mm7q['time'].dt.month
+    mm7q_dry_month = _mm7q.sel(time=_mm7q['time'].where((months>=dry_month_start)
+                                                        &(months<=dry_month_end),
+                                                        drop=True))
+    
+    return mm7q_dry_month
 
 
 def plot_signatures(
@@ -25,7 +45,7 @@ def plot_signatures(
     lw=0.8,
     fs=8,
     save=False,
-    legend_threshold=5,
+    legend_threshold=15,
 ):
     if xr.infer_freq(dsq.time).lower() == "D":
         window = 7
@@ -33,15 +53,14 @@ def plot_signatures(
         window = 7 * 24
     elif xr.infer_freq(dsq.time).lower() == "3h":
         window = 7 * int(24 / 3)
-
+    
     # first calc some signatures
-    dsq["metrics"] = ["KGE", "NSE", "NSElog", "RMSE", "MSE"]
+    dsq["metrics"] = ["KGE", "NSE", "NSElog", "NSElog_mm7q", "RMSE", "MSE"]
     dsq["performance"] = (
         ("runs", "metrics"),
         np.zeros((len(dsq.runs), len(dsq.metrics))) * np.nan,
     )
 
-    # dsplot = dsq.copy(deep=True)
     _tmp = dsq.sel(time=dsq.time[~dsq.Q.sel(runs="Obs.").isnull()].values)
     if len(_tmp.time) == 0:
         skip_obs = True
@@ -74,6 +93,11 @@ def plot_signatures(
             # mse
             mse = hydromt.stats.mse(dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs."))
             dsq["performance"].loc[dict(runs=label, metrics="MSE")] = mse
+            # nselog_mm7q
+            sim_mm7q = mm7q(dsq["Q"].sel(runs=label), dry_month=[6, 7, 8, 9, 10], window=window)
+            obs_mm7q = mm7q(dsq["Q"].sel(runs="Obs."), dry_month=[6, 7, 8, 9, 10], window=window)
+            NSElog_mm7q = hydromt.stats.lognashsutcliffe(sim_mm7q, obs_mm7q)
+            dsq["performance"].loc[dict(runs=label, metrics="NSElog_mm7q")] = NSElog_mm7q
         #         print(nse.values, nselog.values, kge['kge'].values, rmse.values, mse.values)
 
     # needed later for sns boxplot
@@ -83,7 +107,7 @@ def plot_signatures(
     #         df_perf = pd.concat([df,df_perf])
 
     fig = plt.figure(
-        "signatures", clear=True, figsize=(16 / 2.54, 22 / 2.54), tight_layout=True
+        "signatures", clear=True, figsize=(24 / 2.54, 38 / 2.54), tight_layout=True
     )
     # fig, axes = plt.subplots(5, 2, figsize=(16 / 2.54, 22 / 2.54))
     axes = fig.subplots(5, 2)
@@ -455,13 +479,25 @@ def plot_signatures(
     axes[8].set_xlabel("")
     axes[8].set_ylabel("Cum. Q (m$^3$s$^{-1}$)", fontsize=fs)
 
-    # performance measures NS, NSlogQ, KGE, axes[9]
+    # performance measures KGE, NSE, NSlogQ, NSlog_mm7q axes[9]
     #     sns.boxplot(ax=axes[9], data = df_perf, x = 'metrics', hue = 'runs', y = 'performance')
-    # nse
     offsets = np.linspace(-0.25, 0.25, len(labels))
+    # kge
     for label, color, offset in zip(labels, colors, offsets):
         axes[9].plot(
             0.8 + offset,
+            dsq["performance"].loc[dict(runs=label, metrics="KGE")],
+            color=color,
+            marker="o",
+            linestyle="None",
+            linewidth=lw,
+            label=label,
+        )
+    # axes[9].plot(5.2, dsq['performance'].loc[dict(runs = label_01, metrics = 'KGE')], color = color_01, marker = 'o', linestyle = 'None', linewidth = lw, label = label_01)
+    # nse
+    for label, color, offset in zip(labels, colors, offsets):
+        axes[9].plot(
+            2.8 + offset,
             dsq["performance"].loc[dict(runs=label, metrics="NSE")],
             color=color,
             marker="o",
@@ -473,7 +509,7 @@ def plot_signatures(
     # nselog
     for label, color, offset in zip(labels, colors, offsets):
         axes[9].plot(
-            2.8 + offset,
+            4.8 + offset,
             dsq["performance"].loc[dict(runs=label, metrics="NSElog")],
             color=color,
             marker="o",
@@ -482,20 +518,19 @@ def plot_signatures(
             label=label,
         )
     # axes[9].plot(3.2, dsq['performance'].loc[dict(runs = label_01, metrics = 'NSElog')], color = color_01, marker = 'o', linestyle = 'None', linewidth = lw, label = label_01)
-    # kge
+    # nselog_mm7q
     for label, color, offset in zip(labels, colors, offsets):
         axes[9].plot(
-            4.8 + offset,
-            dsq["performance"].loc[dict(runs=label, metrics="KGE")],
+            6.8 + offset,
+            dsq["performance"].loc[dict(runs=label, metrics="NSElog_mm7q")],
             color=color,
             marker="o",
             linestyle="None",
             linewidth=lw,
             label=label,
         )
-    # axes[9].plot(5.2, dsq['performance'].loc[dict(runs = label_01, metrics = 'KGE')], color = color_01, marker = 'o', linestyle = 'None', linewidth = lw, label = label_01)
-    axes[9].set_xticks([1, 3, 5])
-    axes[9].set_xticklabels(["NSE", "NSElog", "KGE"])
+    axes[9].set_xticks([1, 3, 5, 7])
+    axes[9].set_xticklabels(["KGE", "NSE", "NSElog", "NSElog_mm7q"])
     axes[9].set_ylim([0, 1])
     axes[9].set_ylabel("Performance", fontsize=fs)
 
@@ -507,7 +542,7 @@ def plot_signatures(
     # plt.tight_layout()
     if save:
         fig.savefig(
-            os.path.join(Folder_out, f"signatures_{station_id}.png"),
+            os.path.join(Folder_out, f"signatures_{station_name}_{station_id}.png"),
             dpi=300,
         )
         # fig.close()
@@ -600,3 +635,61 @@ def plot_hydro(
     if save:
         fig.savefig(os.path.join(Folder_out, f"hydro_{station_id}.png"), dpi=300)
         # fig.close()
+
+
+if __name__ == "__main__":
+
+    import platform
+    if platform.system() == "Windows":
+        DRIVE = "p:/"
+        PLATFORM = "Windows"
+    elif platform.system() == "Linux":
+        DRIVE = "/p"
+        PLATFORM = "Linux"
+        
+    work_dir = Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', 'meuse_random_spider')
+    ds_fn = work_dir / 'data/4-output/combined_output.nc'
+    output_dir = work_dir / 'data/5-visualization/signature'
+    GaugeToPlot = Path(work_dir,'data', '4-output','wflow_id_add_HBV_new.csv')
+    
+    ds=xr.open_dataset(ds_fn)
+    gauges = pd.read_csv(GaugeToPlot)['wflow_id'].tolist()
+    
+    colors = [
+    "#a6cee3",
+    "#1f78b4",
+    "#b2df8a",
+    "#33a02c",
+    "orange",
+    "#fb9a99",
+    "#e31a1c",
+    "#fdbf6f",
+    "#ff7f00",
+    "#cab2d6",
+    "#6a3d9a",
+    "#ffff99",
+    "#b15928",
+    ]
+    plot_colors = colors[:]
+    
+    import time
+    start_time = time.time()
+    for station_id in gauges:
+        # Get data for that stations
+        dsq = ds.sel(wflow_id=station_id)
+        station_name = pd.read_csv(GaugeToPlot).set_index('wflow_id')['location'].loc[station_id]
+        # Prep labels
+        labels = np.delete(dsq.runs.values, np.where(dsq.runs.values == "Obs."))
+        
+        plot_signatures(
+            dsq=dsq,
+            labels=labels,
+            colors=plot_colors,
+            Folder_out=output_dir,
+            station_name=station_name,
+            station_id=station_id,
+            save=True,
+        )
+    end_time = time.time()
+    print(f"Time taken: {end_time - start_time:.2f} seconds")
+
