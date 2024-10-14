@@ -199,13 +199,12 @@ if __name__ == "__main__":
     # add base model
     files.append(str(Path(r'p:\11209265-grade2023\wflow\wflow_meuse_julia\best_run_level-1_result\output_run\output_scalar.nc')))
     
-    # 
     
     
     obs_data = Path(r'p:/11209265-grade2023/wflow/RWSOS_Calibration/meuse_random/data/1-external/discharge_hourlyobs_smoothed.nc')
     GaugeToPlot = work_dir / 'wflow_id_add_HBV_new.csv'
-    starttime = '2005-08-01'  # from config eval_starttime
-    endtime = '2007-12-31'   # from config eval_endtime. But we can also evaluate the whole period from 2005-08-01 to 2018-02-22
+    starttime = '2008-08-01'  # from config eval_starttime
+    endtime = '2016-01-01'   # from config eval_endtime. But we can also evaluate the whole period from 2005-08-01 to 2018-02-22
     output_dir = work_dir / "data/5-visualization/final_model_peaks"
     
     ds = main(
