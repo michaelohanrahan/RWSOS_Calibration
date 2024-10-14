@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from datetime import datetime
 
 import hydromt
@@ -6,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 import xarray as xr
+import pandas as pd
 
 
 def rsquared(x, y):
@@ -25,7 +27,7 @@ def plot_signatures(
     lw=0.8,
     fs=8,
     save=False,
-    legend_threshold=5,
+    legend_threshold=15,
 ):
     if xr.infer_freq(dsq.time).lower() == "D":
         window = 7
@@ -33,13 +35,13 @@ def plot_signatures(
         window = 7 * 24
     elif xr.infer_freq(dsq.time).lower() == "3h":
         window = 7 * int(24 / 3)
-
-    # first calc some signatures
-    dsq["metrics"] = ["KGE", "NSE", "NSElog", "RMSE", "MSE"]
-    dsq["performance"] = (
-        ("runs", "metrics"),
-        np.zeros((len(dsq.runs), len(dsq.metrics))) * np.nan,
-    )
+    
+    # # first calc some signatures
+    # dsq["metrics"] = ["KGE", "NSE", "NSElog", "RMSE", "MSE"]
+    # dsq["performance"] = (
+    #     ("runs", "metrics"),
+    #     np.zeros((len(dsq.runs), len(dsq.metrics))) * np.nan,
+    # )
 
     # dsplot = dsq.copy(deep=True)
     _tmp = dsq.sel(time=dsq.time[~dsq.Q.sel(runs="Obs.").isnull()].values)
@@ -50,31 +52,31 @@ def plot_signatures(
         skip_obs = False
         dsq = dsq.sel(time=dsq.time[~dsq.Q.sel(runs="Obs.").isnull()].values)
 
-    # perf metrics for single station
-    if not skip_obs:
-        for label in labels:
-            # nse
-            nse = hydromt.stats.nashsutcliffe(
-                dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs.")
-            )
-            dsq["performance"].loc[dict(runs=label, metrics="NSE")] = nse
-            # nse logq
-            nselog = hydromt.stats.lognashsutcliffe(
-                dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs.")
-            )
-            dsq["performance"].loc[dict(runs=label, metrics="NSElog")] = nselog
-            # kge
-            kge = hydromt.stats.kge(dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs."))
-            dsq["performance"].loc[dict(runs=label, metrics="KGE")] = kge["kge"]
-            # rmse
-            rmse = hydromt.stats.rmse(
-                dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs.")
-            )
-            dsq["performance"].loc[dict(runs=label, metrics="RMSE")] = rmse
-            # mse
-            mse = hydromt.stats.mse(dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs."))
-            dsq["performance"].loc[dict(runs=label, metrics="MSE")] = mse
-        #         print(nse.values, nselog.values, kge['kge'].values, rmse.values, mse.values)
+    # # perf metrics for single station
+    # if not skip_obs:
+    #     for label in labels:
+    #         # nse
+    #         nse = hydromt.stats.nashsutcliffe(
+    #             dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs.")
+    #         )
+    #         dsq["performance"].loc[dict(runs=label, metrics="NSE")] = nse
+    #         # nse logq
+    #         nselog = hydromt.stats.lognashsutcliffe(
+    #             dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs.")
+    #         )
+    #         dsq["performance"].loc[dict(runs=label, metrics="NSElog")] = nselog
+    #         # kge
+    #         kge = hydromt.stats.kge(dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs."))
+    #         dsq["performance"].loc[dict(runs=label, metrics="KGE")] = kge["kge"]
+    #         # rmse
+    #         rmse = hydromt.stats.rmse(
+    #             dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs.")
+    #         )
+    #         dsq["performance"].loc[dict(runs=label, metrics="RMSE")] = rmse
+    #         # mse
+    #         mse = hydromt.stats.mse(dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs."))
+    #         dsq["performance"].loc[dict(runs=label, metrics="MSE")] = mse
+    #     #         print(nse.values, nselog.values, kge['kge'].values, rmse.values, mse.values)
 
     # needed later for sns boxplot
     #     df_perf = pd.DataFrame()
@@ -82,8 +84,9 @@ def plot_signatures(
     #         df = dsq['performance'].sel(runs = label, metrics = ['NSE', 'NSElog', 'KGE']).to_dataframe()
     #         df_perf = pd.concat([df,df_perf])
 
+    skip_obs = False
     fig = plt.figure(
-        "signatures", clear=True, figsize=(16 / 2.54, 22 / 2.54), tight_layout=True
+        "signatures", clear=True, figsize=(24 / 2.54, 34 / 2.54), tight_layout=True
     )
     # fig, axes = plt.subplots(5, 2, figsize=(16 / 2.54, 22 / 2.54))
     axes = fig.subplots(5, 2)
@@ -455,49 +458,49 @@ def plot_signatures(
     axes[8].set_xlabel("")
     axes[8].set_ylabel("Cum. Q (m$^3$s$^{-1}$)", fontsize=fs)
 
-    # performance measures NS, NSlogQ, KGE, axes[9]
-    #     sns.boxplot(ax=axes[9], data = df_perf, x = 'metrics', hue = 'runs', y = 'performance')
-    # nse
-    offsets = np.linspace(-0.25, 0.25, len(labels))
-    for label, color, offset in zip(labels, colors, offsets):
-        axes[9].plot(
-            0.8 + offset,
-            dsq["performance"].loc[dict(runs=label, metrics="NSE")],
-            color=color,
-            marker="o",
-            linestyle="None",
-            linewidth=lw,
-            label=label,
-        )
-    # axes[9].plot(1.2, dsq['performance'].loc[dict(runs = label_01, metrics = 'NSE')], color = color_01, marker = 'o', linestyle = 'None', linewidth = lw, label = label_01)
-    # nselog
-    for label, color, offset in zip(labels, colors, offsets):
-        axes[9].plot(
-            2.8 + offset,
-            dsq["performance"].loc[dict(runs=label, metrics="NSElog")],
-            color=color,
-            marker="o",
-            linestyle="None",
-            linewidth=lw,
-            label=label,
-        )
-    # axes[9].plot(3.2, dsq['performance'].loc[dict(runs = label_01, metrics = 'NSElog')], color = color_01, marker = 'o', linestyle = 'None', linewidth = lw, label = label_01)
-    # kge
-    for label, color, offset in zip(labels, colors, offsets):
-        axes[9].plot(
-            4.8 + offset,
-            dsq["performance"].loc[dict(runs=label, metrics="KGE")],
-            color=color,
-            marker="o",
-            linestyle="None",
-            linewidth=lw,
-            label=label,
-        )
-    # axes[9].plot(5.2, dsq['performance'].loc[dict(runs = label_01, metrics = 'KGE')], color = color_01, marker = 'o', linestyle = 'None', linewidth = lw, label = label_01)
-    axes[9].set_xticks([1, 3, 5])
-    axes[9].set_xticklabels(["NSE", "NSElog", "KGE"])
-    axes[9].set_ylim([0, 1])
-    axes[9].set_ylabel("Performance", fontsize=fs)
+    # # performance measures NS, NSlogQ, KGE, axes[9]
+    # #     sns.boxplot(ax=axes[9], data = df_perf, x = 'metrics', hue = 'runs', y = 'performance')
+    # # nse
+    # offsets = np.linspace(-0.25, 0.25, len(labels))
+    # for label, color, offset in zip(labels, colors, offsets):
+    #     axes[9].plot(
+    #         0.8 + offset,
+    #         dsq["performance"].loc[dict(runs=label, metrics="NSE")],
+    #         color=color,
+    #         marker="o",
+    #         linestyle="None",
+    #         linewidth=lw,
+    #         label=label,
+    #     )
+    # # axes[9].plot(1.2, dsq['performance'].loc[dict(runs = label_01, metrics = 'NSE')], color = color_01, marker = 'o', linestyle = 'None', linewidth = lw, label = label_01)
+    # # nselog
+    # for label, color, offset in zip(labels, colors, offsets):
+    #     axes[9].plot(
+    #         2.8 + offset,
+    #         dsq["performance"].loc[dict(runs=label, metrics="NSElog")],
+    #         color=color,
+    #         marker="o",
+    #         linestyle="None",
+    #         linewidth=lw,
+    #         label=label,
+    #     )
+    # # axes[9].plot(3.2, dsq['performance'].loc[dict(runs = label_01, metrics = 'NSElog')], color = color_01, marker = 'o', linestyle = 'None', linewidth = lw, label = label_01)
+    # # kge
+    # for label, color, offset in zip(labels, colors, offsets):
+    #     axes[9].plot(
+    #         4.8 + offset,
+    #         dsq["performance"].loc[dict(runs=label, metrics="KGE")],
+    #         color=color,
+    #         marker="o",
+    #         linestyle="None",
+    #         linewidth=lw,
+    #         label=label,
+    #     )
+    # # axes[9].plot(5.2, dsq['performance'].loc[dict(runs = label_01, metrics = 'KGE')], color = color_01, marker = 'o', linestyle = 'None', linewidth = lw, label = label_01)
+    # axes[9].set_xticks([1, 3, 5])
+    # axes[9].set_xticklabels(["NSE", "NSElog", "KGE"])
+    # axes[9].set_ylim([0, 1])
+    # axes[9].set_ylabel("Performance", fontsize=fs)
 
     for ax in axes:
         ax.tick_params(axis="both", labelsize=fs)
@@ -600,3 +603,58 @@ def plot_hydro(
     if save:
         fig.savefig(os.path.join(Folder_out, f"hydro_{station_id}.png"), dpi=300)
         # fig.close()
+
+
+if __name__ == "__main__":
+
+    import platform
+    if platform.system() == "Windows":
+        DRIVE = "p:/"
+        PLATFORM = "Windows"
+    elif platform.system() == "Linux":
+        DRIVE = "/p"
+        PLATFORM = "Linux"
+        
+    work_dir = Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', 'meuse_random_spider')
+    ds_fn = work_dir / 'data/4-output/combined_output.nc'
+    output_dir = work_dir / 'data/5-visualization/signature'
+    GaugeToPlot = Path(work_dir,'data', '4-output','wflow_id_add_HBV_new.csv')
+    
+    ds=xr.open_dataset(ds_fn)
+    gauges = pd.read_csv(GaugeToPlot)['wflow_id'].tolist()
+    station_name = pd.read_csv(GaugeToPlot)['location'].tolist()
+    
+    colors = [
+    "#a6cee3",
+    "#1f78b4",
+    "#b2df8a",
+    "#33a02c",
+    "orange",
+    "#fb9a99",
+    "#e31a1c",
+    "#fdbf6f",
+    "#ff7f00",
+    "#cab2d6",
+    "#6a3d9a",
+    "#ffff99",
+    "#b15928",
+    ]
+    plot_colors = colors[:]
+    
+    
+    for station_id in [16]:
+        # Get data for that stations
+        dsq = ds.sel(wflow_id=station_id)
+        station_name = pd.read_csv(GaugeToPlot).set_index('wflow_id')['location'].loc[station_id]
+        # Prep labels
+        labels = np.delete(dsq.runs.values, np.where(dsq.runs.values == "Obs."))
+        
+        plot_signatures(
+            dsq=dsq,
+            labels=labels,
+            colors=plot_colors,
+            Folder_out=output_dir,
+            station_name=station_name,
+            station_id=station_id,
+            save=True,
+        )

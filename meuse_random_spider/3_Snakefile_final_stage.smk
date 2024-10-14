@@ -120,7 +120,9 @@ TOP_ENS = best_params.columns.values
 
 rule all:
     input:
-        expand(Path(out_dir, "output_{Topx}", "output_scalar.nc"), Topx=TOP_ENS)
+        wflow=expand(Path(out_dir, "output_{Topx}", "output_scalar.nc"), Topx=TOP_ENS),
+        figures=expand(Path(vis_dir, "per_run", "Topx_{Topx}", f"hydro_{elements[0]}.png"), Topx=TOP_ENS), #expect per run gauge pngs
+        all_figures=expand(Path(vis_dir, "all_runs", "hydro_{gauge}.png"), gauge=elements) #expect combined run gauge png
 
 
 """Prepare final stage: set staticmaps using the best params"""
@@ -230,8 +232,13 @@ rule run_final_model:
 # """dataset of all eval metrics for final models: kge, nse, nse_log, nse_mm7q, mae_pt, mape_pm
 # dim: runs (obs, hbv, Topx), wflow_id
 # """
+rule combined_output:
+#combined all outputs (topx) together with obs, hbv, and base model
 
+rule final_performance_metrics:
+# based on  combined_output.nc, calculate performance metrics.nc
 
+# rule to plot
 rule visualize_one:
     input: 
         scalar = Path(out_dir, "output_{Topx}", "output_scalar.nc")

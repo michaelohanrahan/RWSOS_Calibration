@@ -6,7 +6,7 @@ path_log = "L0_calib_2024-10-04_14-48-53.log"
 fews_run = false
 timestepsecs = 3600
 starttime = "2005-01-01T00:00:00"
-endtime = "2015-12-29T23:00:00"
+endtime = "2005-01-05T00:00:00"
 
 [model]
 type = "sbm"
@@ -30,8 +30,8 @@ floodplain_1d = true
 min_streamorder = 4
 
 [input]
-path_forcing = "/project/afrijnmaas/Data/RWSOS_Calibration/rhine/data/3-input/inmaps/FINAL_forcing-genRE_hourly_*.nc"
-path_static = "staticmaps.nc"
+path_forcing = "p:/11209265-grade2023/wflow/RWSOS_Calibration/rhine/data/3-input/inmaps/FINAL_forcing-genRE_hourly_*.nc"
+path_static = "staticmaps_redo.nc"
 gauges = "wflow_gauges"
 ldd = "wflow_ldd"
 river_location = "wflow_river"
