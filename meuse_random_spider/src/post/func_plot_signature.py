@@ -8,12 +8,23 @@ import matplotlib.pyplot as plt
 import scipy
 import xarray as xr
 import pandas as pd
+from tqdm import tqdm
+import time
 
 
 def rsquared(x, y):
-    """Return R^2 where x and y are array-like."""
+    """Return R^2 where x and y are array-like, handling NaN values."""
+    # Remove NaN values
+    mask = ~np.isnan(x) & ~np.isnan(y)
+    x_clean = x[mask]
+    y_clean = y[mask]
 
-    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x, y)
+    # Check if we have enough data points after removing NaNs
+    if len(x_clean) < 2:
+        return np.nan  # Not enough data to calculate R^2
+
+    # Calculate R^2
+    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x_clean, y_clean)
     return r_value**2
 
 def mm7q(
@@ -35,9 +46,48 @@ def mm7q(
     return mm7q_dry_month
 
 
+def process_labels_and_colors(dsq, labels, colors):
+    """
+    Processes the labels and colors for plotting based on the input dataset.
+
+    This function checks if the labels are provided as a dictionary or a list. If a dictionary, it maps the old labels to new labels and updates the dataset and colors accordingly. If a list, it filters out labels that are not present in the dataset. It also ensures 'Obs.' is included if present in the dataset.
+
+    Parameters:
+    - dsq (xr.Dataset): The dataset containing the data to be plotted.
+    - labels (dict or list): The labels to be used for plotting. If a dictionary, maps old labels to new labels. If a list, filters out labels not present in the dataset.
+    - colors (dict or list): The colors to be used for plotting. If a dictionary, maps old labels to colors. If a list, filters out colors not corresponding to labels present in the dataset.
+
+    Returns:
+    - dsq (xr.Dataset): The updated dataset with new labels if necessary.
+    - labels (list): The list of labels to be used for plotting.
+    - colors (list): The list of colors to be used for plotting.
+    """
+    if isinstance(labels, dict):
+        available_labels = [label for label in labels.keys() if label in dsq.runs.values]
+        colors_new = {}
+        new_dsq = xr.Dataset()
+        for old_label, new_label in labels.items():
+            if old_label in dsq.runs.values:
+                new_dsq[new_label] = dsq['Q'].sel(runs=old_label)
+                colors_new[new_label] = colors[old_label]
+        if 'Obs.' in dsq.runs.values:
+            new_dsq['Obs.'] = dsq['Q'].sel(runs='Obs.')
+        colors = colors_new
+        new_dsq = new_dsq.to_array(dim='runs').to_dataset(name='Q')
+        dsq = new_dsq
+        labels = list(labels.values())
+        colors = [colors[label] for label in labels]
+        print("Plotting for the following labels: ", labels)
+        print("With colors: ", colors)
+        print(dsq)
+    else:
+        labels = [label for label in labels if label in dsq.runs.values]
+        print("Plotting for the following labels: ", labels)
+    return dsq, labels, colors
+
 def plot_signatures(
     dsq,
-    labels,
+    labels: list[str] | dict[str, str],
     colors,
     Folder_out,
     station_name,
@@ -53,7 +103,8 @@ def plot_signatures(
         window = 7 * 24
     elif xr.infer_freq(dsq.time).lower() == "3h":
         window = 7 * int(24 / 3)
-    
+
+    dsq, labels, colors = process_labels_and_colors(dsq, labels, colors)
     # first calc some signatures
     dsq["metrics"] = ["KGE", "NSE", "NSElog", "NSElog_mm7q", "RMSE", "MSE"]
     dsq["performance"] = (
@@ -68,11 +119,14 @@ def plot_signatures(
     else:
         skip_obs = False
         dsq = dsq.sel(time=dsq.time[~dsq.Q.sel(runs="Obs.").isnull()].values)
+    # Create a dataframe to store the metrics
+    metrics_df = pd.DataFrame(columns=['Station', 'Run', 'KGE', 'NSE', 'NSElog', 'NSElog_mm7q', 'RMSE', 'MSE', 'R2', 'R2_max_annual', 'R2_nm7q'])
 
     # perf metrics for single station
     if not skip_obs:
         for label in labels:
             # nse
+            print("Run: ", label)
             nse = hydromt.stats.nashsutcliffe(
                 dsq["Q"].sel(runs=label), dsq["Q"].sel(runs="Obs.")
             )
@@ -98,8 +152,27 @@ def plot_signatures(
             obs_mm7q = mm7q(dsq["Q"].sel(runs="Obs."), dry_month=[6, 7, 8, 9, 10], window=window)
             NSElog_mm7q = hydromt.stats.lognashsutcliffe(sim_mm7q, obs_mm7q)
             dsq["performance"].loc[dict(runs=label, metrics="NSElog_mm7q")] = NSElog_mm7q
-        #         print(nse.values, nselog.values, kge['kge'].values, rmse.values, mse.values)
+            print(f"Run: {label}, NSE: {nse.values}, NSElog: {nselog.values}, KGE: {kge['kge'].values}, RMSE: {rmse.values}, MSE: {mse.values}, NSElog_mm7q: {NSElog_mm7q.values}") 
 
+            # Calculate R2 scores
+            r2_score = rsquared(dsq["Q"].sel(runs="Obs."), dsq["Q"].sel(runs=label))
+            r2_score_max_annual = rsquared(dsq_max["Q"].sel(runs="Obs."), dsq_max["Q"].sel(runs=label))
+            r2_score_nm7q = rsquared(dsq_nm7q["Q"].sel(runs="Obs."), dsq_nm7q["Q"].sel(runs=label))
+
+            # Add metrics to the dataframe
+            metrics_df = metrics_df.append({
+                'Station': station_name,
+                'Run': label,
+                'KGE': kge['kge'].values[0],
+                'NSE': nse.values,
+                'NSElog': nselog.values,
+                'NSElog_mm7q': NSElog_mm7q.values,
+                'RMSE': rmse.values,
+                'MSE': mse.values,
+                'R2': r2_score,
+                'R2_max_annual': r2_score_max_annual,
+                'R2_nm7q': r2_score_nm7q
+            }, ignore_index=True) 
     # needed later for sns boxplot
     #     df_perf = pd.DataFrame()
     #     for label in [label_00, label_01]:
@@ -116,8 +189,12 @@ def plot_signatures(
     fig.suptitle(station_name)
 
     # daily against each other axes[0]
+    print("Labels: ", labels)
+    print("Colors: ", colors)
     if not skip_obs:
         for label, color in zip(labels, colors):
+            print("Plotting: ", label)
+            print("Color: ", color)
             axes[0].plot(
                 dsq["Q"].sel(runs="Obs."),
                 dsq["Q"].sel(runs=label),
@@ -546,7 +623,11 @@ def plot_signatures(
             dpi=300,
         )
         # fig.close()
-
+    return metrics_df
+def save_metrics_to_excel(all_metrics_df, output_dir):
+    excel_path = os.path.join(output_dir, 'all_station_metrics.xlsx')
+    all_metrics_df.to_excel(excel_path, index=False)
+    print(f"All metrics saved to {excel_path}")
 
 def plot_hydro(
     dsq,
@@ -568,7 +649,8 @@ def plot_hydro(
     save=False,
 ):
     # fig, axes = plt.subplots(4, 1, figsize=(16 / 2.54, 20 / 2.54))
-
+    dsq, labels, colors = process_labels_and_colors(dsq, labels, colors)
+    
     fig = plt.figure(
         "timeseries", clear=True, tight_layout=True, figsize=(16 / 2.54, 20 / 2.54)
     )
@@ -633,7 +715,8 @@ def plot_hydro(
     # plt.tight_layout()
 
     if save:
-        fig.savefig(os.path.join(Folder_out, f"hydro_{station_id}.png"), dpi=300)
+        station_name = station_name.replace(" ", "_")
+        fig.savefig(os.path.join(Folder_out, f"hydro_{station_name}_{station_id}.png"), dpi=300)
         # fig.close()
 
 
@@ -650,38 +733,58 @@ if __name__ == "__main__":
     work_dir = Path(DRIVE, '11209265-grade2023', 'wflow', 'RWSOS_Calibration', 'meuse_random_spider')
     ds_fn = work_dir / 'data/4-output/combined_output.nc'
     output_dir = work_dir / 'data/5-visualization/signature'
+    output_dir.mkdir(parents=True, exist_ok=True)
     GaugeToPlot = Path(work_dir,'data', '4-output','wflow_id_add_HBV_new.csv')
     
     ds=xr.open_dataset(ds_fn)
     gauges = pd.read_csv(GaugeToPlot)['wflow_id'].tolist()
     
-    colors = [
-    "#a6cee3",
-    "#1f78b4",
-    "#b2df8a",
-    "#33a02c",
-    "orange",
-    "#fb9a99",
-    "#e31a1c",
-    "#fdbf6f",
-    "#ff7f00",
-    "#cab2d6",
-    "#6a3d9a",
-    "#ffff99",
-    "#b15928",
+    # Colorblind-friendly colors
+    colorblind_friendly_colors = [
+        "#ff7f00",  # HBV -- RWSOS report colot
+        "#b2df8a",  # Base -- RWSOS report color
+        "#56B4E9",  # Sky Blue vv colorblind pallette vv
+        "#009E73",  # Bluish Green
+        "#F0E442",  # Yellow
+        "#0072B2",  # Blue
+        "#D55E00",  # Vermilion
+        "#CC79A7",  # Reddish Purple
+        "#999999",  # Gray
+        "#44AA99",  # Teal
+        "#661100",  # Brown
+        "#6699CC",  # Light Blue ^^ colorblind pallette ^^
+        "#1f78b4",  # Front facing -- RWSOS report color (green)
     ]
-    plot_colors = colors[:]
+    labels = ["HBV", "base_model", *[f"Top_{i+1}" for i in range(10)]]
+    lc = {label: color for label, color in zip(labels, colorblind_friendly_colors)}
     
-    import time
+    # Use this line to replace the original colors with the colorblind-friendly ones
+    colors = colorblind_friendly_colors
+    plot_colors = colors[:]
+    start_year = 2006
+    end_year = 2016
+    
+    start_long = f"{start_year}-01-01"
+    end_long = f"{end_year}-01-01"
+    start_1 = f"{start_year}-08-01"
+    end_1 = f"{start_year+1}-07-30"
+    start_2 = f"{2011}-08-01"
+    end_2 = f"{2012}-07-30"
+    start_3 = f"{2014}-08-01"
+    end_3 = f"{2015}-07-30"
+    
+    ds = ds.sel(time=slice(f"{start_year}-01-01", f"{end_year}-01-01"))
     start_time = time.time()
-    for station_id in gauges:
-        # Get data for that stations
+    all_metrics_df = pd.DataFrame()
+    for station_id in tqdm(gauges, desc="Processing gauges", total=len(gauges), colour='green'):
+        # Get data for that station
         dsq = ds.sel(wflow_id=station_id)
         station_name = pd.read_csv(GaugeToPlot).set_index('wflow_id')['location'].loc[station_id]
         # Prep labels
-        labels = np.delete(dsq.runs.values, np.where(dsq.runs.values == "Obs."))
+        labels = {"HBV": "HBV", "base_model": "2023 Base", "Top_10": "Calibrated"}
+        plot_colors = {label: lc[label] for label in labels.keys()}
         
-        plot_signatures(
+        metrics_df = plot_signatures(
             dsq=dsq,
             labels=labels,
             colors=plot_colors,
@@ -690,6 +793,27 @@ if __name__ == "__main__":
             station_id=station_id,
             save=True,
         )
+        all_metrics_df = pd.concat([all_metrics_df, metrics_df], ignore_index=True)
+        
+        plot_hydro(
+            dsq=dsq,
+            labels=labels,
+            colors=plot_colors,
+            Folder_out=output_dir,
+            station_name=station_name,
+            station_id=station_id,
+            save=True,
+            start_long=start_long,
+            end_long=end_long,
+            start_1=start_1,
+            end_1=end_1,
+            start_2=start_2,
+            end_2=end_2,
+            start_3=start_3,
+            end_3=end_3,
+        )
+        print(f"Finished processing {station_name}")
     end_time = time.time()
     print(f"Time taken: {end_time - start_time:.2f} seconds")
+
 

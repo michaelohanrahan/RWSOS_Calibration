@@ -10,6 +10,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 import geopandas as gpd
 import matplotlib.colors as colors
+import seaborn as sns
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -120,7 +121,7 @@ class MapPlotter:
         cbar = plt.colorbar(im, ax=ax, label=layer_name, pad=0.08)
         
         # Add internal borders (subcatchments)
-        self.subcatch.boundary.plot(ax=ax, color='white', linewidth=0.5, linestyle=':', alpha=0.01, zorder=2, transform=ccrs.PlateCarree())
+        self.subcatch.boundary.plot(ax=ax, color='white', linewidth=0.5, linestyle=':', alpha=0.2, zorder=2, transform=ccrs.PlateCarree())
         
         # Add country borders
         ax.add_feature(cfeature.BORDERS, linestyle=':', alpha=0.5)
@@ -214,7 +215,30 @@ class MapPlotter:
     def plot_all_maps(self, map_collection, map_layers, output_dir):
         # self.plot_single_maps(map_collection, map_layers, output_dir)
         # self.plot_diff_maps(map_collection, map_layers, output_dir)
-        self.plot_minmax_diff_maps(map_collection, map_layers, output_dir)
+        # self.plot_minmax_diff_maps(map_collection, map_layers, output_dir)
+        # self.plot_spatial_correlation_matrix(map_collection, map_layers, output_dir)
+
+    def plot_spatial_correlation_matrix(self, map_collection, map_layers, output_dir):
+        base_model = map_collection.get_map('base_model').data
+        corr_matrix = np.zeros((len(map_layers), len(map_layers)))
+        
+        for i, layer1 in enumerate(map_layers):
+            for j, layer2 in enumerate(map_layers):
+                if layer1 in base_model and layer2 in base_model:
+                    corr = np.corrcoef(base_model[layer1].values.flatten(), 
+                                       base_model[layer2].values.flatten())[0, 1]
+                    corr_matrix[i, j] = corr
+        
+        fig, ax = plt.subplots(figsize=(12, 10))
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', vmin=-1, vmax=1, 
+                    xticklabels=map_layers, yticklabels=map_layers, ax=ax)
+        ax.set_title('Spatial Correlation Between Parameters')
+        
+        output_path = Path(output_dir, 'spatial_correlation_matrix.png')
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        logging.info(f"Saved spatial correlation matrix to {output_path}")
 
 if __name__ == "__main__":
     work_dir = Path(r'p:\11209265-grade2023\wflow\RWSOS_Calibration\meuse_random_spider')
@@ -233,7 +257,7 @@ if __name__ == "__main__":
     recipe = recipe_loader.get_recipe()
     map_layers = [key for key in recipe.keys()]
     map_layers = [item.strip() for sublist in [key.split(',') for key in map_layers] for item in sublist]
-    map_layers = map_layers[0:1]
+    map_layers = map_layers[:]
     
     # Load all maps
     map_collection.load_all_maps(map_layers)
